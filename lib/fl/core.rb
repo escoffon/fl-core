@@ -1,8 +1,13 @@
 require "fl/core/version"
 
+# Namespace for Floopstreet code.
+
 module Fl
+  # Namespace for Floopstreet core code.
+  
   module Core
-    class Error < StandardError; end
-    # Your code goes here...
+    # The {Fl::Core} base error class.
+    
+    class Error < StandardError ; end
   end
 end
