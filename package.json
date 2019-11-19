@@ -1,0 +1,22 @@
+{
+    "name": "fl-core",
+    "private": true,
+    "dependencies": {
+	"axios": "^0.19.0",
+	"js-cache": "^1.0.3",
+	"lodash": "^4.17.15"
+    },
+    "scripts": {},
+    "devDependencies": {
+	"axios-mock-adapter": "^1.17.0",
+	"canonical-path": "^1.0.0",
+	"chai": "^4.2.0",
+	"del": "^5.1.0",
+	"dgeni": "^0.4.12",
+	"dgeni-packages": "^0.28.1",
+	"fl-dgeni": "git+https://github.com/escoffon/fl-dgeni.git",
+	"gulp": "^4.0.2",
+	"mocha": "^6.2.0",
+	"run-sequence": "^2.2.1"
+    }
+}

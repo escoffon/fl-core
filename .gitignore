@@ -2,7 +2,6 @@
 /.yardoc
 /_yardoc/
 /coverage/
-/doc/
 /pkg/
 /spec/reports/
 /tmp/
@@ -12,3 +11,9 @@
 
 # Ignore Gemfile.lock, since this is a gem
 Gemfile.lock
+
+# Emacs old version files
+*~
+
+# Generated documentation
+public/doc
