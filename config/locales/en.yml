@@ -1,0 +1,145 @@
+# -*-YAML-*- English locale file for components in the Fl::Framework namespace
+
+en:
+  date:
+    formats:
+      list_title: 'Created %m/%d/%Y'
+      actor_group_name: 'Created %m/%d/%Y'
+  
+  fl:
+    core:
+      conversion:
+        missing_type: "missing object type component in '{param}'"
+        missing_id: "missing object ID component in '{param}'"
+        missing_class: "no such class: %{class}"
+        no_key: "missing conversion key '{key}'"
+        no_object: "no object with id '%{id}' for class: %{class}"
+        incomplete: "incomplete object specification"
+        unexpected: "object class is %{class}, expected one of %{expect}"
+        unexpected_proc: "check proc returned falsy for object class %{class}"
+
+    framework:
+      controller:
+        unprocessable_entity: 'Unprocessable entity'
+
+      comment:
+        commentable:
+          model:
+            conversion:
+              missing_key: "missing '%{key}' key in commentable parameter hash"
+              bad_commentable_class: "not a commentable class: %{class}"
+        comment:
+          relationship:
+            validate:
+              not_commentable: "the to_node class '%{class}' is not a commentable"
+              no_comments: "the to_node class '%{class}' did not enable comments"
+          model:
+            validate:
+              create:
+                no_commentable_permission: "to create a comment for an object, the user must have access to the object"
+
+      attachment:
+        base:
+          model:
+            validate:
+              attachable_no_access_api: "the class %{mclass} does not support the Access APIs"
+        controller:
+          actions:
+            destroy:
+              deleted: "deleted attachment %{fingerprint}"
+        active_storage:
+          model:
+            validate:
+              forbiddent_content_type: "content type %{ctype} in file %{filename} is not allowed"
+
+      service:
+        comment:
+          cannot_create: "could not create a comment for %{fingerprint}"
+          active_record:
+            forbidden: "no permission to perform operation %{op}"
+        attachment:
+          type_mismatch: "attachment type mismatch; declared: %{declared_type}, detected: %{detected_type}"
+          type_not_allowed: "attachable %{fingerprint} does not store type %{type}"
+          no_class: "unsupported attachment content type %{type}"
+          cannot_create: "could not create an attachment for %{fingerprint}"
+          active_record:
+            forbidden: "no permission to perform operation %{op}"
+        list:
+          not_found: "no list with identifier %{id}"
+          creation_failure: 'failed to create a list'
+        list_item:
+          not_found: "no list item with identifier %{id}"
+          creation_failure: 'failed to create a list item'
+        actor:
+          group:
+            not_found: "no group with identifier %{id}"
+            creation_failure: 'failed to create a group'
+          group_member:
+            not_found: "no group member with identifier %{id}"
+            creation_failure: 'failed to create a group member'
+
+      captcha:
+        no-captcha: 'The request does not contain the CAPTCHA key %{key}'
+        verification-failure: 'CAPTCHA verification failure: %{messages}'
+
+      list:
+        model:
+          normalization_failure: "Some objects could not be loaded into list items"
+          validate:
+            inconsistent_list: "List item '%{list_item}' is not associated with list '%{list}'"
+        controller:
+          destroy:
+            deleted: "deleted list %{fingerprint} (%{title})"
+
+      list_item:
+        model:
+          not_listable: "The object '%{listed_object}' is not a listable"
+          bad_listed_object: "Cannot convert '%{listed_object}' to an object"
+          different_list: "List item %{item} cannot be reassigned to list '%{list}'"
+          already_in_list: "The object '%{listed_object}' is already in list '%{list}'"
+          validate:
+            invalid_state: "Invalid list item state: %{value}"
+            invalid_name: "Invalid list item name: '%{name}' (make sure the name does not contain / or \\)"
+            duplicate_name: "Duplicate list item name: '%{name}'"
+        controller:
+          destroy:
+            deleted: "deleted list item %{fingerprint} (%{name})"
+
+      access:
+        permission:
+          duplicate: "duplicate permission '%{name}' (%{class_name})"
+          missing: "the permission '%{name}' is not registered"
+        grant:
+          model:
+            validate:
+              empty_grants: "empty permission mask; you must grant at least one permission"
+
+      asset:
+        checker:
+          not_an_asset: "class %{class_name} is not an asset"
+
+      asset_record:
+        model:
+          validate:
+            not_an_asset: "asset %{fingerprint} is not a registered asset type"
+            exists: "a record for asset %{fingerprint} already exists"
+
+      actor_group:
+        model:
+          normalization_failure: "Some objects could not be loaded into agroup members"
+          duplicate_name: "Group name is taken: '%{name}'"
+          different_group: "Group member %{item} cannot be reassigned to group {group}"
+          validate:
+            inconsistent_group: "Group member '%{group_member}' is not associated with group '%{group}'"
+        controller:
+          destroy:
+            deleted: "deleted group %{fingerprint} (%{name})"
+
+      actor_group_member:
+        model:
+          not_actor: "The object '%{actor}' is not an actor"
+          already_in_group: "The actor '%{actor}' is already in group '%{group}'"
+          bad_actor: "Cannot convert '%{actor}' to an actor"
+        controller:
+          destroy:
+            deleted: "deleted group member %{fingerprint} (%{title})"

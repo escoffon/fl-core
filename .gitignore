@@ -6,14 +6,38 @@
 /spec/reports/
 /tmp/
 
+# MacOS files
+.DS_Store
+
 # rspec failure tracking
 .rspec_status
 
 # Ignore Gemfile.lock, since this is a gem
 Gemfile.lock
 
-# Emacs old version files
+# Emacs old version files and save files
 *~
+*-s
 
 # Generated documentation
+.yardoc
 public/doc
+
+# The following are mainly from the test app in spec/FlCoreTestApp
+
+# Node.js and related; we ignore yarn.lock for the same reason we ignore Gemfile.lock
+node_modules
+yarn.lock
+
+# SQLite database files
+*.sqlite3
+
+# log files
+*.log
+
+# caches and tempfiles
+spec/FlCoreTestApp/tmp/cache
+spec/FlCoreTestApp/tmp/development_secret.txt
+
+# temporary until we clean up the test directory
+spec/FlCoreTestApp/test

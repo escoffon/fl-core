@@ -1,16 +1,20 @@
 #! /usr/bin/env bash
 
-IS_ENGINE=N
+USE_TESTAPP=Y
 
-if test ${IS_ENGINE} = Y ; then
+if test ${USE_TESTAPP} = Y ; then
     RARGS=""
 
     for A in "$@" ; do
-	RARGS="$RARGS ${A/test\/FlCoreTestApp\//}"
+	RARGS="$RARGS ../../${A}"
     done
 
-    echo "running in the test app directory (test/FlCoreTestApp)"
-    cd test/FlCoreTestApp
+    if test "$RARGS" = "" ; then
+	RARGS="../../spec"
+    fi
+    
+    echo "running in the test app directory (spec/FlCoreTestApp)"
+    cd spec/FlCoreTestApp
 
     echo "running test command: bash $0 $RARGS"
     bash $0 $RARGS
