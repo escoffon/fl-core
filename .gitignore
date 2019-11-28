@@ -23,21 +23,20 @@ Gemfile.lock
 .yardoc
 public/doc
 
-# The following are mainly from the test app in spec/FlCoreTestApp
+# log files
+*.log
 
 # Node.js and related; we ignore yarn.lock for the same reason we ignore Gemfile.lock
 node_modules
 yarn.lock
 
-# SQLite database files
-*.sqlite3
+# SQLite database files from the test application
+spec/FlCoreTestApp/db/*.sqlite3
+spec/FlCoreTestApp/db/*.sqlite3-*
 
-# log files
-*.log
-
-# caches and tempfiles
-spec/FlCoreTestApp/tmp/cache
-spec/FlCoreTestApp/tmp/development_secret.txt
+# caches, tempfiles, and local storage for ActiveStorage
+spec/FlCoreTestApp/tmp
+spec/FlCoreTestApp/storage
 
 # temporary until we clean up the test directory
 spec/FlCoreTestApp/test

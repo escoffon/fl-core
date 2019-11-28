@@ -34,6 +34,9 @@ group :development, :test do
 
   # Use rspec for testing
   gem 'rspec-rails'
+
+  # Use factory bot for fixtures
+  gem 'factory_bot_rails'
 end
 
 group :development do
@@ -54,4 +57,8 @@ end
 gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 
 # To test
+
+# Here while in development.
+gem 'fl-google', :path => '../../../fl-google'
+
 gem 'fl-core', :path => '../..'

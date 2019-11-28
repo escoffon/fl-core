@@ -5,7 +5,7 @@ end
 RSpec.describe Fl::Core::ModelHash do
   describe '#to_hash' do
     let(:o1) do
-      o1 = FlCoreTestDatumOne.create(title: 'o1 title', content: 'o1 content')
+      o1 = Fl::Core::TestDatumOne.create(title: 'o1 title', content: 'o1 content')
       o1.details << o1.details.create(title: 'o1_t1 title', content: 'o1_t1 content')
       o1.details << o1.details.create(title: 'o1_t2 title', content: 'o1_t2 content')
       o1
@@ -36,7 +36,7 @@ RSpec.describe Fl::Core::ModelHash do
       expect(h[:details]).to be_a(Array)
       expect(h[:details].count).to eql(o1.details.count)
       d0 = h[:details][0]
-      expect(d0[:type]).to eql(FlCoreTestDatumTwo.name)
+      expect(d0[:type]).to eql(Fl::Core::TestDatumSub.name)
       
       cmp_keys = vrb_keys | [ ]
       h = o1.to_hash(nil, { verbosity: :complete })

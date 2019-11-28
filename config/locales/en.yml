@@ -18,7 +18,42 @@ en:
         unexpected: "object class is %{class}, expected one of %{expect}"
         unexpected_proc: "check proc returned falsy for object class %{class}"
 
+      actor_group:
+        model:
+          normalization_failure: "Some objects could not be loaded into agroup members"
+          duplicate_name: "Group name is taken: '%{name}'"
+          different_group: "Group member %{item} cannot be reassigned to group {group}"
+          validate:
+            inconsistent_group: "Group member '%{group_member}' is not associated with group '%{group}'"
+        controller:
+          destroy:
+            deleted: "deleted group %{fingerprint} (%{name})"
+
+      actor_group_member:
+        model:
+          not_actor: "The object '%{actor}' is not an actor"
+          already_in_group: "The actor '%{actor}' is already in group '%{group}'"
+          bad_actor: "Cannot convert '%{actor}' to an actor"
+        controller:
+          destroy:
+            deleted: "deleted group member %{fingerprint} (%{title})"
+
+      captcha:
+        no-captcha: 'The request does not contain the CAPTCHA key %{key}'
+        verification-failure: 'CAPTCHA verification failure: %{messages}'
+
+      access:
+        permission:
+          duplicate: "duplicate permission '%{name}' (%{class_name})"
+          missing: "the permission '%{name}' is not registered"
+
     framework:
+      access:
+        grant:
+          model:
+            validate:
+              empty_grants: "empty permission mask; you must grant at least one permission"
+
       controller:
         unprocessable_entity: 'Unprocessable entity'
 
@@ -78,10 +113,6 @@ en:
             not_found: "no group member with identifier %{id}"
             creation_failure: 'failed to create a group member'
 
-      captcha:
-        no-captcha: 'The request does not contain the CAPTCHA key %{key}'
-        verification-failure: 'CAPTCHA verification failure: %{messages}'
-
       list:
         model:
           normalization_failure: "Some objects could not be loaded into list items"
@@ -105,15 +136,6 @@ en:
           destroy:
             deleted: "deleted list item %{fingerprint} (%{name})"
 
-      access:
-        permission:
-          duplicate: "duplicate permission '%{name}' (%{class_name})"
-          missing: "the permission '%{name}' is not registered"
-        grant:
-          model:
-            validate:
-              empty_grants: "empty permission mask; you must grant at least one permission"
-
       asset:
         checker:
           not_an_asset: "class %{class_name} is not an asset"
@@ -124,22 +146,3 @@ en:
             not_an_asset: "asset %{fingerprint} is not a registered asset type"
             exists: "a record for asset %{fingerprint} already exists"
 
-      actor_group:
-        model:
-          normalization_failure: "Some objects could not be loaded into agroup members"
-          duplicate_name: "Group name is taken: '%{name}'"
-          different_group: "Group member %{item} cannot be reassigned to group {group}"
-          validate:
-            inconsistent_group: "Group member '%{group_member}' is not associated with group '%{group}'"
-        controller:
-          destroy:
-            deleted: "deleted group %{fingerprint} (%{name})"
-
-      actor_group_member:
-        model:
-          not_actor: "The object '%{actor}' is not an actor"
-          already_in_group: "The actor '%{actor}' is already in group '%{group}'"
-          bad_actor: "Cannot convert '%{actor}' to an actor"
-        controller:
-          destroy:
-            deleted: "deleted group member %{fingerprint} (%{title})"

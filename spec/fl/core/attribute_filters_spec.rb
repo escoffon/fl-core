@@ -2,7 +2,7 @@ RSpec.describe Fl::Core::AttributeFilters do
   describe '.filtered_attribute' do
     describe "FILTER_HTML_TEXT_ONLY" do
       it 'should extract text nodes' do
-        o1 = FlCoreTestDatumOne.new(title: 'plain title', content: 'plain content')
+        o1 = Fl::Core::TestDatumOne.new(title: 'plain title', content: 'plain content')
         expect(o1.save).to eql(true)
 
         s = 'This is <code>HTML</code>'
@@ -25,7 +25,7 @@ RSpec.describe Fl::Core::AttributeFilters do
   
     describe "FILTER_HTML_STRIP_DANGEROUS_ELEMENTS" do
       it 'should strip dangerous elements' do
-        o1 = FlCoreTestDatumOne.new(title: 'plain title', content: 'plain content')
+        o1 = Fl::Core::TestDatumOne.new(title: 'plain title', content: 'plain content')
         expect(o1.save).to eql(true)
 
         html = '<p>This is HTML</p>'
@@ -94,7 +94,7 @@ RSpec.describe Fl::Core::AttributeFilters do
     
     describe "custom filter" do
       it 'should process the custom filter' do
-        o1 = FlCoreTestDatumOne.new(title: 'plain title', content: 'plain content')
+        o1 = Fl::Core::TestDatumOne.new(title: 'plain title', content: 'plain content')
         expect(o1.save).to eql(true)
 
         html = '<p>This is <span>HTML</span></p>'
@@ -105,7 +105,7 @@ RSpec.describe Fl::Core::AttributeFilters do
     end
 
     it 'should process multiple filters' do
-      o1 = FlCoreTestDatumOne.new(title: 'plain title', content: 'plain content')
+      o1 = Fl::Core::TestDatumOne.new(title: 'plain title', content: 'plain content')
       expect(o1.save).to eql(true)
 
       html = '<p>This is <span>HTML</span> with a script tag <script type="text/javascript">script contents</script> here</p>'

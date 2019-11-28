@@ -94,7 +94,7 @@ module Fl::Core
         @_attr_filters
       end
 
-      # Filter and convert the attributes for a bulk update call (+update_attributes+).
+      # Filter and convert the attributes for a bulk update call (`update`).
       #
       # @param obj The model object.
       # @param attrs [Hash] A hash containing the attributes to update.
@@ -169,7 +169,7 @@ module Fl::Core
     # therefore available to object instances.
 
     module InstanceMethods
-      # Filter and convert the attributes for a bulk update call (+update_attributes+).
+      # Filter and convert the attributes for a bulk update call (`update`).
       # Note that {Fl::Core::AttributeFilters.included} creates an aliased method as shown in the example,
       # so that there is no need to do what's shown there: that functionality is available automatically.
       #
@@ -177,14 +177,14 @@ module Fl::Core
       #
       # @return [Hash] Returns the converted hash.
       #
-      # @example Wrapping the +update_attributes+ call
+      # @example Wrapping the `update` call
       #   class MyClass
       #     include Neo4j::ActiveNode
       #     include Fl::Core::AttributeFiters
       #
-      #     alias original_update_attributes update_attributes
-      #     def update_attributes(attrs = {})
-      #       original_update_attributes(filter_bulk_attributes(attrs))
+      #     alias original_update update
+      #     def update(attrs = {})
+      #       original_update(filter_bulk_attributes(attrs))
       #     end
       #   end
 
@@ -258,9 +258,9 @@ module Fl::Core
     #   including class.
     # - Defines the two constants +FILTER_HTML_TEXT_ONLY+ and +FILTER_HTML_STRIP_DANGEROUS_ELEMENTS+ to
     #   hold the Symbol values for the two predefined filter methods.
-    # - Extends the functionality of +:write_attribute+ and +:update_attributes+ to filter registered
-    #   attributes automatically. It also defines the +:filtered_update_attributes+ alias for the extended
-    #   +:update_attributes+ method.
+    # - Extends the functionality of +:write_attribute+ and +:update+ to filter registered
+    #   attributes automatically. It also defines the +:filtered_update+ alias for the extended
+    #   +:update+ method.
 
     def self.included(base)
       base.extend ClassMethods
@@ -295,14 +295,14 @@ module Fl::Core
           end
         end
 
-        alias base_update_attributes update_attributes
+        alias base_update update
 
         # @!visibility private
-        def update_attributes(attrs)
-          base_update_attributes(filter_bulk_attributes(attrs))
+        def update(attrs)
+          base_update(filter_bulk_attributes(attrs))
         end
 
-        alias filtered_update_attributes update_attributes
+        alias filtered_update update
       end
     end
   end
