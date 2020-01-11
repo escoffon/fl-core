@@ -11,7 +11,7 @@ if test "$(type -t yard)" = '' ; then
 fi
 
 if test "x$1" = "x" ; then
-    echo "usage: $0 [doc|stats]"
+    echo "usage: $0 [doc|stats] [options]"
     exit 1
 else
     OP=$1

@@ -2,6 +2,8 @@
 
 class ActiveRecord::Base
   # Split a fingerprint into class name and identifier, and optionally check the class name.
+  # Fingerprints have the format `<class_name>/<identifier>`, where the `/<identifier>` component may be empty
+  # if this is a "fingerprint" to a class object.
   #
   # @param f [String] The fingerprint.
   # @param cn [String,Class,Boolean,nil] A class name or a class object to check; if `nil`, this check is not
@@ -11,11 +13,12 @@ class ActiveRecord::Base
   # @return [Array] Returns a two-element array containing the class name and object identifier
   #  components for *f*. If *f* does not look like a fingerprint, or if the class name is not consistent
   #  with *cn*, the array contains two `nil` elements.
+  #  Note that a class-only fingerprint returns an array consisting of the class name and the `nil` value.
   
   def self.split_fingerprint(f, cn = nil)
     c, id = f.split('/')
     return [ nil, nil ] if (cn.is_a?(String) && (c != cn)) || (cn.is_a?(Class) && (c != cn.name))
-    return [ nil, nil ] if id !~ /^[0-9]+$/
+    return [ nil, nil ] if !id.nil? && id !~ /^[0-9]+$/
 
     if cn == true
       begin
@@ -35,6 +38,11 @@ class ActiveRecord::Base
   #  It has the form *cname*/*id*, where *cname* is the class name, and *id* the object identifier.
   #  @param obj [ActiveRecord::Base] The object whose fingerprint to generate.
   #  @return [String] Returns a string containing the class name and object identifier, as described above.
+  #
+  # @overload fingerprint(klass)
+  #  Generate a "fingerprint" from a class object. See above for a description of fingerprints.
+  #  @param klass [Class] The class to use (this should be a subclass of `ActiveRecord::Base`).
+  #  @return [String] Returns a string containing the class name.
   #
   # @overload fingerprint(klass, id)
   #  Generate a "fingerprint" from a class/identifier pair. See above for a description of fingerprints.
@@ -56,6 +64,8 @@ class ActiveRecord::Base
       obj = args[0]
       if (obj.is_a?(String) && (obj =~ /^[0-9]+$/)) || obj.is_a?(Integer)
         "#{self.name}/#{obj}"
+      elsif obj.is_a?(Class)
+        obj.name
       else
         "#{obj.class.name}/#{obj.id}"
       end
@@ -77,17 +87,22 @@ class ActiveRecord::Base
   # Find an object by fingerprint.
   #
   # @param [String] fingerprint The object's fingerprint; see {#fingerprint}.
+  #  If *fingerprint* is a class fingerprint, a `Class` instance is returned.
   #
   # @return [ActiveRecord::Base] Returns the object. If the class in the fingerprint does not exist,
   #  or if no object exists with the given identifier, returns nil.
 
   def self.find_by_fingerprint(fingerprint)
     obj = nil
-    cname, id = fingerprint.split('/')
+    cname, id = split_fingerprint(fingerprint)
 
     begin
-      cl = Object.const_get(cname)
-      obj = cl.find(id)
+      if id.nil?
+        obj = Object.const_get(cname) unless cname.nil?
+      else
+        cl = Object.const_get(cname)
+        obj = cl.find(id)
+      end
     rescue => exc
     end
 
