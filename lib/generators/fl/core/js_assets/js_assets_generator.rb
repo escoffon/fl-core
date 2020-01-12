@@ -40,6 +40,9 @@ module Fl::Core
   that documents the assets that were installed above, and any other sources in
     app/javascript
   (You can modify much of this behavior by editing the conf.js file.)
+  A driver script for the documentation system is placed in
+    scripts/docs_js.sh
+  that wraps the call to Gulp after the documentation directory is cleared.
 DESC
 
     class_option :nodoc, aliases: "-n", type: :boolean, required: false,
