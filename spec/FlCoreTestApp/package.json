@@ -2,14 +2,28 @@
   "name": "rails_app",
   "private": true,
   "dependencies": {
-    "@rails/actioncable": "^6.0.0",
-    "@rails/activestorage": "^6.0.0",
-    "@rails/ujs": "^6.0.0",
-    "@rails/webpacker": "^4.2.2",
-    "turbolinks": "^5.2.0"
+      "@rails/actioncable": "^6.0.0",
+      "@rails/activestorage": "^6.0.0",
+      "@rails/ujs": "^6.0.0",
+      "@rails/webpacker": "^4.2.2",
+      "axios": "^0.19.1",
+      "js-cache": "^1.0.3",
+      "lodash": "^4.17.15",
+      "turbolinks": "^5.2.0"
+  
   },
   "version": "0.1.0",
   "devDependencies": {
-    "webpack-dev-server": "^3.10.1"
+      "axios-mock-adapter": "^1.17.0",
+      "canonical-path": "^1.0.0",
+      "chai": "^4.2.0",
+      "del": "^5.1.0",
+      "dgeni": "^0.4.12",
+      "dgeni-packages": "^0.28.2",
+      "fl-dgeni": "git+https://github.com/escoffon/fl-dgeni.git",
+      "gulp": "^4.0.2",
+      "mocha": "^7.0.0",
+      "webpack-dev-server": "^3.10.1"
+  
   }
 }
