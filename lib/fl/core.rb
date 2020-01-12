@@ -1,3 +1,4 @@
+require "fl/core/engine"
 require "fl/core/version"
 
 # Namespace for Floopstreet code.

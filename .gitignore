@@ -1,10 +1,8 @@
-/.bundle/
-/.yardoc
-/_yardoc/
-/coverage/
-/pkg/
-/spec/reports/
-/tmp/
+.bundle/
+pkg/
+coverage/
+spec/reports/
+tmp/
 
 # MacOS files
 .DS_Store
@@ -21,9 +19,11 @@ Gemfile.lock
 
 # Generated documentation
 .yardoc
+_yardoc/
 public/doc
 
 # log files
+log/*.log
 *.log
 
 # Node.js and related; we ignore yarn.lock for the same reason we ignore Gemfile.lock

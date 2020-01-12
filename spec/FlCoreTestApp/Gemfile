@@ -61,4 +61,5 @@ gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 # Here while in development.
 gem 'fl-google', :path => '../../../fl-google'
 
-gem 'fl-core', :path => '../..'
+# We pick up the fl-core gem from the parent
+gem 'fl-core', :path => '../../'
