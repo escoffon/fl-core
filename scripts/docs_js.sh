@@ -4,12 +4,14 @@ function shell_session_update {
     local X
 }
 
+CFGFILE="config/routes.rb"
+
 ORIGINALCWD=$(pwd)
 while test ! -f $CFGFILE ; do
     OLDCWD=$(pwd)
     cd ..
     if test "x$(pwd)" = "x$OLDCWD" ; then
-	echo "$ORIGINALCWD does not seem to be in a fl-framework distribution"
+	echo "$ORIGINALCWD does not seem to be in a Rails or engine distribution"
 	exit 1
     fi
 done

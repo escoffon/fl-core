@@ -4,7 +4,9 @@ require "fl/core/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "fl-core"
+  spec.platform      = Gem::Platform::RUBY
   spec.version       = Fl::Core::VERSION
+  spec.date          = Fl::Core::DATE
   spec.authors       = ["Emil Scoffone"]
   spec.email         = ["emil@scoffone.com"]
 
