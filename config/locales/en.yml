@@ -38,14 +38,16 @@ en:
           destroy:
             deleted: "deleted group member %{fingerprint} (%{title})"
 
+      attachment:
+        active_storage:
+          model:
+            validate:
+              forbiddent_content_type: "content type %{ctype} in file %{filename} is not allowed"
+
       captcha:
         no-captcha: 'The request does not contain the CAPTCHA key %{key}'
         verification-failure: 'CAPTCHA verification failure: %{messages}'
 
-      access:
-        permission:
-          duplicate: "duplicate permission '%{name}' (%{class_name})"
-          missing: "the permission '%{name}' is not registered"
 
     framework:
       access:
@@ -72,20 +74,6 @@ en:
             validate:
               create:
                 no_commentable_permission: "to create a comment for an object, the user must have access to the object"
-
-      attachment:
-        base:
-          model:
-            validate:
-              attachable_no_access_api: "the class %{mclass} does not support the Access APIs"
-        controller:
-          actions:
-            destroy:
-              deleted: "deleted attachment %{fingerprint}"
-        active_storage:
-          model:
-            validate:
-              forbiddent_content_type: "content type %{ctype} in file %{filename} is not allowed"
 
       service:
         comment:

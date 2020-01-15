@@ -1,0 +1,13 @@
+Description:
+  This generator installs a template initializer that contains configuration options for standard
+  attachment types. This initializer will likely need to be modified to meet the needs of the
+  application, but it can be used as a reasonable starting point.
+
+Arguments:
+  No arguments.
+
+Example:
+  rails generate fl:core:attachments:initializer
+
+  The generator will create:
+    config/initializers/attachment_types.rb (if it does not exist already)

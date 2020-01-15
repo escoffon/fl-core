@@ -281,7 +281,7 @@ module Fl::Core
       #
       # @param actor [Object] The actor for which we are building the hash representation.
       #  See the documentation for {Fl::ModelHash::InstanceMethods#to_hash} and 
-      #  {Fl::ModelHash::InstanceMethods#to_hash_local}.
+      #  {Fl::Core::ModelHash::InstanceMethods#to_hash_local}.
       # @param verbosity [Symbol] The verbosity level; see #to_hash.
       # @param opts [hash] The options that were passed to {#to_hash}.
       #
