@@ -38,9 +38,6 @@ spec/FlCoreTestApp/db/*.sqlite3-*
 spec/FlCoreTestApp/tmp
 spec/FlCoreTestApp/storage
 
-# temporary until we clean up the test directory
-spec/FlCoreTestApp/test
-
 # Generated documentation in the test app
 spec/FlCoreTestApp/.yardoc
 spec/FlCoreTestApp/public/doc
