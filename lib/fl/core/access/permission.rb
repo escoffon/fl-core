@@ -25,15 +25,15 @@ module Fl::Core::Access
   # #### Simple and cumulative (forwarding) permissions
   #
   # There are two types of permissions. A *simple* permission describes an atomic grant, like `read` or
-  # `write`; these permissions define a bit value and have an empty grants array.
+  # `write`; these permissions define a bit value and have an empty **grants** array.
   # A permission can also grant other permissions by listing them in the constructor's *grants* argument;
-  # we call this a *forwarding* permission.
-  # In this case, the bit value is 0, and there is a nonempty *grants* array; the permission mask for
+  # we call this a *cumulative* or *forwarding* permission.
+  # In this case, the bit value is 0, and there is a nonempty **grants** array; the permission mask for
   # forwarding permissions is the ORed value of permission masks from the grants.
   # Access checkers need to consider this "forwarding" of grants when determining if an actor has
   # access to a given asset; they do so by using the permission's {#permission_mask} rather than the
-  # {#bit}. (Actually typically a checker would use the class method {.permission_mask} instead.
-  # For example, the standard {Permission::Edit} permission defines *grants* to have value
+  # {#bit}. (Actually, typically a checker would use the class method {.permission_mask} instead.)
+  # For example, the standard {Permission::Edit} permission defines **grants** to have value
   # `[ :read, :write ]`; an access checker for the **:write** permission should grant access if
   # **:edit** is granted.
   #
@@ -48,7 +48,8 @@ module Fl::Core::Access
   # - {Permission::Read} grants read only access.
   # - {Permission::Write} grants write only access.
   # - {Permission::Delete} grants delete only access.
-  # - {Permission::Index} grants index access.
+  # - {Permission::Index} grants index access (typically to a class object).
+  # - {Permission::IndexContents} grants access to the list of members of a collection object.
   # - {Permission::Edit} grants read and write access to assets.
   # - {Permission::Manage} grants read, write, and delete access to assets.
 
@@ -498,8 +499,10 @@ module Fl::Core::Access
   Permission::Delete.new.register
 
   # The **:index** permission class.
-  # This permission grants index only access to assets, which controls if the children of an asset can
-  # be listed.
+  # Typically, this permission is used to grant index only access to a class object, and therefore controls
+  # if an actor can list instances of a given class.
+  # The {Permission::IndexContents} permission is used to control if an actor can list the contents of a
+  # collection object.
   
   class Permission::Index < Permission
     # The permission name.
@@ -518,6 +521,30 @@ module Fl::Core::Access
   end
 
   Permission::Index.new.register
+
+  # The **:index_contents** permission class.
+  # This permission is used to grant index only access to the contents of a collection object; it is
+  # applied to class instances, and controls if an actor can index the contents of an object that manages
+  # lists of other objects. For example, a user group objkect, which tracks a collection of user objects,
+  # may grant this permission to select actors to allow them to view the list of users.
+  
+  class Permission::IndexContents < Permission
+    # The permission name.
+    NAME = :index_contents
+
+    # The permission bit.
+    BIT = 0x00000040
+
+    # dependent permissions granted by **:index_contents**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, BIT, GRANTS)
+    end
+  end
+
+  Permission::IndexContents.new.register
 
   # The **:edit** permission class.
   # This permission grants read and write access to assets.

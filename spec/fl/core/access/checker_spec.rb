@@ -7,7 +7,7 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::AccessHelpers
 end
 
-class TestAccessCheckerOne < Fl::Core::Access::Checker
+class CSTestAccessCheckerOne < Fl::Core::Access::Checker
   def initialize()
     super()
   end
@@ -19,13 +19,13 @@ class TestAccessCheckerOne < Fl::Core::Access::Checker
     case sp
     when Fl::Core::Access::Permission::Read::NAME
       if actor.name =~ /reader/
-        Fl::Core::Access::Permission::Read::NAME
+        true
       else
         nil
       end
     when Fl::Core::Access::Permission::Write::NAME
       if actor.name =~ /writer/
-        Fl::Core::Access::Permission::Write::NAME
+        true
       else
         nil
       end
@@ -35,7 +35,7 @@ class TestAccessCheckerOne < Fl::Core::Access::Checker
   end
 end
 
-class TestAccessCheckerTwo < Fl::Core::Access::Checker
+class CSTestAccessCheckerTwo < Fl::Core::Access::Checker
   def initialize()
     super()
   end
@@ -51,7 +51,7 @@ class TestAccessCheckerTwo < Fl::Core::Access::Checker
     sl.each do |s|
       case s
       when Fl::Core::Access::Permission::Edit::NAME
-        return s if actor.name =~ /(reader)|(writer)/
+        return true if actor.name =~ /(reader)|(writer)/
       end
     end
 
@@ -59,10 +59,10 @@ class TestAccessCheckerTwo < Fl::Core::Access::Checker
   end
 end
 
-class TestAccessDatumOne
+class CSTestAccessDatumOne
   include Fl::Core::Access::Access
 
-  has_access_control TestAccessCheckerOne.new()
+  has_access_control CSTestAccessCheckerOne.new()
 
   attr_reader :owner
   attr_accessor :title
@@ -75,10 +75,10 @@ class TestAccessDatumOne
   end
 end
 
-class TestAccessDatumTwo
+class CSTestAccessDatumTwo
   include Fl::Core::Access::Access
 
-  has_access_control TestAccessCheckerTwo.new()
+  has_access_control CSTestAccessCheckerTwo.new()
 
   attr_reader :owner
   attr_accessor :title
@@ -97,46 +97,46 @@ RSpec.describe Fl::Core::Access::Checker, type: :model do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
       w1 = create(:test_actor, name: 'reader and writer')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d1 = CSTestAccessDatumOne.new(o1, 'd1 title', 'd1')
 
-      checker = TestAccessDatumOne.access_checker
+      checker = CSTestAccessDatumOne.access_checker
 
       g = checker.access_check(Fl::Core::Access::Permission::Read::NAME, r1, d1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
       g = checker.access_check(Fl::Core::Access::Permission::Read::NAME, w1, d1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
 
       g = checker.access_check(Fl::Core::Access::Permission::Write::NAME, r1, d1)
       expect(g).to be_nil
       g = checker.access_check(Fl::Core::Access::Permission::Write::NAME, w1, d1)
-      expect(g).to eql(Fl::Core::Access::Permission::Write::NAME)
+      expect(g).to eql(true)
     end
 
     it "should grant permission correctly using forward grants" do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
       w1 = create(:test_actor, name: 'reader and writer')
-      d2 = TestAccessDatumTwo.new(o1, 'd2 title', 'd2')
+      d2 = CSTestAccessDatumTwo.new(o1, 'd2 title', 'd2')
 
-      checker = TestAccessDatumTwo.access_checker
+      checker = CSTestAccessDatumTwo.access_checker
 
       g = checker.access_check(Fl::Core::Access::Permission::Read::NAME, r1, d2)
-      expect(g).to eql(Fl::Core::Access::Permission::Edit::NAME)
+      expect(g).to eql(true)
       g = checker.access_check(Fl::Core::Access::Permission::Read::NAME, w1, d2)
-      expect(g).to eql(Fl::Core::Access::Permission::Edit::NAME)
+      expect(g).to eql(true)
 
       g = checker.access_check(Fl::Core::Access::Permission::Write::NAME, r1, d2)
-      expect(g).to eql(Fl::Core::Access::Permission::Edit::NAME)
+      expect(g).to eql(true)
       g = checker.access_check(Fl::Core::Access::Permission::Write::NAME, w1, d2)
-      expect(g).to eql(Fl::Core::Access::Permission::Edit::NAME)
+      expect(g).to eql(true)
     end
 
     it "should deny permission for unknown permission" do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d1 = CSTestAccessDatumOne.new(o1, 'd1 title', 'd1')
 
-      checker = TestAccessDatumOne.access_checker
+      checker = CSTestAccessDatumOne.access_checker
       g = checker.access_check(:unknown, r1, d1)
       expect(g).to be_nil
     end

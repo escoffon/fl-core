@@ -18,7 +18,7 @@ module Fl::Core::Access
     #
     # Fl::Core::Access::Helper.add_access_control(TheClass, MyAccessChecker.new, owner: :my_owner_method)
     # ```
-    # If the class has already enabled access control, the operation is not performed.
+    # This method is idempotent: if the class has already enabled access control, the operation is not performed.
     #
     # @param klass [Class] The class object where access control is enabled.
     # @param checker [Fl::Core::Access::Checker] The checker to use for access control.
@@ -29,48 +29,6 @@ module Fl::Core::Access
       unless klass.has_access_control?
         klass.send(:include, Fl::Core::Access::Access)
         klass.send(:has_access_control, checker, *cfg)
-      end
-    end
-
-    # Add support for actor (grantee) access functionality to a class.
-    # Use this method to "mark" an existing class as a grantee of permissions:
-    #
-    # ```
-    # class TheClass < ActiveRecord::Base
-    #   # class definition
-    # end
-    #
-    #
-    # Fl::Core::Access::Helper.add_access_actor(TheClass)
-    # ```
-    # If the class has already enabled actor support, the operation is not performed.
-    #
-    # @param klass [Class] The class object where actor support is enabled.
-
-    def self.add_access_actor(klass)
-      unless klass.included_modules.include?(Fl::Core::Access::Actor)
-        klass.send(:include, Fl::Core::Access::Actor)
-      end
-    end
-
-    # Add support for target (grantor) access functionality to a class.
-    # Use this method to "mark" an existing class as a grantor of permissions:
-    #
-    # ```
-    # class TheClass < ActiveRecord::Base
-    #   # class definition
-    # end
-    #
-    #
-    # Fl::Core::Access::Helper.add_access_target(TheClass)
-    # ```
-    # If the class has already enabled target support, the operation is not performed.
-    #
-    # @param klass [Class] The class object where target support is enabled.
-
-    def self.add_access_target(klass)
-      unless klass.included_modules.include?(Fl::Core::Access::Target)
-        klass.send(:include, Fl::Core::Access::Target)
       end
     end
 
@@ -129,9 +87,9 @@ module Fl::Core::Access
 
     # Build the permission mask from a list of permissions.
     # Combines the individual permissions' permission masks into a single one by ORing them.
-    # The method also takes a single integer, which is returned as, as a sort of syntactic sugar.
+    # The method also takes a single integer, which is returned as is, as a convenience.
     #
-    # @param permissions [Integer,Array<Integer,Symbol,String,Fl::Core::Access::Permission,Class>] The
+    # @param permission [Integer,Array<Integer,Symbol,String,Fl::Core::Access::Permission,Class>] The
     #  permissions whose masks to combine. An integer value is returned as is.
     #  Each element in the array is converted to a permission name as documented
     #  for {.permission_name}, and the permission mask obtained from the registry.

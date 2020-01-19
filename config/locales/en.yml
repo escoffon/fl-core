@@ -48,7 +48,12 @@ en:
         no-captcha: 'The request does not contain the CAPTCHA key %{key}'
         verification-failure: 'CAPTCHA verification failure: %{messages}'
 
+      access:
+        permission:
+          duplicate: "duplicate permission name: %{name}"
+          missing: "unknown permission: %{name}"
 
+          
     framework:
       access:
         grant:

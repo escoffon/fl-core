@@ -11,7 +11,7 @@ module Fl::Core::Access
     end
     
     # Run an access check.
-    # This implementation returns the requested permission, thereby always granting access rights.
+    # This implementation returns `true`, thereby always granting access rights.
     #
     # @param permission [Symbol,String,Fl::Core::Access::Permission] The requested permission;
     #  this is usually the name of a permission registered with the permission registry, but it could
@@ -21,10 +21,10 @@ module Fl::Core::Access
     # @param context [any] The context in which to do the check; this is arbitrary data to pass to the
     #  checker parameter.
     #
-    # @return [Symbol,String] Returns the name for *permission*.
+    # @return [Boolean] Returns `true` unconditionally: all requests are granted.
 
     def access_check(permission, actor, asset, context = nil)
-      return (permission.is_a?(Fl::Core::Access::Permission)) ? permission.name : permission
+      return true
     end
   end
 end

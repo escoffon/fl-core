@@ -7,7 +7,7 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::AccessHelpers
 end
 
-class TestAccessCheckerOne < Fl::Core::Access::Checker
+class ASTestAccessCheckerOne < Fl::Core::Access::Checker
   def initialize()
     super()
   end
@@ -27,18 +27,18 @@ class TestAccessCheckerOne < Fl::Core::Access::Checker
 
   def access_check(permission, actor, asset, context = nil)
     sp = permission.to_sym
-    return sp if actor.fingerprint == asset.owner.fingerprint
+    return true if actor.fingerprint == asset.owner.fingerprint
     
     case sp
     when Fl::Core::Access::Permission::Read::NAME
       if actor.name =~ /reader/
-        Fl::Core::Access::Permission::Read::NAME
+        true
       else
         nil
       end
     when Fl::Core::Access::Permission::Write::NAME
       if actor.name =~ /writer/
-        Fl::Core::Access::Permission::Write::NAME
+        true
       else
         nil
       end
@@ -48,7 +48,7 @@ class TestAccessCheckerOne < Fl::Core::Access::Checker
   end
 end
 
-class TestAccessCheckerTwo < Fl::Core::Access::Checker
+class ASTestAccessCheckerTwo < Fl::Core::Access::Checker
   def initialize()
     super()
   end
@@ -62,9 +62,9 @@ class TestAccessCheckerTwo < Fl::Core::Access::Checker
     sl.each do |s|
       case s.name
       when Fl::Core::Access::Permission::Read::NAME
-        return sp.name if actor.name =~ /reader/
+        return true if actor.name =~ /reader/
       when Fl::Core::Access::Permission::Write::NAME
-        return sp.name if actor.name =~ /writer/
+        return true if actor.name =~ /writer/
       end
     end
 
@@ -74,10 +74,10 @@ end
 
 # This class definition adds access methods in one shot
 
-class TestAccessDatumOne
+class ASTestAccessDatumOne
   include Fl::Core::Access::Access
 
-  has_access_control TestAccessCheckerOne.new()
+  has_access_control ASTestAccessCheckerOne.new()
 
   attr_reader :owner
   attr_accessor :title
@@ -93,7 +93,7 @@ end
 # This class definition adds access methods in two shots; it is how one would add access control
 # to an existing class (for example, for Fl::Core::List::List)
 
-class TestAccessDatumTwo
+class ASTestAccessDatumTwo
   attr_reader :owner
   attr_accessor :title
   attr_accessor :value
@@ -105,38 +105,38 @@ class TestAccessDatumTwo
   end
 end
 
-class TestAccessDatumTwo
+class ASTestAccessDatumTwo
   include Fl::Core::Access::Access
 
-  has_access_control TestAccessCheckerTwo.new()
+  has_access_control ASTestAccessCheckerTwo.new()
 end
 
 RSpec.describe Fl::Core::Access::Access do
   describe ".has_access_control" do
     it 'should register the access control methods' do
       o1 = create(:test_actor, name: 'owner')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
-      d2 = TestAccessDatumTwo.new(o1, 'd2 title', 'd2')
+      d1 = ASTestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d2 = ASTestAccessDatumTwo.new(o1, 'd2 title', 'd2')
 
-      expect(TestAccessDatumOne.methods).to include(:has_access_control, :has_access_control?,
+      expect(ASTestAccessDatumOne.methods).to include(:has_access_control, :has_access_control?,
                                                     :access_checker, :has_permission?)
-      expect(TestAccessDatumOne.instance_methods).to include(:access_checker, :has_permission?)
+      expect(ASTestAccessDatumOne.instance_methods).to include(:access_checker, :has_permission?)
       expect(d1.methods).to include(:access_checker, :has_permission?)
 
-      expect(TestAccessDatumOne.access_checker).to be_an_instance_of(TestAccessCheckerOne)
-      expect(d1.access_checker).to be_an_instance_of(TestAccessCheckerOne)
+      expect(ASTestAccessDatumOne.access_checker).to be_an_instance_of(ASTestAccessCheckerOne)
+      expect(d1.access_checker).to be_an_instance_of(ASTestAccessCheckerOne)
 
-      expect(TestAccessDatumTwo.access_checker).to be_an_instance_of(TestAccessCheckerTwo)
-      expect(d2.access_checker).to be_an_instance_of(TestAccessCheckerTwo)
+      expect(ASTestAccessDatumTwo.access_checker).to be_an_instance_of(ASTestAccessCheckerTwo)
+      expect(d2.access_checker).to be_an_instance_of(ASTestAccessCheckerTwo)
     end
 
     it "should modify class under checker's control" do
-      expect(TestAccessDatumOne.class_variables).to include(:@@_test_access_checker_one)
-      expect(TestAccessDatumOne.class_variable_get(:@@_test_access_checker_one)).to eql(true)
-      expect(TestAccessDatumOne.methods).to include(:access_one_class_method)
-      expect(TestAccessDatumOne.access_one_class_method).to eql('access one class')
+      expect(ASTestAccessDatumOne.class_variables).to include(:@@_test_access_checker_one)
+      expect(ASTestAccessDatumOne.class_variable_get(:@@_test_access_checker_one)).to eql(true)
+      expect(ASTestAccessDatumOne.methods).to include(:access_one_class_method)
+      expect(ASTestAccessDatumOne.access_one_class_method).to eql('access one class')
       o1 = create(:test_actor, name: 'owner')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d1 = ASTestAccessDatumOne.new(o1, 'd1 title', 'd1')
       expect(d1.respond_to?(:access_one_instance_method)).to eql(true)
       expect(d1.access_one_instance_method).to eql('access one instance')
     end
@@ -150,40 +150,40 @@ RSpec.describe Fl::Core::Access::Access do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
       w1 = create(:test_actor, name: 'reader and writer')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d1 = ASTestAccessDatumOne.new(o1, 'd1 title', 'd1')
 
       g = d1.has_permission?(Fl::Core::Access::Permission::Read::NAME, r1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
       g = d1.has_permission?(Fl::Core::Access::Permission::Read::NAME, w1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
 
       g = d1.has_permission?(Fl::Core::Access::Permission::Write::NAME, r1)
       expect(g).to be_nil
       g = d1.has_permission?(Fl::Core::Access::Permission::Write::NAME, w1)
-      expect(g).to eql(Fl::Core::Access::Permission::Write::NAME)
+      expect(g).to eql(true)
     end
 
     it "should grant permission correctly using forward grants" do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
       w1 = create(:test_actor, name: 'reader and writer')
-      d2 = TestAccessDatumTwo.new(o1, 'd2 title', 'd2')
+      d2 = ASTestAccessDatumTwo.new(o1, 'd2 title', 'd2')
 
       g = d2.has_permission?(Fl::Core::Access::Permission::Read::NAME, r1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
       g = d2.has_permission?(Fl::Core::Access::Permission::Read::NAME, w1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
 
       g = d2.has_permission?(Fl::Core::Access::Permission::Write::NAME, r1)
       expect(g).to be_nil
       g = d2.has_permission?(Fl::Core::Access::Permission::Write::NAME, w1)
-      expect(g).to eql(Fl::Core::Access::Permission::Write::NAME)
+      expect(g).to eql(true)
     end
 
     it "should deny permission for unknown permission" do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d1 = ASTestAccessDatumOne.new(o1, 'd1 title', 'd1')
 
       g = d1.has_permission?(:unknown, r1)
       expect(g).to be_nil
@@ -195,10 +195,10 @@ RSpec.describe Fl::Core::Access::Access do
       o1 = create(:test_actor, name: 'owner')
       r1 = create(:test_actor, name: 'reader only')
       w1 = create(:test_actor, name: 'reader and writer')
-      d1 = TestAccessDatumOne.new(o1, 'd1 title', 'd1')
+      d1 = ASTestAccessDatumOne.new(o1, 'd1 title', 'd1')
 
       g = d1.has_permission?(Fl::Core::Access::Permission::Read::NAME, r1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
 
       g = d1.has_permission?(Fl::Core::Access::Permission::Write::NAME, r1)
       expect(g).to be_nil
@@ -206,15 +206,15 @@ RSpec.describe Fl::Core::Access::Access do
       d1.access_checker = Fl::Core::Access::NullChecker.new
 
       g = d1.has_permission?(Fl::Core::Access::Permission::Read::NAME, r1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
 
       g = d1.has_permission?(Fl::Core::Access::Permission::Write::NAME, r1)
-      expect(g).to eql(Fl::Core::Access::Permission::Write::NAME)
+      expect(g).to eql(true)
 
-      d10 = TestAccessDatumOne.new(o1, 'd10 title', 'd10')
+      d10 = ASTestAccessDatumOne.new(o1, 'd10 title', 'd10')
 
       g = d10.has_permission?(Fl::Core::Access::Permission::Read::NAME, r1)
-      expect(g).to eql(Fl::Core::Access::Permission::Read::NAME)
+      expect(g).to eql(true)
 
       g = d10.has_permission?(Fl::Core::Access::Permission::Write::NAME, r1)
       expect(g).to be_nil

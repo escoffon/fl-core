@@ -11,7 +11,7 @@ module Fl::Core::Access
   # control at the record level. (That functionality is left to a higher level layer, typically in a
   # service object.)
   # Classes define the access check strategy by providing an instance of (a subclass of)
-  # {Fl::Core::Access::AccessChecker} to {ClassMacros#has_access_control}.
+  # {Checker} to {ClassMacros#has_access_control}.
   #
   # The APIs use a generic object called an *actor* as the entity that requests permission to perform
   # a given operation on an object. The type of *actor* is left undefined, and it is expected that
@@ -71,8 +71,7 @@ module Fl::Core::Access
       # @param checker [Fl::Core::Access::Checker] The checker to use for access control.
       # @param opts [Hash] A hash containing configuration parameters.
       #
-      # @raise [RuntimeError] Raises an exception if *checker* is not an instance of
-      #  {Fl::Core::Access::Checker}.
+      # @raise [RuntimeError] Raises an exception if *checker* is not an instance of {Checker}.
       
       def has_access_control(checker, *opts)
         unless checker.is_a?(Fl::Core::Access::Checker)
@@ -122,16 +121,13 @@ module Fl::Core::Access
       # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The requested permission.
       #  See {Fl::Core::Access::Helper.permission_name}.
       # @param actor [Object] The actor requesting permissions.
-      # @param context An arbitrary value containing the context in which to do the check.
+      # @param context [any] An arbitrary value containing the context in which to do the check.
       #
-      # @return [Symbol,nil,Boolean] If *actor* is granted permission, the permission name is returned
-      #  as a symbol (this is typically the value of *permission*).
-      #  Note that the returned value may be different from *permission* if the permission is granted through
-      #  forwarding (for example, if the request was for **:write** and it was granted because of a
-      #  **:edit** permission).
-      #  If access grants were not granted, the return value is `nil`.
-      #  A `false` return value indicates that an error occurred while performing the access check, and
-      #  should be interpreted as a denial.
+      # @return [Boolean,nil] Returns the value from a call to {Fl::Core::Access::Checker#access_check}:
+      #  the boolean value `true` if access rights were granted, and `false` if access rights were denied.
+      #  Under some conditions, `nil` may be returned to indicate that there was some kind of error
+      #  when checking for access; a `nil` return value indicates that access rights were not granted,
+      #  and it **must** be interpreted as such.
 
       def has_permission?(permission, actor, context = nil)
         self.access_checker.access_check(permission, actor, self, context)
@@ -190,14 +186,11 @@ module Fl::Core::Access
       # @param actor [Object] The actor requesting permissions.
       # @param context An arbitrary value containing the context in which to do the check.
       #
-      # @return [Symbol,nil,Boolean] If *actor* is granted permission, the permission name is returned
-      #  as a symbol (this is typically the value of *permission*).
-      #  Note that the returned value may be different from *permission* if the permission is granted through
-      #  forwarding (for example, if the request was for **:write** and it was granted because of a
-      #  **:edit** permission).
-      #  If access grants were not granted, the return value is `nil`.
-      #  A `false` return value indicates that an error occurred while performing the access check, and
-      #  should be interpreted as a denial.
+      # @return [Boolean,nil] Returns the value from a call to {Fl::Core::Access::Checker#access_check}:
+      #  the boolean value `true` if access rights were granted, and `false` if access rights were denied.
+      #  Under some conditions, `nil` may be returned to indicate that there was some kind of error
+      #  when checking for access; a `nil` return value indicates that access rights were not granted,
+      #  and it **must** be interpreted as such.
 
       def has_permission?(permission, actor, context = nil)
         self.access_checker.access_check(permission, actor, self, context)

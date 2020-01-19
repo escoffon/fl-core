@@ -39,13 +39,19 @@ module Fl::Core::Access
     # The default implementation is rather restrictive: it simply returns `nil` to indicate that
     # no access has been granted. Subclasses are expected to override it.
     #
-    # Note that this method is typically called from a {Fl::Core::Access::Access::ClassMethods#has_permission?}
-    # or {Fl::Core::Access::Access::InstanceMethods#has_permission?}.
+    # This method is called from {Fl::Core::Access::Access::ClassMethods#has_permission?}
+    # or {Fl::Core::Access::Access::InstanceMethods#has_permission?}, and typically is not called directly
+    # by a client.
+    #
+    # In cases where *asset* is a class object, the permission is granted (or denied) at the class level.
+    # For example, {Fl::Core::Access::Permission::Index} applies to getting a list of objects by executing
+    # a query via a call to a class method, whereas {Fl::Core::Access::Permission::Read} controls access
+    # to an instance, and therefore applies to instance methods.
     #
     # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The requested permission.
     #  See {Fl::Core::Access::Helper.permission_name}.
     # @param actor [Object] The actor requesting *permission*.
-    # @param asset [Object] The target of the request (the asset for which *permission* is requested).
+    # @param asset [Object,Class] The target of the request (the asset for which *permission* is requested).
     # @param context [any] The context in which to do the check; this is arbitrary data to pass to the
     #  checker parameter.
     #

@@ -2,8 +2,6 @@ require 'rails_helper'
 require 'test_permission_classes'
 
 RSpec.configure do |c|
-  c.include FactoryBot::Syntax::Methods
-  c.include Fl::Core::Test::ObjectHelpers
   c.include Fl::Core::Test::AccessHelpers
 end
 
@@ -30,6 +28,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                Fl::Core::Access::Permission::Manage::NAME,
                Fl::Core::Access::Permission::Create::NAME,
                Fl::Core::Access::Permission::Index::NAME,
+               Fl::Core::Access::Permission::IndexContents::NAME,
                Fl::Core::Actor::Permission::ManageMembers::NAME ]
         
         expect(Fl::Core::Access::Permission.registered).to match_array(xr)
@@ -45,6 +44,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                                          Fl::Core::Access::Permission::Manage::NAME,
                                          Fl::Core::Access::Permission::Create::NAME,
                                          Fl::Core::Access::Permission::Index::NAME,
+                                         Fl::Core::Access::Permission::IndexContents::NAME,
                                          Fl::Core::Actor::Permission::ManageMembers::NAME ])
         expect(pg[:read]).to match_array([ :edit, :manage ])
         expect(pg[:write]).to match_array([ :edit, :manage ])
@@ -78,6 +78,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                Fl::Core::Access::Permission::Manage::NAME,
                Fl::Core::Access::Permission::Create::NAME,
                Fl::Core::Access::Permission::Index::NAME,
+               Fl::Core::Access::Permission::IndexContents::NAME,
                Fl::Core::Actor::Permission::ManageMembers::NAME,
                TestAccess::P1::NAME,
                TestAccess::P2::NAME ]
