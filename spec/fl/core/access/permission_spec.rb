@@ -5,6 +5,19 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::AccessHelpers
 end
 
+class P1Duplicate < Fl::Core::Access::Permission
+  NAME = :p1_duplicate
+
+  # Duplicate of the read permission bit
+  BIT = TestAccess::P1::BIT
+
+  GRANTS = [ ]
+
+  def initialize()
+    super(NAME, BIT, GRANTS)
+  end
+end
+
 RSpec.describe Fl::Core::Access::Permission, type: :model do
   def xpnames(pl)
     pl.map { |p| p.name }
@@ -12,7 +25,8 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
   
   before(:example) do
     cleanup_permission_registry([ TestAccess::P1::NAME, TestAccess::P2::NAME, TestAccess::P3::NAME,
-                                  TestAccess::P4::NAME, TestAccess::P5::NAME, TestAccess::P6::NAME ])
+                                  TestAccess::P4::NAME, TestAccess::P5::NAME, TestAccess::P6::NAME,
+                                  P1Duplicate::NAME ])
 
     @initial_count = Fl::Core::Access::Permission.instance_variable_get(:@_permission_registry).count
   end
@@ -226,6 +240,36 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
         expect(pc::permission_mask(mp6.name)).to eql(mp1.bit | mp2.bit | mp3.bit)
       end
     end
+  
+    context ".unregister" do
+      it "should remove the permission from the registry" do
+        mp1 = TestAccess::P1.new.register
+
+        expect do
+          mp1_1 = TestAccess::P1.new.register
+        end.to raise_exception(Fl::Core::Access::Permission::DuplicateName)
+
+        Fl::Core::Access::Permission.unregister(mp1)
+        
+        expect do
+          mp1_1 = TestAccess::P1.new.register
+        end.not_to raise_exception
+      end
+
+      it "should remove the permission bit from the registry" do
+        mp1 = TestAccess::P1.new.register
+
+        expect do
+          rdup = P1Duplicate.new.register
+        end.to raise_exception(Fl::Core::Access::Permission::DuplicateBit)
+
+        Fl::Core::Access::Permission.unregister(mp1)
+        
+        expect do
+          rdup = P1Duplicate.new.register
+        end.not_to raise_exception
+      end
+    end
   end
 
   describe "#initialize" do
@@ -251,7 +295,17 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
 
       expect do
         mp1_1 = TestAccess::P1.new.register
-      end.to raise_exception(Fl::Core::Access::Permission::Duplicate)
+      end.to raise_exception(Fl::Core::Access::Permission::DuplicateName)
+    end
+
+    it "should raise on duplicate permission bits" do
+      expect do
+        mp1 = TestAccess::P1.new.register
+      end.not_to raise_exception
+      
+      expect do
+        rdup = P1Duplicate.new.register
+      end.to raise_exception(Fl::Core::Access::Permission::DuplicateBit)
     end
   end
 

@@ -50,7 +50,8 @@ en:
 
       access:
         permission:
-          duplicate: "duplicate permission name: %{name}"
+          duplicate_name: "duplicate permission name '%{name}'"
+          duplicate_bit: "duplicate bit value %{bit} in permission '%{name}'"
           missing: "unknown permission: %{name}"
 
           

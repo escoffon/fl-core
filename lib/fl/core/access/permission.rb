@@ -56,7 +56,7 @@ module Fl::Core::Access
   class Permission
     # Exception raised when a permission name is doubly registered.
 
-    class Duplicate < RuntimeError
+    class DuplicateName < RuntimeError
       # Initializer.
       #
       # @param permission [Fl::Core::Access::Permission] The duplicate permission.
@@ -65,9 +65,52 @@ module Fl::Core::Access
 
       def initialize(permission, msg = nil)
         @permission = permission
-        msg = I18n.tx('fl.core.access.permission.duplicate',
-                      name: permission.name, bit: permission.bit,
-                      class_name: permission.class.name) unless msg.is_a?(String)
+
+        # we catch the tx call because a registration may happen before the locales have been loaded,
+        # and therefore the translation is missing
+        
+        msg = ''
+        begin
+          msg = I18n.tx('fl.core.access.permission.duplicate_name',
+                        name: permission.name, bit: sprintf("0x%x", permission.bit),
+                        class_name: permission.class.name) unless msg.is_a?(String)
+        rescue I18n::MissingTranslationData => x
+          msg = sprintf("duplicate permission name '%s'", permission.name)
+        end
+        
+        super(msg)
+      end
+
+      # The duplicate permission.
+      # @return [Fl::Core::Access::Permission] Returns the *permission* argument to the constructor.
+
+      attr_reader :permission
+    end
+
+    # Exception raised when a permission bit is doubly registered.
+
+    class DuplicateBit < RuntimeError
+      # Initializer.
+      #
+      # @param permission [Fl::Core::Access::Permission] The duplicate permission.
+      # @param msg [String] Message to pass to the superclass implementation.
+      #  If `nil`, a standard message is created from the permission name.
+
+      def initialize(permission, msg = nil)
+        @permission = permission
+
+        # we catch the tx call because a registration may happen before the locales have been loaded,
+        # and therefore the translation is missing
+        
+        msg = ''
+        begin
+          msg = I18n.tx('fl.core.access.permission.duplicate_bit',
+                        name: permission.name, bit: sprintf("0x%x", permission.bit),
+                        class_name: permission.class.name) unless msg.is_a?(String)
+        rescue I18n::MissingTranslationData => x
+          msg = sprintf("duplicate bit value %08x in permission '%s'", permission.bit, permission.name)
+        end
+          
         super(msg)
       end
 
@@ -101,7 +144,8 @@ module Fl::Core::Access
     @_permission_registry = {}
     @_permission_grants = nil
     @_permission_masks = nil
-
+    @_cumulative_mask = 0
+    
     # Get the permission name for this class.
     # Each registered class must have a unique name.
     #
@@ -118,19 +162,21 @@ module Fl::Core::Access
     #
     # @return [Fl::Core::Access::Permission] Returns *permission*.
     #
-    # @raise [Fl::Core::Access::Permission::Duplicate] Raised if *name* is already registered.
+    # @raise [Fl::Core::Access::Permission::DuplicateName] Raised if *permission.name* is already registered.
+    # @raise [Fl::Core::Access::Permission::DuplicateBit] Raised if *permission.bit* is already registered.
 
     def self.register(permission)
       k = permission.name.to_sym
-      raise Fl::Core::Access::Permission::Duplicate.new(permission) if @_permission_registry.has_key?(k)
+      raise Fl::Core::Access::Permission::DuplicateName.new(permission) if @_permission_registry.has_key?(k)
 
       b = permission.bit.to_i
-      @_permission_registry.each do |k, p|
-        raise Fl::Core::Access::Permission::Duplicate.new(permission) if p.bit == p
+      if (@_cumulative_mask & b) != 0
+        raise Fl::Core::Access::Permission::DuplicateBit.new(permission)
       end
-        
-      @_permission_registry[k] = permission
 
+      @_permission_registry[k] = permission
+      @_cumulative_mask |= b
+      
       # A registration invalidates the permission grants registry
       _invalidate_permission_grants()
 
@@ -150,12 +196,14 @@ module Fl::Core::Access
 
     # Remove a permission from the registry.
     #
-    # @param name [Symbol,String] The permission name.
+    # @param name [Symbol,String,Permission] The permission name or object.
 
     def self.unregister(name)
-      n = name.to_sym
+      n = name.is_a?(Permission) ? name.name : name.to_sym
       if @_permission_registry.has_key?(n)
         p = @_permission_registry.delete(n)
+        b = p.bit.to_i
+        @_cumulative_mask &= ~b
       end
 
       # A deregistration invalidates the permission grants registry
