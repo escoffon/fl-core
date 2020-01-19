@@ -6,4 +6,3 @@ module Fl::Core
 end
 
 require 'fl/core/db/active_record'
-require 'fl/core/db/application_record'

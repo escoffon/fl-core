@@ -13,6 +13,8 @@ module Fl
   end
 end
 
+require 'fl/core/application_record'
+
 require 'fl/core/attribute_filters'
 require 'fl/core/captcha'
 require 'fl/core/generator_helper'
