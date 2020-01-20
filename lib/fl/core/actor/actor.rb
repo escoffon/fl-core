@@ -153,8 +153,9 @@ module Fl::Core::Actor
 
     # Perform actions when the module is included.
     #
-    # - Injects the class methods, to make {ClassMethods#is_listable} available. The instance methods
-    #   are injected by {ClassMethods#is_listable}.
+    # - Injects the class macros in {ClassMacros}, to make {ClassMacros#is_actor} available.
+    #   Additional class and instance methods (in {ClassMethods} and {InstanceMethods}, respectively)
+    #   are injected by {ClassMacros#is_actor}.
 
     def self.included(base)
       base.extend ClassMacros

@@ -188,7 +188,7 @@ module Fl::Core::Access
     # @param name [Symbol,String] The permission name.
     #
     # @return [Fl::Core::Access:Permission] Returns an instance of (a subclass of)
-    #  {Fl::Core::Access:Permission} if *name* is registered, `nil` otherwise.
+    #  {Fl::Core::Access::Permission} if *name* is registered, `nil` otherwise.
       
     def self.lookup(name)
       @_permission_registry[name.to_sym]

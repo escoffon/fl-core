@@ -161,7 +161,7 @@ module Fl::Core::Access
       # Otherwise, the method forwards the call to the class method by the same name
       # ({Fl::Core::Access::Access::ClassMethods#access_checker}).
       #
-      # @return [Fl::Core::Access::Checker] Returns the value that was passed to {#has_access_control}.
+      # @return [Fl::Core::Access::Checker] Returns the value that was passed to {ClassMacros#has_access_control}.
 
       def access_checker()
         if self.instance_variable_defined?(:@_instance_access_checker)
@@ -218,7 +218,7 @@ class ActiveRecord::Base
   # This is the default implementation, which returns `false`, for those models that have not
   # registered as having access control support.
   #
-  # @return [Boolean] Returns `false`; {Fl::Core::Asset::Asset::ClassMacros#has_access_control}
+  # @return [Boolean] Returns `false`; {Fl::Core::Access::Access::ClassMethods#has_access_control?}
   #  overrides the implementation to return `true`.
   
   def self.has_access_control?

@@ -54,7 +54,7 @@ module Fl::Core
     #     the result.
     #   - If the value is a String, check if it is an integer representation (it contains just numeric
     #     characters); if so, convert it to an integer and add it to the result.
-    #     Otherwise, treat it as a fingerprint: call {ActiveRecord::Base.split_fingerprint} and, if
+    #     Otherwise, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint} and, if
     #     the fingerprint is a reference to an instance of *klass*, add the **id** component to the
     #     result value.
     #
@@ -91,7 +91,7 @@ module Fl::Core
     #
     #   - If the value is an instance of a subclass of `ActiveRecord::Base`, the return from the value's
     #    `fingerprint` method is added to the result.
-    #   - If the value is a String, treat it as a fingerprint: call {ActiveRecord::Base.split_fingerprint}
+    #   - If the value is a String, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint}
     #     and, if the result indicates a valid fingerprint, add it to the return value.
     #
     # Note that elements that do not match any of these conditions are dropped from the return value.
@@ -312,7 +312,7 @@ module Fl::Core
     # @option opts [Array<Object, String>, Object, String] :only_<key> If given, include only the given actor or,
     #  if the value is an array, actors; note that the option name depends on the value of the *key* parameter.
     #  The values are either objects, or strings containing the object's fingerprint
-    #  (see {ActiveRecord::Base#fingerprint}).
+    #  (see {::ActiveRecord::Base#fingerprint}).
     #  If an actor is listed in both **:only_<key>** and **:except_<key>**, it is removed
     #  from *:only_<key>* before the final list is generated; therefore, *:except_<key>*
     #  has higher priority than *:only_<key>*.
