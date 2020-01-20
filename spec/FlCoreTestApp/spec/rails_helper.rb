@@ -2,17 +2,6 @@
 require 'spec_helper'
 ENV['RAILS_ENV'] ||= 'test'
 
-# RSpec only loads the lib directory of a bundled gem, but some of the code for fl-core is in app, so
-# let's make sure it is added here. Is this a hack? Not sure. The Rails instance does add the app
-# directories to the load path for engines, so this seems to be a RSpec problem.
-
-appdir = File.expand_path('../../../app', __dir__)
-Dir.foreach(appdir) do |n|
-  if ((n != '.') && (n != '..'))
-    p = File.join(appdir, n)
-    $LOAD_PATH.unshift(p) if File.directory?(p)
-  end
-end
 require File.expand_path('../config/environment', __dir__)
 
 # Prevent database truncation if the environment is production
