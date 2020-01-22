@@ -39,22 +39,24 @@ module Fl::Core
       #
       # The following keys are placed in the list of keys to return:
       #
-      # - *:type* in all cases.
-      # - *:id* if the object responds to +id+.
-      # - *:api_root* the root path for the Rails API to the object's class.
-      #   For example, an instance of `My::Mod::MyObject` by default sets the value to `/my/mod/my_objects`.
+      # - **:type** in all cases.
+      # - **:id** if the object responds to `id`.
+      # - **:global_id** the [GlobalID](https://github.com/rails/globalid) for the object, if it
+      #   responds to `to_global_id`. (All ActiveRecord instances do.)
+      # - **:api_root** the root path for the Rails API to the object's class, if **:global_id** is not available.
+      #   For example, an instance of My::Mod::MyObject by default sets the value to /my/mod/my_objects.
       #   Subclasses that use a different API signature need to override {#to_hash_api_root}.
-      # - *:fingerprint* The object's fingerprint; if the object responds to +:fingerprint+, it is the
+      # - **:fingerprint** The object's fingerprint; if the object responds to **:fingerprint**, it is the
       #   return value from that method. Otherwise, the return value is the concatenation of the class
       #   name and object identifier, joined by a slash (/); this happens to be the default implementation
-      #   for ActiveRecord objects. If the object does not respond to +:id+, no fingerprint is generated.
-      # - *:created_at* and *:updated_at* if the verbosity is not +:id+, and the object
+      #   for ActiveRecord objects. If the object does not respond to **:id**, no fingerprint is generated.
+      # - **:created_at** and **:updated_at** if the verbosity is not **:id**, and the object
       #   responds to +created_at+ and +updated_at+, respectively.
-      # - *:permissions* if the verbosity is +:minimal+, +:standard+, +:verbose+, or +:complete+, the key
+      # - **:permissions** if the verbosity is **:minimal**, **:standard**, **:verbose**, or **:complete**, the key
       #   is not in the except list, and the object responds to +permission?+.
       # Additional keys will be placed as determined by +opts+ and {#to_hash_options_for_verbosity}.
       #
-      # If the +:verbosity+ option is not present, the method behaves as if its value was set to +:standard+.
+      # If the **:verbosity** option is not present, the method behaves as if its value was set to **:standard**.
       #
       # @param actor [Object] The actor for which we are building the hash representation. Some
       #  objects may return different contents, based on the requesting actor.
@@ -62,46 +64,46 @@ module Fl::Core
       #  The following options are considered to be standard and either processed the same way,
       #  or ignored, by the subclasses:
       #
-      #  - *:as_visible_to* An actor object to use for access determination instead of _actor_; when
+      #  - **:as_visible_to** An actor object to use for access determination instead of _actor_; when
       #    this option is present, the return value will contain the "slice" of the object that is
-      #    visible to the actor in *:as_visible_to*, as opposed to the actor in _actor_.
+      #    visible to the actor in **:as_visible_to**, as opposed to the actor in _actor_.
       #    This is useful for objects that present themselves differently to different entities that
       #    access them.
-      #  - *:verbosity* A symbol describing the verbosity level for the generated hash; this option
+      #  - **:verbosity** A symbol describing the verbosity level for the generated hash; this option
       #    controls the list of attributes that are added to the return value. The following
       #    values are supported:
       #
-      #    - *:id* emits enough information to fetch the object later (typically,
-      #      this is the +:type+, and +:id+ attributes, but it also includes +:fingerprint+ and +:api_root+
-      #      in many cases).
-      #    - *:minimal* emits a minimal set of attributes.
-      #    - *:standard* emits a typical (or standard) set.
-      #    - *:verbose* a more complete set.
-      #    - *:complete* the full set.
-      #    - *:ignore* ignore the verbosity setting and build the list of keys in the hash representation
-      #      based on the *:only* and *:except* options.
-      #      The lists associated with each value are object-dependent, although +:id+ typically returns
-      #      +:type+, +:id+, +:fingerprint+, and +:api_root+.
-      #      Since the value defaults to *:standard* if not specified, you can use the value *:ignore*
+      #    - **:id** emits enough information to fetch the object later (typically,
+      #      this is the **:type**, and **:id** attributes, but it also includes **:fingerprint**, **:global_id**,
+      #      and optionally **:api_root** in many cases).
+      #    - **:minimal** emits a minimal set of attributes.
+      #    - **:standard** emits a typical (or standard) set.
+      #    - **:verbose** a more complete set.
+      #    - **:complete** the full set.
+      #    - **:ignore** ignore the verbosity setting and build the list of keys in the hash representation
+      #      based on the **:only** and **:except** options.
+      #      The lists associated with each value are object-dependent, although **:id** typically returns
+      #      **:type**, **:id**, **:fingerprint**, and **:global_id**.
+      #      Since the value defaults to **:standard** if not specified, you can use the value **:ignore**
       #      to instruct the method to ignore the value of the verbosity when building the options
       #      hash and generating the key list.
-      #  - *:only* An array containing the exact list of attributes to return.
+      #  - **:only** An array containing the exact list of attributes to return.
       #    A scalar value is converted to a one-element array.
-      #  - *:include* An array containing a list of attributes to include in addition to those that the
+      #  - **:include** An array containing a list of attributes to include in addition to those that the
       #    code returns by default (based on the verbosity level).
-      #    If the *:only* list is defined, this value is ignored: callers
-      #    that specify *:only* can just as easily place the contents of *:include* there.
+      #    If the **:only** list is defined, this value is ignored: callers
+      #    that specify **:only** can just as easily place the contents of **:include** there.
       #    A scalar value is converted to a one-element array.
-      #  - *:except* An array containing a list of keys that will not be returned. This value
-      #    is removed from the final list of keys after the *:only* and *:include* lists have been taken into
+      #  - **:except** An array containing a list of keys that will not be returned. This value
+      #    is removed from the final list of keys after the **:only** and **:include** lists have been taken into
       #    consideration.
       #    A scalar value is converted to a one-element array.
-      #  - *:permissions* Controls the list of permissions returned in the **:permissions** key.
+      #  - **:permissions** Controls the list of permissions returned in the **:permissions** key.
       #    The value is an array of permission names to chec.
       #    Defaults to `[ :read, :write, :delete, :index ]`.
-      #  - *:image_sizes* An array listing the image sizes whose URLs are returned for objects that
+      #  - **:image_sizes** An array listing the image sizes whose URLs are returned for objects that
       #    contain images (pictures, group avatars, user avatars, and so on).
-      #  - *:to_hash* A Hash containing options to pass to nested calls to this method for other
+      #  - **:to_hash** A Hash containing options to pass to nested calls to this method for other
       #    objects in the representation. The keys are attribute names, and the values are hashes
       #    containing the options to pass to {#to_hash}. For example, say that the +subobj+ attribute
       #    maps to an object of class Fl::Core::MyClass; in this case, +subobj+ is converted to
@@ -192,7 +194,8 @@ module Fl::Core
         end
 
         # Now that we have the merged options, let's build the list of keys that will be returned.
-        # The keys :type, :id (if defined), :fingerprin (if available), and :api_root are always present.
+        # The keys :type, :id (if defined), :fingerprint (if available), :global_id (if available),
+        # and :api_root (if :global_id is not available) are always present.
         # Also, :created_at, :updated_at, :permisison, are treated specially:
         # - :created_at and :updated_at are added for higher verbosity than :id, if the object responds
         #   to those two methods.
@@ -246,7 +249,7 @@ module Fl::Core
 
       # Support for generating hash representations: normalize attribute lists.
       # This method takes an array and converts all its elements into symbols; it is used to
-      # normalize the +:only+, +:except+, and +:include+ #to_hash parameters.
+      # normalize the **:only**, **:except**, and **:include** #to_hash parameters.
       #
       # @param alist The list of attribute names; pass an array, a single attribute, or @c nil.
       #
@@ -293,7 +296,7 @@ module Fl::Core
         raise "please implement #{self.class.name}#to_hash_options_for_verbosity"
       end
 
-      # Given a verbosity level, return keys that *must* be placed in the hash.
+      # Given a verbosity level, return keys that **must** be placed in the hash.
       # This method is expected to return an array of keys that will be added to the list of keys
       # to return in the hash.
       #
@@ -307,7 +310,7 @@ module Fl::Core
       end
 
       # Return the default list of operations for which to check permissions.
-      # The return value for this method is used by {#to_hash_permission_list} to generate the +:permissions+
+      # The return value for this method is used by {#to_hash_permission_list} to generate the **:permissions**
       # hash property.
       #
       # @return [Array<Symbol>] Returns an array of symbol values that list the operations for which to obtain
@@ -352,17 +355,18 @@ module Fl::Core
       # This section contains methods used by the hash representation code, and exported for possible
       # use by the subclass override methods.
       # In general, these methods are not meant to be overridden; however, subclasses may override
-      # #to_hash_base to implement specialized functionality. See the documentation for #to_hash_base
+      # #to_hash_base to implement specialized functionality. See the documentation for {#to_hash_base}
       # for details.
 
-      # Get the list of keys for the +:id+ verbosity.
+      # Get the list of keys for the **:id** verbosity.
       #
-      # @return [Array<Symbol>] Returns an array containing the symbols +:type+, +:api_root+, +:fingerprint+,
-      #  and +:id+ (if the object responds to the +id+ method).
+      # @return [Array<Symbol>] Returns an array containing the symbols **:type**, **:global_id** or
+      #  **:api_root**, **:fingerprint**, and **:id** (if the object responds to the `id` method).
 
       def to_hash_id_keys()
-        c_keys = [ :type, :api_root, :fingerprint ]
-        c_keys << :id if self.respond_to?(:id)
+        c_keys = [ :type ]
+        [ :id, :fingerprint ].each { |m| c_keys << m if self.respond_to?(m) }
+        c_keys << ((self.respond_to?(:to_global_id)) ? :global_id : :api_root)
         c_keys
       end
 
@@ -418,13 +422,13 @@ module Fl::Core
         end
       end
 
-      # Generate a key list based on the defaults and the +:only+, +:include+, and +:except+ options.
-      # If +:only+ is present, it is used as the starting list; otherwise, +defaults+ is used.
-      # Then, the values in the +:include+ array are added to the key list.
-      # Finally, the values in the +:except+ array are removed from the key list.
+      # Generate a key list based on the defaults and the **:only**, **:include**, and **:except** options.
+      # If **:only** is present, it is used as the starting list; otherwise, +defaults+ is used.
+      # Then, the values in the **:include** array are added to the key list.
+      # Finally, the values in the **:except** array are removed from the key list.
       #
       # @param defaults [Array<Symbol>] An array containing the default list of keys.
-      # @param opts [Hash] A hash possibly containing the optional keys +:only+, +:include+, and +:except+.
+      # @param opts [Hash] A hash possibly containing the optional keys **:only**, **:include**, and **:except**.
       #
       # @return [Array<Symbol>] Returns the list of keys to place in the object hash.
       
@@ -504,19 +508,21 @@ module Fl::Core
       #
       # @return [Hash] Returns a hash containing some or all of the following keys.
       #
-      #  - *:type* The object type (the class name of the model, basically).
-      #  - *:id* The object id, if the object responds to the +id+ method.
-      #  - *:api_root* the root path for the Rails API to the object's class.
+      #  - **:type** The object type (the class name of the model, basically).
+      #  - **:id** The object id, if the object responds to the `id` method.
+      #  - **:global_id** the [GlobalID](https://github.com/rails/globalid) for the object, if it
+      #    responds to `to_global_id`. (All ActiveRecord instances do.)
+      #  - **:api_root** the root path for the Rails API to the object's class, if **:global_id** is not available.
       #    For example, an instance of My::Mod::MyObject by default sets the value to /my/mod/my_objects.
-      #    Subclasses that use a different API signature need to oberride {#to_hash_api_root}.
-      #  - *:fingerprint* The object's fingerprint; if the object responds to +:fingerprint+, it is the
+      #    Subclasses that use a different API signature need to override {#to_hash_api_root}.
+      #  - **:fingerprint** The object's fingerprint; if the object responds to **:fingerprint**, it is the
       #    return value from that method. Otherwise, the return value is the concatenation of the class
       #    name and object identifier, joined by a slash (/); this happens to be the default implementation
-      #    for ActiveRecord objects. If the object does not respond to +:id+, no fingerprint is generated.
-      #  - *:created*_at The object's creation date, if the object responds to the +created_at+ method.
-      #  - *:updated_at* The last time of modification for the object, if the object responds to
+      #    for ActiveRecord objects. If the object does not respond to **:id**, no fingerprint is generated.
+      #  - **:created_at** The object's creation date, if the object responds to the +created_at+ method.
+      #  - **:updated_at** The last time of modification for the object, if the object responds to
       #    the +updated_at+ method.
-      #  - *:permissions* A dictionary whose keys are permission names (+:edit+, +:destroy+), and the values
+      #  - **:permissions** A dictionary whose keys are permission names (**:edit**, **:destroy**), and the values
       #    the permissions granted; see Fl::Framework::Access#permission? for details. In particular, a +nil+
       #    value indicates that the operation is not allowed.
       #    If +opts+ contains the +as_visible_to+ key, it will be used instead of +actor+ for access control.
@@ -530,6 +536,8 @@ module Fl::Core
             base[:type] = self.class.name
           when :id
             base[:id] = self.id if self.respond_to?(:id)
+          when :global_id
+            base[:global_id] = self.to_global_id.to_s
           when :api_root
             base[:api_root] = self.to_hash_api_root()
           when :fingerprint
@@ -555,7 +563,7 @@ module Fl::Core
       end
 
       # Get the hash options for a given key.
-      # This method looks up +key+ in the +:to_hash+ value in +opts+, and returns its value if
+      # This method looks up +key+ in the **:to_hash** value in +opts+, and returns its value if
       # present. Otherwise, it returns +defaults+ if provided. Finally, it returns an empty hash.
       #
       # Note that, since the return value is a reference to the +to_hash+ component for +key+,
@@ -574,7 +582,7 @@ module Fl::Core
     end
 
     # Extract to_hash options from a hash.
-    # A utility method that looks up +:to_hash+ in +opts+, and returns its value; otherwise, returns {}.
+    # A utility method that looks up **:to_hash** in +opts+, and returns its value; otherwise, returns {}.
     #
     # @param opts [Hash] The hash to examine.
     #
@@ -590,7 +598,7 @@ module Fl::Core
     end
 
     # Get the hash options for a given key.
-    # This method looks up +key+ in the +:to_hash+ value in +opts+, and returns its value if
+    # This method looks up +key+ in the **:to_hash** value in +opts+, and returns its value if
     # present. Otherwise, it returns +defaults+ if provided. Finally, it returns an empty hash.
     #
     # Note that, since the return value is a reference to the +to_hash+ component for +key+,
@@ -624,7 +632,7 @@ module Fl::Core
         include InstanceMethods
 
         # Extract to_hash options from a hash.
-        # A utility method that looks up +:to_hash+ in +opts+, and returns its value; otherwise, returns {}.
+        # A utility method that looks up **:to_hash** in +opts+, and returns its value; otherwise, returns {}.
         #
         # @param opts The hash to examine.
         #
@@ -636,7 +644,7 @@ module Fl::Core
         end
 
         # Get the hash options for a given key.
-        # This method looks up +key+ in the +:to_hash+ value in +opts+, and returns its value if
+        # This method looks up +key+ in the **:to_hash** value in +opts+, and returns its value if
         # present. Otherwise, it returns +defaults+ if provided. Finally, it returns an empty hash.
         #
         # Note that, since the return value is a reference to the +to_hash+ component for +key+,

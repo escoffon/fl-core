@@ -153,7 +153,7 @@ RSpec.describe Fl::Core::Actor::GroupMember, type: :model do
       it "should track :verbosity" do
         gm1 = Fl::Core::Actor::GroupMember.create(group: g10, actor: a10)
 
-        id_keys = [ :type, :api_root, :fingerprint, :id ]
+        id_keys = [ :type, :global_id, :fingerprint, :id ]
         h = gm1.to_hash(a10, { verbosity: :id })
         expect(h.keys).to match_array(id_keys)
 
@@ -181,7 +181,7 @@ RSpec.describe Fl::Core::Actor::GroupMember, type: :model do
       it "should customize key lists" do
         gm1 = Fl::Core::Actor::GroupMember.create(group: g10, actor: a10)
 
-        id_keys = [ :type, :api_root, :fingerprint, :id ]
+        id_keys = [ :type, :global_id, :fingerprint, :id ]
         h_keys = id_keys | [ :group ]
         h = gm1.to_hash(a10, { verbosity: :id, include: [ :group ] })
         expect(h.keys).to match_array(h_keys)
@@ -195,7 +195,7 @@ RSpec.describe Fl::Core::Actor::GroupMember, type: :model do
       it "should customize key lists for subobjects" do
         gm1 = Fl::Core::Actor::GroupMember.create(group: g10, actor: a10)
 
-        id_keys = [ :type, :api_root, :fingerprint, :id ]
+        id_keys = [ :type, :global_id, :fingerprint, :id ]
         h = gm1.to_hash(a10, { verbosity: :minimal })
         a_keys = id_keys + [ :name, :created_at, :updated_at ]
         a_keys |= [ :permissions ] if a10.respond_to?(:has_access_control?) && a10.has_access_control?

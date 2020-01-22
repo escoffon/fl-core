@@ -2,22 +2,41 @@
 
 USE_TESTAPP=Y
 
-if test ${USE_TESTAPP} = Y ; then
-    RARGS=""
+PREPARE=""
+RARGS=""
 
-    for A in "$@" ; do
-	RARGS="$RARGS ../../${A}"
+for A in "$@" ; do
+    case $A in
+	--prepare) PREPARE="test"
+		   ;;
+	*) RARGS="$RARGS $A"
+	   ;;
+    esac
+done
+
+if test ${USE_TESTAPP} = Y ; then
+    APPARGS=""
+    APPDIR="spec/FlCoreTestApp"
+
+    for A in $RARGS ; do
+	APPARGS="$APPARGS ../../${A}"
     done
 
-    if test "$RARGS" = "" ; then
-	RARGS="../../spec"
+    if test "$APPARGS" = "" ; then
+	APPARGS="../../spec"
     fi
     
-    echo "running in the test app directory (spec/FlCoreTestApp)"
-    cd spec/FlCoreTestApp
+    echo "running in the test app directory ($APPDIR)"
+    cd $APPDIR
+
+    if test "x$PREPARE" != "x" ; then
+	echo "preparing the $PREPARE database"
+	rm "db/${PREPARE}.sqlite3"
+	RAILS_ENV=$PREPARE rake db:migrate
+    fi
 
     echo "running test command: bash $0 $RARGS"
-    bash $0 $RARGS
+    bash $0 $APPARGS
 else
     RSPEC="rspec"
     PREPARE=""

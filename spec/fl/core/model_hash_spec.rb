@@ -11,7 +11,7 @@ RSpec.describe Fl::Core::ModelHash do
       o1
     end
 
-    let(:id_keys) { [ :id, :type, :api_root, :fingerprint ] }
+    let(:id_keys) { [ :id, :type, :global_id, :fingerprint ] }
     let(:min_keys) { id_keys | [ :created_at, :updated_at, :title, :content ] }
     let(:complete_keys) { min_keys | [ :details ] }
 
