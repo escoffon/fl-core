@@ -13,6 +13,8 @@ RSpec.configure do |c|
 end
 
 RSpec.describe Fl::Core::Actor::Group, type: :model do
+  let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id ] }
+
   let(:a10) { create(:test_actor, name: 'a10') }
   let(:a11) { create(:test_actor, name: 'a11') }
   let(:a12) { create(:test_actor, name: 'a12') }
@@ -434,7 +436,6 @@ RSpec.describe Fl::Core::Actor::Group, type: :model do
       it "should track :verbosity" do
         g100 = create(:actor_group, owner: a12, actors: [ a10, a12, a13, a15 ])
 
-        id_keys = [ :type, :global_id, :fingerprint, :id ]
         h = g100.to_hash(a10, { verbosity: :id })
         expect(h.keys).to match_array(id_keys)
 
@@ -462,7 +463,6 @@ RSpec.describe Fl::Core::Actor::Group, type: :model do
       it "should customize key lists" do
         g100 = create(:actor_group, owner: a12, actors: [ a10, a12, a13, a15 ])
 
-        id_keys = [ :type, :global_id, :fingerprint, :id ]
         h_keys = id_keys | [ :name ]
         h = g100.to_hash(a10, { verbosity: :id, include: [ :name ] })
         expect(h.keys).to match_array(h_keys)
@@ -477,7 +477,6 @@ RSpec.describe Fl::Core::Actor::Group, type: :model do
         g100 = create(:actor_group, owner: a12, actors: [ a10, a12, a13, a15 ])
         g110 = create(:actor_group, actors: [ a11, a12, a14, g100 ])
 
-        id_keys = [ :type, :global_id, :fingerprint, :id ]
         h = g100.to_hash(a10, { verbosity: :minimal, include: [ :members, :groups ] })
         o_keys = id_keys + [ :name, :created_at, :updated_at ]
         m_keys = id_keys + [ :actor, :group, :title, :note, :created_at, :updated_at ]

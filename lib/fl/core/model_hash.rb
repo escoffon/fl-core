@@ -43,8 +43,8 @@ module Fl::Core
       # - **:id** if the object responds to `id`.
       # - **:global_id** the [GlobalID](https://github.com/rails/globalid) for the object, if it
       #   responds to `to_global_id`. (All ActiveRecord instances do.)
-      # - **:api_root** the root path for the Rails API to the object's class, if **:global_id** is not available.
-      #   For example, an instance of My::Mod::MyObject by default sets the value to /my/mod/my_objects.
+      # - **:api_root** the root path for the Rails API to the object's class.
+      #   For example, an instance of My::Mod::MyObject by default sets the value to `/my/mod/my_objects`.
       #   Subclasses that use a different API signature need to override {#to_hash_api_root}.
       # - **:fingerprint** The object's fingerprint; if the object responds to **:fingerprint**, it is the
       #   return value from that method. Otherwise, the return value is the concatenation of the class
@@ -76,7 +76,7 @@ module Fl::Core
       #
       #    - **:id** emits enough information to fetch the object later (typically,
       #      this is the **:type**, and **:id** attributes, but it also includes **:fingerprint**, **:global_id**,
-      #      and optionally **:api_root** in many cases).
+      #      and **:api_root** in many cases).
       #    - **:minimal** emits a minimal set of attributes.
       #    - **:standard** emits a typical (or standard) set.
       #    - **:verbose** a more complete set.
@@ -196,7 +196,7 @@ module Fl::Core
 
         # Now that we have the merged options, let's build the list of keys that will be returned.
         # The keys :type, :id (if defined), :fingerprint (if available), :global_id (if available),
-        # and :api_root (if :global_id is not available) are always present.
+        # and :api_root are always present.
         # Also, :created_at, :updated_at, :permisison, are treated specially:
         # - :created_at and :updated_at are added for higher verbosity than :id, if the object responds
         #   to those two methods.
@@ -371,13 +371,13 @@ module Fl::Core
 
       # Get the list of keys for the **:id** verbosity.
       #
-      # @return [Array<Symbol>] Returns an array containing the symbols **:type**, **:global_id** or
+      # @return [Array<Symbol>] Returns an array containing the symbols **:type**, **:global_id**,
       #  **:api_root**, **:fingerprint**, and **:id** (if the object responds to the `id` method).
 
       def to_hash_id_keys()
-        c_keys = [ :type ]
+        c_keys = [ :type, :api_root ]
         [ :id, :fingerprint ].each { |m| c_keys << m if self.respond_to?(m) }
-        c_keys << ((self.respond_to?(:to_global_id)) ? :global_id : :api_root)
+        c_keys << :global_id if self.respond_to?(:to_global_id)
         c_keys
       end
 
@@ -523,8 +523,8 @@ module Fl::Core
       #  - **:id** The object id, if the object responds to the `id` method.
       #  - **:global_id** the [GlobalID](https://github.com/rails/globalid) for the object, if it
       #    responds to `to_global_id`. (All ActiveRecord instances do.)
-      #  - **:api_root** the root path for the Rails API to the object's class, if **:global_id** is not available.
-      #    For example, an instance of My::Mod::MyObject by default sets the value to /my/mod/my_objects.
+      #  - **:api_root** the root path for the Rails API to the object's class.
+      #    For example, an instance of My::Mod::MyObject by default sets the value to `/my/mod/my_objects`.
       #    Subclasses that use a different API signature need to override {#to_hash_api_root}.
       #  - **:fingerprint** The object's fingerprint; if the object responds to **:fingerprint**, it is the
       #    return value from that method. Otherwise, the return value is the concatenation of the class
