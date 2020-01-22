@@ -53,7 +53,8 @@ module Fl::Core
       # - **:created_at** and **:updated_at** if the verbosity is not **:id**, and the object
       #   responds to +created_at+ and +updated_at+, respectively.
       # - **:permissions** if the verbosity is **:minimal**, **:standard**, **:verbose**, or **:complete**, the key
-      #   is not in the except list, and the object responds to +permission?+.
+      #   is not in the except list, the object responds to
+      #   {Fl::Core::Access::Access::InstanceMethods#has_access_control?}, and that method returns `true`.
       # Additional keys will be placed as determined by +opts+ and {#to_hash_options_for_verbosity}.
       #
       # If the **:verbosity** option is not present, the method behaves as if its value was set to **:standard**.
@@ -99,8 +100,8 @@ module Fl::Core
       #    consideration.
       #    A scalar value is converted to a one-element array.
       #  - **:permissions** Controls the list of permissions returned in the **:permissions** key.
-      #    The value is an array of permission names to chec.
-      #    Defaults to `[ :read, :write, :delete, :index ]`.
+      #    The value is an array of permission names to check.
+      #    Defaults to `[ :read, :write, :delete, :index, :index_contents ]`.
       #  - **:image_sizes** An array listing the image sizes whose URLs are returned for objects that
       #    contain images (pictures, group avatars, user avatars, and so on).
       #  - **:to_hash** A Hash containing options to pass to nested calls to this method for other
@@ -199,7 +200,9 @@ module Fl::Core
         # Also, :created_at, :updated_at, :permisison, are treated specially:
         # - :created_at and :updated_at are added for higher verbosity than :id, if the object responds
         #   to those two methods.
-        # - :permissions are added for higher verbosity than :id, and if the object responds to :permission?
+        # - :permissions are added for higher verbosity than :id, the key is not in the except list, the
+        #   object responds to {Fl::Core::Access::Access::InstanceMethods#has_access_control?}, and that method
+        #   returns `true`.
 
         l_only = n_opts.has_key?(:only) ? to_hash_normalize_list(n_opts[:only]) : []
         l_include = n_opts.has_key?(:include) ? n_opts[:include] : []
@@ -209,9 +212,8 @@ module Fl::Core
           l_include << :created_at if self.respond_to?(:created_at)
           l_include << :updated_at if self.respond_to?(:updated_at)
 
-          if (verbosity == :minimal) || (verbosity == :standard) || (verbosity == :verbose) \
-            	|| (verbosity == :complete)
-            l_include << :permissions if self.respond_to?(:has_permission?)
+          if (verbosity != :id) && self.respond_to?(:has_access_control?) && self.has_access_control?
+            l_include << :permissions
           end
         end
 
@@ -232,10 +234,15 @@ module Fl::Core
 
         rv = to_hash_base(actor, c_keys, n_opts)
 
-        # We must remove the keys we added in the to_hash_base.
+        # We must remove the keys we added in to_hash_base.
+        # However, we need to leave :permission in the list. Here's why:
+        # `self` may have actually defined a :permissions attribute; in that case, it will want to hash its
+        # value, rather than generating it from the permission checks, so we need to give it a chance to
+        # override the base value. Note that a model that defines a :permissions attribute is unlikely to
+        # (and should not) also inject access control
 
         l_keys = []
-        remove = rv.keys
+        remove = rv.keys - [ :permissions ]
         c_keys.each do |e|
           l_keys << e unless remove.include?(e)
         end
@@ -315,14 +322,18 @@ module Fl::Core
       #
       # @return [Array<Symbol>] Returns an array of symbol values that list the operations for which to obtain
       #  permissions.
-      #  The default implementation returns the array <tt>[:read, :write, :delete]</tt>; subclasses may
-      #  override to add subclass-specific operations. For example, Fl::Assets::Picture returns the array
-      #  <tt>[:read, :write, :destroy, :download, :tweet]</tt>, which include the subclass-specific operations
-      #  to download the image or tweet it out.
+      #  The default implementation returns the array `[ :owner, :read, :write, :delete, :index, :index_contents ]`;
+      #  subclasses may
+      #  override to add subclass-specific operations.
 
       def to_hash_operations_list
-        # EMIL FIXME
-        [ ]
+        [ Fl::Core::Access::Access::Permission::Owner::NAME,
+          Fl::Core::Access::Access::Permission::Read::NAME,
+          Fl::Core::Access::Access::Permission::Write::NAME,
+          Fl::Core::Access::Access::Permission::Delete::NAME,
+          Fl::Core::Access::Access::Permission::Index::NAME,
+          Fl::Core::Access::Access::Permission::IndexContents::NAME
+        ]
       end
 
       # Get the root path of the Rails API.
@@ -456,24 +467,24 @@ module Fl::Core
         klist
       end
 
-      # Generate a permission hash for +self+.
+      # Generate a permission hash for `self`.
       #
       # @param actor [Object] The actor requesting the hash.
-      # @param plist [Array<Symbol>] The list of permission names for which to check; if +nil+, the 
+      # @param plist [Array<Symbol>] The list of permission names for which to check; if `nil`, the 
       #  value is obtained via a call to {#to_hash_operations_list}.
       #
       # @return [Hash] Returns a hash where the keys are permission names, and the values the permissions;
-      #  a +nil+ value indicates no permission.
+      #  a `false` or `nil` value indicates no permission.
 
       def to_hash_permission_list(actor, plist = nil)
-        return [ ] if actor.nil?
+        return { } if actor.nil? || !self.respond_to?(:has_permission?)
         
-        plist = self.to_hash_operations_list unless plist
+        plist = self.to_hash_operations_list unless plist.is_a?(Array)
 
         # see if *actor* is the owner of `self`; if so, all permissions are allowed
 
-        # EMIL FIXME
-        is_owner = false # self.has_permission?(Fl::Framework::Access::Permission::Owner::NAME, actor)
+        is_owner = self.has_permission?(Fl::Core::Access::Permission::Owner::NAME, actor)
+
         if is_owner
           plist.reduce({ }) do |acc, p|
             psym = p.to_sym
@@ -523,9 +534,9 @@ module Fl::Core
       #  - **:updated_at** The last time of modification for the object, if the object responds to
       #    the +updated_at+ method.
       #  - **:permissions** A dictionary whose keys are permission names (**:edit**, **:destroy**), and the values
-      #    the permissions granted; see Fl::Framework::Access#permission? for details. In particular, a +nil+
+      #    the permissions granted; see {Fl::Core::Access::Access} for details. A `false` or `nil`
       #    value indicates that the operation is not allowed.
-      #    If +opts+ contains the +as_visible_to+ key, it will be used instead of +actor+ for access control.
+      #    If *opts* contains the **:as_visible_to** key, its value will be used instead of *actor* for access control.
 
       def to_hash_base(actor, keys, opts = {})
         base = {}

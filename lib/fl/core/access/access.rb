@@ -100,9 +100,10 @@ module Fl::Core::Access
     # that use access control implement these methods.
 
     module ClassMethods
-      # Check if this model supports access control.
+      # Check if this class supports access control.
       #
-      # @return [Boolean] Returns `true` if the model has access control functionality.
+      # @return [Boolean] Returns `true` if the class has enabled access control functionality
+      #  (by calling {ClassMacros#has_access_control}).
       
       def has_access_control?
         true
@@ -139,6 +140,15 @@ module Fl::Core::Access
     # that use access control implement these methods.
 
     module InstanceMethods
+      # Check if this object supports access control.
+      # This method is a wrapper around {ClassMethods#has_access_control?}.
+      #
+      # @return [Boolean] Returns `true` if the model has access control functionality.
+      
+      def has_access_control?
+        self.class.has_access_control?
+      end
+
       # Set the access checker.
       # Individual instances of the base class have the option of overriding the class access checker to
       # install custom access rights management.
