@@ -23,6 +23,6 @@ module Fl::Core::Actor
       end
     end
 
-    ManageMembers.new.register
+    ManageMembers.new.register_with_report
   end
 end

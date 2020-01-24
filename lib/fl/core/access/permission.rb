@@ -18,9 +18,13 @@ module Fl::Core::Access
   #  attr_reader :ext
   # end
   #
-  # myp = MyPermission.new('additional data').register()
+  # myp = MyPermission.new('additional data').register
+  #
   # ```
   # The `MyPermission.new.register` call registers `MyPermission` with the permission registry.
+  # You can also use `myp = MyPermission.new('additional data').register_with_report` to wrap the
+  # registration call in a `begin`/`rescue` to print a message to `STDERR` before reraising any exceptions
+  #
   #
   # #### Simple and cumulative (forwarding) permissions
   #
@@ -142,6 +146,7 @@ module Fl::Core::Access
     end
     
     @_permission_registry = {}
+    @_permission_locations = {}
     @_permission_grants = nil
     @_permission_masks = nil
     @_cumulative_mask = 0
@@ -175,6 +180,7 @@ module Fl::Core::Access
       end
 
       @_permission_registry[k] = permission
+      @_permission_locations[k] = caller[1]
       @_cumulative_mask |= b
       
       # A registration invalidates the permission grants registry
@@ -194,6 +200,17 @@ module Fl::Core::Access
       @_permission_registry[name.to_sym]
     end
 
+    # Get the location where a permission was registered.
+    #
+    # @param name [Symbol,String] The permission name.
+    #
+    # @return [String,nil] Returns a string containing the filename and line number of the method call that
+    #  registered the permission. If *name* is not registered, returns `nil`.
+      
+    def self.location(name)
+      @_permission_locations[name.to_sym]
+    end
+
     # Remove a permission from the registry.
     #
     # @param name [Symbol,String,Permission] The permission name or object.
@@ -201,6 +218,7 @@ module Fl::Core::Access
     def self.unregister(name)
       n = name.is_a?(Permission) ? name.name : name.to_sym
       if @_permission_registry.has_key?(n)
+        @_permission_locations.delete(n)
         p = @_permission_registry.delete(n)
         b = p.bit.to_i
         @_cumulative_mask &= ~b
@@ -324,13 +342,52 @@ module Fl::Core::Access
     #
     # @return [Fl::Core::Access::Permission] Returns `self`.
     #
-    # @raise [Fl::Core::Access::Permission::Duplicate] Raised if *name* or *bit* are already registered.
-    #
-    # @raise [Fl::Core::Access::Permission::Missing] Raised if any of the permissions listed
-    #  in *grants* are not yet registered.
+    # @raise [Fl::Core::Access::Permission::DuplicateName] Raised if *self.name* is already registered.
+    # @raise [Fl::Core::Access::Permission::DuplicateBit] Raised if *self.bit* is already registered.
 
     def register()
       Fl::Core::Access::Permission.register(self)
+    end
+
+    # Registers the instance with the permission registry, with a failure report.
+    # The method catches exceptions raised by {#register}, prints a message to `STDERR`, and reraises
+    # the exception. This helps debugging registration problems:
+    #
+    # ```
+    # class MyPermission < Fl::Core::Access::Permission
+    # end
+    #
+    # MyPermission.new.register_with_report
+    #
+    # ```
+    #
+    # @return [Fl::Core::Access::Permission] Returns `self`.
+    #
+    # @raise [Fl::Core::Access::Permission::DuplicateName] Raised if *self.name* is already registered.
+    # @raise [Fl::Core::Access::Permission::DuplicateBit] Raised if *self.bit* is already registered.
+
+    def register_with_report
+      begin
+        Fl::Core::Access::Permission.register(self)
+      rescue Fl::Core::Access::Permission::DuplicateName => x
+        bt = caller
+        STDERR.print("duplicate permission name: '#{x.permission.name}' at #{bt[1]}\n")
+        STDERR.print("  (originally registered at #{Fl::Core::Access::Permission.location(x.permission.name)})\n")
+        
+        raise
+      rescue Fl::Core::Access::Permission::DuplicateBit => x
+        bt = caller
+        bit = sprintf('0x%x', x.permission.bit)
+        STDERR.print("duplicate permission bit: '#{bit}' at #{bt[1]}\n")
+        Fl::Core::Access::Permission.registered.each do |n|
+          p = Fl::Core::Access::Permission.lookup(n)
+          if (p.bit & x.permission.bit) != 0
+            STDERR.print("  (originally registered with `#{n}` at #{Fl::Core::Access::Permission.location(n)})\n")
+          end
+        end
+        
+        raise
+      end
     end
 
     # Get the permission mask.
@@ -458,7 +515,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Owner.new.register
+  Permission::Owner.new.register_with_report
 
   # The **:create** permission class.
   # This permission grants the ability to create assets (typically of a specific class).
@@ -479,7 +536,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Create.new.register
+  Permission::Create.new.register_with_report
 
   # The **:read** permission class.
   # This permission grants read only access to assets.
@@ -500,7 +557,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Read.new.register
+  Permission::Read.new.register_with_report
 
   # The **:write** permission class.
   # Note that this permission grants write only access to assets; for read and write access,
@@ -522,7 +579,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Write.new.register
+  Permission::Write.new.register_with_report
 
   # The **:delete** permission class.
   # This permission grants delete only access to assets; for additional read and write access,
@@ -544,7 +601,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Delete.new.register
+  Permission::Delete.new.register_with_report
 
   # The **:index** permission class.
   # Typically, this permission is used to grant index only access to a class object, and therefore controls
@@ -568,7 +625,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Index.new.register
+  Permission::Index.new.register_with_report
 
   # The **:index_contents** permission class.
   # This permission is used to grant index only access to the contents of a collection object; it is
@@ -592,7 +649,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::IndexContents.new.register
+  Permission::IndexContents.new.register_with_report
 
   # The **:edit** permission class.
   # This permission grants read and write access to assets.
@@ -613,7 +670,7 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Edit.new.register
+  Permission::Edit.new.register_with_report
 
   # The **:manage** permission class.
   # This permission grants read, write, and delete access to assets.
@@ -634,5 +691,5 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Manage.new.register
+  Permission::Manage.new.register_with_report
 end
