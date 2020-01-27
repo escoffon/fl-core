@@ -9,11 +9,11 @@ en:
   fl:
     core:
       conversion:
-        missing_type: "missing object type component in '{param}'"
-        missing_id: "missing object ID component in '{param}'"
+        missing_type: "missing object type component in '%{param}'"
+        missing_id: "missing object ID component in '%{param}'"
         missing_class: "no such class: %{class}"
-        no_key: "missing conversion key '{key}'"
-        no_object: "no object with id '%{id}' for class: %{class}"
+        no_key: "missing conversion key '%{key}'"
+        no_object: "no object with identifier %{id}"
         incomplete: "incomplete object specification"
         unexpected: "object class is %{class}, expected one of %{expect}"
         unexpected_proc: "check proc returned falsy for object class %{class}"
