@@ -44,6 +44,25 @@ module Fl::Core
       end
     end
 
+    # @!visibility private
+    
+    def _extract_identifier_from_string_reference(acc, r, klass)
+      if r =~ /^[0-9]+$/
+        acc << r.to_i
+      elsif r =~ /^gid:/i
+        # This is a GlobalID URI: the path contains the location of the object, which by an amazing
+        # turn of fate is the same as a fingerprint!
+
+        uri = URI.parse(r)
+        fp = uri.path.slice(1, uri.path.length)
+        c, id = ActiveRecord::Base.split_fingerprint(fp, klass)
+        acc << id.to_i unless id.nil?
+      else
+        c, id = ActiveRecord::Base.split_fingerprint(r, klass)
+        acc << id.to_i unless id.nil?
+      end
+    end
+
     # Converts a list of references to a list of object identifiers.
     # This method takes an array containing references to objects of a single class, and returns
     # an array of object identifiers for all the converted references.
@@ -52,11 +71,12 @@ module Fl::Core
     #   - An integer value is assumed to be an object identifier and is added to the return value as is.
     #   - If the value is an instance of *klass*, the return from the value's `id` method is added to
     #     the result.
+    #   - If the value is a `GlobalID`, convert it to a string and process it as described below.
     #   - If the value is a String, check if it is an integer representation (it contains just numeric
     #     characters); if so, convert it to an integer and add it to the result.
-    #     Otherwise, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint} and, if
-    #     the fingerprint is a reference to an instance of *klass*, add the **id** component to the
-    #     result value.
+    #     Otherwise, check if it is a `GlobalID` URI, and if so extract the class name and identifier.
+    #     Otherwise, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint}.
+    #     If the class name is the same as the name for *klass*, add the identifier.
     #
     # Note that elements that do not match any of these conditions are dropped from the return value.
     #
@@ -64,20 +84,17 @@ module Fl::Core
     # @param klass [Class] The ActiveRecord::Base subclass for the references.
     #
     # @return [Array<Integer>] Returns an array of object identifiers.
-    
+
     def convert_list_of_references(rl, klass)
       rl.reduce([ ]) do |acc, r|
         if r.is_a?(Integer)
           acc << r
         elsif r.is_a?(klass)
           acc << r.id
+        elsif r.is_a?(GlobalID)
+          _extract_identifier_from_string_reference(acc, r.to_s, klass)
         elsif r.is_a?(String)
-          if r =~ /^[0-9]+$/
-            acc << r.to_i
-          else
-            c, id = ActiveRecord::Base.split_fingerprint(r, klass)
-            acc << id.to_i unless id.nil?
-          end
+          _extract_identifier_from_string_reference(acc, r, klass)
         end
 
         acc
@@ -326,22 +343,22 @@ module Fl::Core
     #  for all the actors in the groups, and that list is added to the final value. (The list may be then trimmed
     #  out based on the actor exclusion list.)
     #  Therefore, this has a similar effect to the *:only_<key>* option.
-    #  If both expanded *:only_groups* and *:except_groups* values contain the same actor id, that
-    #  actor is dropped from the expanded *:only_groups* list; therefore, *:except_groups* has higher
-    #  precedence than *:only_groups*.
+    #  If both expanded **:only_groups** and **:except_groups** values contain the same actor id, that
+    #  actor is dropped from the expanded **:only_groups** list; therefore, **:except_groups** has higher
+    #  precedence than **:only_groups**.
     # @option opts [Array<Object, String>, Object, String] :except_groups If given, do not include actors that
     #  are members of the group or,
-    #  if the value is an array, groups. See the documentation for *:only_groups*.
-    #  The *:except_groups* option expands to a list of object identifiers for actors that should be excluded;
-    #  therefore, *:except_groups* acts like *:except_<key>*.
+    #  if the value is an array, groups. See the documentation for **:only_groups**.
+    #  The **:except_groups** option expands to a list of object identifiers for actors that should be excluded;
+    #  therefore, **:except_groups** acts like *:except_<key>*.
     # @param key [Symbol, String] This value is used to generate the names of the actor options.
     #  For example, if the value of *prefix* is `author`, then the method looks up the two options **:only_authors**
     #  and **:except_authors**.
     #
     # @return [Hash] Returns a hash with two entries:
-    #  - *:only_ids* is +nil+, to indicate that no "must-have" actor selection is requested; or it is
+    #  - **:only_ids** is +nil+, to indicate that no "must-have" actor selection is requested; or it is
     #    an array whose elements are actors' fingerprints.
-    #  - *:except_ids* is +nil+, to indicate that no "must-not-have" actor selection is requested; or it is
+    #  - **:except_ids** is +nil+, to indicate that no "must-not-have" actor selection is requested; or it is
     #    an array whose elements are actors' fingerprints.
 
     def _expand_actor_lists(opts, key = :actors)
@@ -446,7 +463,7 @@ module Fl::Core
     # @option hlist [Array<String>] :except_ids The fingerprints of the objects to place in the "must-not-have"
     #  clauses. Could be +nil+ if no "must-have" objects were requested.
     #
-    # @return [Hash] Returns a hash containing two entries, *:only_ids* and *:except_ids*, generated as
+    # @return [Hash] Returns a hash containing two entries, **:only_ids** and **:except_ids**, generated as
     #  described above.
 
     def _partition_actor_lists(hlist)
@@ -531,10 +548,10 @@ module Fl::Core
     # @option opts [Integer, Time, String] :created_before to select comments created before a given time.
     #
     # @return [Hash] Returns a hash containing any number of the following keys; all values are timestamps.
-    #  - *:c_after_ts* from *:created_after*.
-    #  - *:c_before_ts* from *:created_before*.
-    #  - *:u_after_ts* from *:updated_after*.
-    #  - *:u_before_ts* from *:updated_before*.
+    #  - **:c_after_ts** from **:created_after**.
+    #  - **:c_before_ts** from **:created_before**.
+    #  - **:u_after_ts** from **:updated_after**.
+    #  - **:u_before_ts** from **:updated_before**.
 
     def _date_filter_timestamps(opts)
       rv = {}
@@ -574,8 +591,50 @@ module Fl::Core
       rv
     end
 
-    # Parse the *:order* option and generate an order clause.
-    # This method processes the *:order* key in _opts_ and generates an
+    # Add WHERE clauses for the standard timestamp filters.
+    # This method first calls {#_date_filter_timestamps} to generate timestamp filter parameters.
+    # If any are found, it adds them to the WHERE clauses and returns the new relation object.
+    #
+    # Note that any WHERE clauses from **:updated_after**, **:created_after**, **:updated_before**,
+    # and **:created_before** are concatenated using the AND operator. The values for these options are:
+    # a UNIX timestamp; a Time object; a string containing a representation of the time (this string
+    # is converted to a {Fl::Core::Icalendar::Datetime} internally).
+    #
+    # @param opts [Hash] A Hash containing configuration options for the query.
+    # @option opts [Integer, Time, String] :updated_after to select objects updated after a given time.
+    # @option opts [Integer, Time, String] :created_after to select objects created after a given time.
+    # @option opts [Integer, Time, String] :updated_before to select objects updated before a given time.
+    # @option opts [Integer, Time, String] :created_before to select objects created before a given time.
+    #
+    # @return [ActiveRecord::Relation] Return a relation that may include WHERE clauses for timestamp filters.
+    #  If no such WHERE clauses are present, it returns *q*.
+
+    def _add_date_filter_clauses(q, opts)
+      ts = _date_filter_timestamps(opts)
+      wt = []
+      wta = {}
+      if ts[:c_after_ts]
+        wt << '(created_at > :c_after_ts)'
+        wta[:c_after_ts] = ts[:c_after_ts].to_time
+      end
+      if ts[:u_after_ts]
+        wt << '(updated_at > :u_after_ts)'
+        wta[:u_after_ts] = ts[:u_after_ts].to_time
+      end
+      if ts[:c_before_ts]
+        wt << '(created_at < :c_before_ts)'
+        wta[:c_before_ts] = ts[:c_before_ts].to_time
+      end
+      if ts[:u_before_ts]
+        wt << '(updated_at < :u_before_ts)'
+        wta[:u_before_ts] = ts[:u_before_ts].to_time
+      end
+
+      (wt.count > 0) ? q.where(wt.join(' AND '), wta) : q
+    end
+    
+    # Parse the **:order** option and generate an order clause.
+    # This method processes the **:order** key in _opts_ and generates an
     # array of converted order clauses.
     # 
     # @param opts [Hash] A hash of query options.
@@ -608,6 +667,61 @@ module Fl::Core
       return nil if ord.nil? or (ord.count < 1)
 
       ord.map { |e| e.strip }
+    end
+    
+    # Parse the **:order** option and add the order clause if necessary.
+    # This method calls {#_parse_order_clause}, and if an order clause is found, it adds it
+    # to the relation *q*.
+    # 
+    # @param [ActiveRecord::Relation] q The original relation.
+    # @param opts [Hash] A hash of query options.
+    # @param df [String, Array] The default value for the order option if **:order** is not present
+    #  in *opts*. A `nil` value maps to `updated_at DESC'.
+    #
+    # @option opts [String, Array] :order A string or array containing the <tt>ORDER BY</tt> clauses
+    #  to process. The string value is converted to an array by splitting it at commas.
+    #  A `false` value or an empty string or array causes the option to be ignored.
+    #
+    # @return [ActiveRecord::Relation] Return a relation that may include an ORDER clause.
+    #  If no order clauses are present, it returns *q*.
+
+    def _add_order_clause(q, opts, df = nil)
+      order_clauses = _parse_order_option(opts)
+      (order_clauses.is_a?(Array)) ? q.order(order_clauses) : q
+    end
+    
+    # Check the **:offset** option and add the OFFSET clause if necessary.
+    # This method adds an offset clause if **:offset** is present in *opts*, and it map to an integer
+    # larger than 0. Note that this implies that you can turn off the offset by passing a negative value.
+    # 
+    # @param [ActiveRecord::Relation] q The original relation.
+    # @param opts [Hash] A hash of query options.
+    #
+    # @option opts [Integer,String] :offset the offset value (zero-based).
+    #
+    # @return [ActiveRecord::Relation] Return a relation that may include an OFFSET clause.
+    #  If no oofset is present, it returns *q*.
+
+    def _add_offset_clause(q, opts)
+      offset = (opts.has_key?(:offset)) ? opts[:offset].to_i : nil
+      (offset.is_a?(Integer) && (offset > 0)) ? q.offset(offset) : q
+    end
+    
+    # Check the **:limit** option and add the LIMIT clause if necessary.
+    # This method adds an limit clause if **:limit** is present in *opts*, and it map to an integer
+    # larger than 0. Note that this implies that you can turn off the limit by passing a negative value.
+    # 
+    # @param [ActiveRecord::Relation] q The original relation.
+    # @param opts [Hash] A hash of query options.
+    #
+    # @option opts [Integer,String] :limit the limit value.
+    #
+    # @return [ActiveRecord::Relation] Return a relation that may include an LIMIT clause.
+    #  If no oofset is present, it returns *q*.
+
+    def _add_limit_clause(q, opts)
+      limit = (opts.has_key?(:limit)) ? opts[:limit].to_i : nil
+      (limit.is_a?(Integer) && (limit > 0)) ? q.limit(limit) : q
     end
   end
 end

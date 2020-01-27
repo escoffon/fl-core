@@ -12,12 +12,18 @@ module Fl::Core
     # Convert a parameter to an object.
     # The value can be one of the following:
     #
+    # - A [https://github.com/rails/globalid][GlobalID], which is used to look up the object.
+    # - A string containing a [https://github.com/rails/globalid][GlobalID], which is used to look up
+    #   the object.
     # - A string in the format _classname_/_id_, where _classname_ is the name of the class for the object,
     #   and _id_ is its object identifier. The method uses the class' +find+ method to look up the object.
     # - A Hash containing the key _key_. In this case, the method fetches the value from that key, and tries
     #   again.
-    # - If the hash does not contain _key_, then it should contain the two elements +id+ and +type+, which
-    #   will be used to look up the object via the +find+ method (+type+ is the class name).
+    # - If the hash does not contain _key_, then the method checks for **:global_id**, which it tries to resolve
+    #   as a [https://github.com/rails/globalid][GlobalID].
+    #   Otherwise, it looks for the key **:fingerprint**, and tries to resolve the fingerprint.
+    #   Finally, it tries the two keys **:id** and **:type**, which
+    #   will be used to look up the object via the +find+ method (**:type** is the class name).
     # - An object instance, which will be used as-is.
     #
     # @param p The parameter value. See above for a description of its format.
@@ -37,6 +43,7 @@ module Fl::Core
     #
     # @example Using a string parameter.
     #  Fl::Core::ParametersHelper.object_for_parameter('MyClass/1234')
+    #  Fl::Core::ParametersHelper.object_for_parameter('gid://app/MyClass/1234')
     #
     # @example Using an object parameter.
     #  o = MyClass.new
@@ -47,11 +54,19 @@ module Fl::Core
     # @example Using a hash.
     #  h = { type: 'MyClass', id: 1234 }
     #  Fl::Core::ParametersHelper.object_for_parameter(h)
-    #  h = { type: 'MyClass', id: '1234', key: 'value' }
+    #  h = { type: 'MyClass', id: '1234', mykey: 'value' }
     #  Fl::Core::ParametersHelper.object_for_parameter(h, nil, [ MyClass ])
+    #  h = { fingerprint: 'MyClass/1234', mykey: 'value' }
+    #  Fl::Core::ParametersHelper.object_for_parameter(h)
+    #  h = { global_id: 'gid://app/MyClass/1234', mykey: 'value' }
+    #  Fl::Core::ParametersHelper.object_for_parameter(h)
     #
     # @example Using a nested hash.
     #  h = { type: 'MyClass', id: 1234, key: 'value' }
+    #  Fl::Core::ParametersHelper.object_for_parameter({ obj: h }, :obj)
+    #  h = { fingerprint: 'MyClass/1234', mykey: 'value' }
+    #  Fl::Core::ParametersHelper.object_for_parameter({ obj: h }, :obj)
+    #  h = { global_id: 'gid://app/MyClass/1234', mykey: 'value' }
     #  Fl::Core::ParametersHelper.object_for_parameter({ obj: h }, :obj)
     #
     # @example Check if the parameter includes the module +Foo+.
@@ -81,15 +96,39 @@ module Fl::Core
       h = nil
 
       case p
+      when GlobalID
+        begin
+          obj = GlobalID::Locator.locate(p)
+        rescue NameError => x
+          raise ConversionError, I18n.tx('fl.core.conversion.missing_class', :class => x.message)
+        rescue ActiveRecord::RecordNotFound => ax
+          raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{p.to_s}")
+        end
       when String
-        a = p.split('/')
-        h = { type: a[0], id: a[1] }
+        gid = GlobalID.parse(p)
+        if gid.is_a?(GlobalID)
+          begin
+            obj = GlobalID::Locator.locate(gid)
+          rescue NameError => x
+            raise ConversionError, I18n.tx('fl.core.conversion.missing_class', :class => x.message)
+          rescue ActiveRecord::RecordNotFound => ax
+            raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{gid.to_s}")
+          end
+        else
+          fc, fid = ActiveRecord::Base.split_fingerprint(p)
+          h = { type: fc, id: fid }
+        end
       when Hash
         if !key.nil? && p.has_key?(key.to_sym)
           case p[key.to_sym]
           when String
-            a = p[key.to_sym].split('/')
-            h = { type: a[0], id: a[1] }
+            gid = GlobalID.parse(p[key.to_sym])
+            if gid.is_a?(GlobalID)
+              obj = GlobalID::Locator.locate(gid)
+            else
+              fc, fid = ActiveRecord::Base.split_fingerprint(p[key.to_sym])
+              h = { type: fc, id: fid }
+            end
           when Hash
             h = p[key.to_sym]
           else
@@ -121,7 +160,7 @@ module Fl::Core
           begin
             obj = klass.find(h[:id])
           rescue => exc
-            raise ConversionError, I18n.tx('fl.core.conversion.no_object', :class => h[:type], :id => h[:id])
+            raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{h[:type]}/#{h[:id]}")
           end
         else
           raise ConversionError, I18n.tx('fl.core.conversion.incomplete', :class => h[:type], :id => h[:id])
