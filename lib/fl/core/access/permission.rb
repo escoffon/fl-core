@@ -8,7 +8,7 @@ module Fl::Core::Access
   # class MyPermission < Fl::Core::Access::Permission
   #  NAME = :my_permission
   #  BIT = 0x00000010
-  #  GRANTS = [ Fl::Core::Access::Permission::Read::NAME ]
+  #  GRANTS = [ ]
   #
   #  def initialize(ext)
   #    @ext = ext
@@ -20,6 +20,17 @@ module Fl::Core::Access
   #
   # myp = MyPermission.new('additional data').register
   #
+  # class MyForwardingPermission < Fl::Core::Access::Permission
+  #  NAME = :my_forwarding_permission
+  #  BIT = 0x00000000
+  #  GRANTS = [ Fl::Core::Access::Permission::Read::NAME, Fl::Core::Access::Permission::Delete::NAME ]
+  #
+  #  def initialize()
+  #    super(NAME, BIT, GRANTS)
+  #  end
+  # end
+  #
+  # myp = MyForwardingPermission.new().register_with_report
   # ```
   # The `MyPermission.new.register` call registers `MyPermission` with the permission registry.
   # You can also use `myp = MyPermission.new('additional data').register_with_report` to wrap the

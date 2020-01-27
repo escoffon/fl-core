@@ -109,5 +109,26 @@ module Fl::Core::Access
         mask
       end
     end
+
+    # Build a list of permission names from a list of permissions.
+    #
+    # @param plist [Array<Symbol,String,Fl::Core::Access::Permission,Class>] The permissions whose names to
+    #  extract.
+    #  Each element in the array is converted to a permission name as documented for {.permission_name}.
+    #  Any string or symbol values that do not map to a known permission are dropped.
+    #  A `nil` value returns an empty array.
+    #
+    # @return [Array<String>] Returns the list of permission names.
+    
+    def self.permission_names(plist)
+      return [ ] if plist.nil?
+
+      plist = [ plist ] unless plist.is_a?(Array)
+      plist.reduce([ ]) do |acc, p|
+        n = self.permission_name(p)
+        acc << n if Fl::Core::Access::Permission.lookup(n)
+        acc
+      end
+    end
   end
 end
