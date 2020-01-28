@@ -626,24 +626,27 @@ module Fl::Core
     #  If no such WHERE clauses are present, it returns *q*.
 
     def _add_date_filter_clauses(q, opts)
+      # We need to convert the timestamps to UTC, or the WHERE clauses (at least on Postgres) are off by
+      # the timezone offset
+      
       ts = _date_filter_timestamps(opts)
       wt = []
       wta = {}
       if ts[:c_after_ts]
         wt << '(created_at > :c_after_ts)'
-        wta[:c_after_ts] = ts[:c_after_ts].to_time
+        wta[:c_after_ts] = Time.parse(ts[:c_after_ts].to_rfc3339).utc.rfc3339
       end
       if ts[:u_after_ts]
         wt << '(updated_at > :u_after_ts)'
-        wta[:u_after_ts] = ts[:u_after_ts].to_time
+        wta[:u_after_ts] = Time.parse(ts[:u_after_ts].to_rfc3339).utc.rfc3339
       end
       if ts[:c_before_ts]
         wt << '(created_at < :c_before_ts)'
-        wta[:c_before_ts] = ts[:c_before_ts].to_time
+        wta[:c_before_ts] = Time.parse(ts[:c_before_ts].to_rfc3339).utc.rfc3339
       end
       if ts[:u_before_ts]
         wt << '(updated_at < :u_before_ts)'
-        wta[:u_before_ts] = ts[:u_before_ts].to_time
+        wta[:u_before_ts] = Time.parse(ts[:u_before_ts].to_rfc3339).utc.rfc3339
       end
 
       (wt.count > 0) ? q.where(wt.join(' AND '), wta) : q
