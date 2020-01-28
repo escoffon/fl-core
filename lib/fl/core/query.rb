@@ -45,7 +45,22 @@ module Fl::Core
     end
 
     # @!visibility private
-    
+    def _extract_fingerprint_from_string_reference(acc, r)
+      if r =~ /^gid:/i
+        # This is a GlobalID URI: the path contains the location of the object, which by an amazing
+        # turn of fate is the same as a fingerprint!
+
+        uri = URI.parse(r)
+        fp = uri.path.slice(1, uri.path.length)
+        c, id = ActiveRecord::Base.split_fingerprint(fp)
+        acc << "#{c}/#{id}" unless id.nil?
+      else
+        c, id = ActiveRecord::Base.split_fingerprint(r)
+        acc << "#{c}/#{id}" unless id.nil?
+      end
+    end
+
+    # @!visibility private
     def _extract_identifier_from_string_reference(acc, r, klass)
       if r =~ /^[0-9]+$/
         acc << r.to_i
@@ -108,8 +123,12 @@ module Fl::Core
     #
     #   - If the value is an instance of a subclass of `ActiveRecord::Base`, the return from the value's
     #    `fingerprint` method is added to the result.
-    #   - If the value is a String, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint}
-    #     and, if the result indicates a valid fingerprint, add it to the return value.
+    #   - If the value is a `GlobalID`, convert it to a string and process it as described below.
+    #   - If the value is a String, check if it is an integer representation (it contains just numeric
+    #     characters); if so, convert it to an integer and add it to the result.
+    #     Otherwise, check if it is a `GlobalID` URI, and if so extract the class name and identifier.
+    #     Otherwise, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint}.
+    #     If the class name is the same as the name for *klass*, add the identifier.
     #
     # Note that elements that do not match any of these conditions are dropped from the return value.
     #
@@ -119,15 +138,12 @@ module Fl::Core
     
     def convert_list_of_polymorphic_references(rl)
       rl.reduce([ ]) do |acc, r|
-        case r
-        when ActiveRecord::Base
+        if r.is_a?(ActiveRecord::Base)
           acc << r.fingerprint if r.respond_to?(:fingerprint)
-        when String
-          # Technically, we could get the class from the name, check that it exists and that it is
-          # a subclass of ActiveRecord::Base, but for the time being we don't
-          
-          c, id = ActiveRecord::Base.split_fingerprint(r)
-          acc << r unless c.nil? || id.nil?
+        elsif r.is_a?(GlobalID)
+          _extract_fingerprint_from_string_reference(acc, r.to_s)
+        elsif r.is_a?(String)
+          _extract_fingerprint_from_string_reference(acc, r)
         end
 
         acc
