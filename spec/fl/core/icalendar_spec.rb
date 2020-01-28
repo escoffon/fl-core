@@ -995,6 +995,8 @@ RSpec.describe Fl::Core::Icalendar do
   end
 
   describe Fl::Core::Icalendar::Datetime do
+    # this also indirectly tests .parse
+    
     context '.new' do
       it 'should accept a string datetime value with Z qualifier' do
         dt = Fl::Core::Icalendar::Datetime.new('20140210T102030Z')
@@ -1188,6 +1190,34 @@ RSpec.describe Fl::Core::Icalendar do
         s_5545 = 'TZID=America/New_York:20160210'
         dt = Fl::Core::Icalendar::Datetime.new(s_5545)
         dth = { :DATE => '20160210', :TZID => 'America/New_York' }
+        expect(dt.to_hash).to eql(dth)
+        expect(dt.timezone_offset).to eql(-300)
+      end
+      
+      it 'should accept RFC 5545 format with timezone offset (not standard)' do
+        s_5545 = '20160210T102040 -05:00'
+        dt = Fl::Core::Icalendar::Datetime.new(s_5545)
+        dth = { :DATE => '20160210', :TIME => '102040', :TZOFFSET => -300 }
+        expect(dt.to_hash).to eql(dth)
+        expect(dt.timezone_offset).to eql(-300)
+        
+        s_5545 = '20160810T102040-0500'
+        dt = Fl::Core::Icalendar::Datetime.new(s_5545)
+        dth = { :DATE => '20160810', :TIME => '102040', :TZOFFSET => -300 }
+        expect(dt.to_hash).to eql(dth)
+        expect(dt.timezone_offset).to eql(-300)
+
+        s_5545 = '20160210 -05:00'
+        dt = Fl::Core::Icalendar::Datetime.new(s_5545)
+        dth = { :DATE => '20160210', :TZOFFSET => -300 }
+        expect(dt.to_hash).to eql(dth)
+        expect(dt.timezone_offset).to eql(-300)
+      end
+
+      it 'should accept a Time object' do
+        t = Time.parse('2016-02-10T10:20:40-05:00')
+        dt = Fl::Core::Icalendar::Datetime.new(t)
+        dth = { :DATE => '20160210', :TIME => '102040', :TZOFFSET => -300 }
         expect(dt.to_hash).to eql(dth)
         expect(dt.timezone_offset).to eql(-300)
       end
@@ -1442,6 +1472,28 @@ RSpec.describe Fl::Core::Icalendar do
         expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('+00:00')).to eql(0)
       end
 
+      it 'should handle HHMM notation correctly' do
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('-0800')).to eql(-480)
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('+0800')).to eql(480)
+
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('-0500')).to eql(-300)
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('+0500')).to eql(300)
+
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('-0130')).to eql(-90)
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('+0130')).to eql(90)
+
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('-0000')).to eql(0)
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('+0000')).to eql(0)
+      end
+      
+      it 'should be lenient of leading and trailing whitespace' do
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset(' -08:00 ')).to eql(-480)
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('    +08:00     ')).to eql(480)
+
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset(' -0800 ')).to eql(-480)
+        expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('    +0800     ')).to eql(480)
+      end
+      
       it 'should return nil for 00:00' do
         expect(Fl::Core::Icalendar::Datetime.parse_tzoffset('00:00')).to be_nil
       end

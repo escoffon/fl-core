@@ -225,6 +225,10 @@ module Fl::Core
       #  Initializes the object from a string value.
       #  @param datetime [String] A string representation of the datetime.
       #   See {Fl::Core::Icalendar::Datetime.parse} for details.
+      # @overload initialize(t = nil)
+      #  Initializes the object from a Time object.
+      #  @param t [Time] A Time object; the object type is set to +DATETIME+, and the timezone offset
+      #   is set to the local timezone offset.
       # @overload initialize(ts = nil)
       #  Initializes the object from a UNIX timestamp.
       #  @param ts [Integer] An integer containing a UNIX timestamp; the object type is set to +DATETIME+,
@@ -253,6 +257,8 @@ module Fl::Core
             :DATE => sprintf('%4d%02d%02d', a[5], a[4], a[3]),
             :TIME => sprintf('%02d%02d%02d', a[2], a[1], a[0])
           }
+        elsif data.is_a?(Time)
+          @hash = Fl::Core::Icalendar::Datetime.parse(data.rfc3339)
         elsif data.is_a?(Hash)
           unless Fl::Core::Icalendar::Datetime.valid?(data)
             @hash = nil
@@ -752,7 +758,7 @@ module Fl::Core
       end
 
       # Parse a timezone offset and convert to a numeric value.
-      # This method parses an offset in the form +/-HH:MM and returns a number containing
+      # This method parses an offset in the form `+/-HH:MM` or `+/-HHMM` and returns a number containing
       # the offset in minutes.
       #
       # @param [String] tzoff The timezone offset.
@@ -760,7 +766,15 @@ module Fl::Core
       # @return Returns the offset in minutes, +nil+ if _tzoff_ is not a valid offset format.
 
       def self.parse_tzoffset(tzoff)
-        if tzoff =~ /^([-+])([0-9]{2}):([0-9]{2})$/
+        return nil unless tzoff.is_a?(String)
+
+        off = tzoff.strip
+
+        if off.strip =~ /^([-+])([0-9]{2}):([0-9]{2})$/
+          m = Regexp.last_match
+          plus_min = (m[1] == '-') ? -1 : 1
+          plus_min * ((m[2].to_i * 60) + m[3].to_i)
+        elsif off.strip =~ /^([-+])([0-9]{2})([0-9]{2})$/
           m = Regexp.last_match
           plus_min = (m[1] == '-') ? -1 : 1
           plus_min * ((m[2].to_i * 60) + m[3].to_i)
@@ -836,14 +850,27 @@ module Fl::Core
             return nil
           end
         else
-          # this is expected to be in RFC 5545 format
+          # this is expected to be in RFC 5545 format, which should not have a timezone offset,
+          # but we are lenient and extract it anyway, in case someone has entered a date format
+          # like '20160120T102030 -08:00'.
 
-          if dt =~ /^([0-9]{8})T([0-9]{4,6})$/
+          if dt =~ /^([0-9]{8})T([0-9]{4,6})(.*)/
             m = Regexp.last_match
             hash[:DATE] = m[1]
             hash[:TIME] = m[2]
-          elsif dt =~ /^[0-9]{8}$/
-            hash[:DATE] = dt
+            tzoff = parse_tzoffset(m[3])
+            unless tzoff.nil?
+              hash[:TZOFFSET] = tzoff 
+              hash.delete(:TZID)
+            end
+          elsif dt =~ /^([0-9]{8})(.*)/
+            m = Regexp.last_match
+            hash[:DATE] = m[1]
+            tzoff = parse_tzoffset(m[2])
+            unless tzoff.nil?
+              hash[:TZOFFSET] = tzoff 
+              hash.delete(:TZID)
+            end
           elsif dt =~ /^[0-9]{4,6}$/
             hash[:TIME] = dt
           else
