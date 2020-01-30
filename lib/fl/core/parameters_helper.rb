@@ -121,10 +121,24 @@ module Fl::Core
       when Hash
         if !key.nil? && p.has_key?(key.to_sym)
           case p[key.to_sym]
+          when GlobalID
+            begin
+              obj = GlobalID::Locator.locate(p[key.to_sym])
+            rescue NameError => x
+              raise ConversionError, I18n.tx('fl.core.conversion.missing_class', :class => x.message)
+            rescue ActiveRecord::RecordNotFound => ax
+              raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{p[key.to_sym].to_s}")
+            end
           when String
             gid = GlobalID.parse(p[key.to_sym])
             if gid.is_a?(GlobalID)
-              obj = GlobalID::Locator.locate(gid)
+              begin
+                obj = GlobalID::Locator.locate(gid)
+              rescue NameError => x
+                raise ConversionError, I18n.tx('fl.core.conversion.missing_class', :class => x.message)
+              rescue ActiveRecord::RecordNotFound => ax
+                raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{gid.to_s}")
+              end
             else
               fc, fid = ActiveRecord::Base.split_fingerprint(p[key.to_sym])
               h = { type: fc, id: fid }
@@ -220,8 +234,8 @@ module Fl::Core
 
     def self.included(base)
       base.class_eval do
-        def object_from_parameter(p, key = nil, expect = nil)
-          Fl::Core::ParametersHelper.object_from_parameter(p, key, expect)
+        def object_from_parameter(p, key = nil, expect = nil, strict = false)
+          Fl::Core::ParametersHelper.object_from_parameter(p, key, expect, strict)
         end
       end
     end

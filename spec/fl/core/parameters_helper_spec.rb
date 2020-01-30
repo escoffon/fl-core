@@ -230,6 +230,57 @@ RSpec.describe Fl::Core::ParametersHelper do
           end
         end
 
+        describe('with GlobalID value') do
+          it 'should return an object on a valid ID' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            o = ph.object_from_parameter({ obj: gid1 }, :obj)
+            expect(o.fingerprint).to eql(o1.fingerprint)
+
+            o = ph.object_from_parameter({ obj: gid1.to_s }, :obj)
+            expect(o.fingerprint).to eql(o1.fingerprint)
+          end
+
+          it 'should raise a conversion error exception on an invalid GlobalID' do
+            expect do
+              ph.object_from_parameter({ obj: 'gid://foo' }, :obj)
+            end.to raise_exception(Fl::Core::ParametersHelper::ConversionError)
+          end
+
+          it 'should succeed with an unknown app name' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            uri = gid1.uri.dup
+            uri.host = 'a.different.app'
+            o = ph.object_from_parameter({ obj: uri.to_s }, :obj)
+            expect(o.fingerprint).to eql(o1.fingerprint)
+          end
+
+          it 'should raise a conversion error exception on an unknown class name' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            uri = gid1.uri.dup
+            uri.path = '/Fl::Core::NoSuchTestDatumOne/1'
+            expect do
+              o = ph.object_from_parameter({ obj: uri.to_s }, :obj)
+            end.to raise_exception(Fl::Core::ParametersHelper::ConversionError)
+          end
+
+          it 'should raise a conversion error exception on an unknown object' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            uri = gid1.uri.dup
+            uri.path = '/Fl::Core::TestDatumOne/0'
+            expect do
+              o = ph.object_from_parameter({ obj: uri.to_s }, :obj)
+            end.to raise_exception(Fl::Core::ParametersHelper::ConversionError)
+          end
+        end
+
         describe('with :type/:id value') do
           it('should find the object') do
             f = ph.object_from_parameter({ type: "TestClassOne", id: o10.id })
