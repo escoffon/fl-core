@@ -689,7 +689,7 @@ module Fl::Core
     end
     
     # Parse the **:order** option and add the order clause if necessary.
-    # This method calls {#_parse_order_clause}, and if an order clause is found, it adds it
+    # This method calls {#_parse_order_option}, and if an order option is found, it adds it
     # to the relation *q*.
     # 
     # @param [ActiveRecord::Relation] q The original relation.
