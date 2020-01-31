@@ -18,8 +18,6 @@ module Fl::Core::Access
   #  attr_reader :ext
   # end
   #
-  # myp = MyPermission.new('additional data').register
-  #
   # class MyForwardingPermission < Fl::Core::Access::Permission
   #  NAME = :my_forwarding_permission
   #  BIT = 0x00000000
@@ -29,13 +27,7 @@ module Fl::Core::Access
   #    super(NAME, BIT, GRANTS)
   #  end
   # end
-  #
-  # myp = MyForwardingPermission.new().register_with_report
   # ```
-  # The `MyPermission.new.register` call registers `MyPermission` with the permission registry.
-  # You can also use `myp = MyPermission.new('additional data').register_with_report` to wrap the
-  # registration call in a `begin`/`rescue` to print a message to `STDERR` before reraising any exceptions
-  #
   #
   # #### Simple and cumulative (forwarding) permissions
   #
@@ -54,6 +46,39 @@ module Fl::Core::Access
   #
   # Use the class methods {.permission_mask}, {.permission_grantors}, {.grantors_for_permission} to
   # support forwarded access checks.
+  #
+  # #### Registration
+  #
+  # You will have to register permissions explictly with your system (Rails app, typically); for example,
+  # create the initializer `config/0000_permissions.rb` and populate it with registration calls:
+  #
+  # ```
+  # # Register permissions for the system
+  # Fl::Core::Access::Permission::Owner.new.register_with_report
+  # Fl::Core::Access::Permission::Create.new.register_with_report
+  # Fl::Core::Access::Permission::Read.new.register_with_report
+  # Fl::Core::Access::Permission::Write.new.register_with_report
+  # Fl::Core::Access::Permission::Delete.new.register_with_report
+  # Fl::Core::Access::Permission::Index.new.register_with_report
+  # Fl::Core::Access::Permission::IndexContents.new.register_with_report
+  # Fl::Core::Access::Permission::Edit.new.register_with_report
+  # Fl::Core::Access::Permission::Manage.new.register_with_report
+  #
+  # MyPermission.new('additional data').register
+  # ```
+  #
+  # The `MyPermission.new('additional data').register` call registers `MyPermission` with the permission registry.
+  # You can also use `MyPermission.new('additional data').register_with_report` to wrap the
+  # registration call in a `begin`/`rescue` to print a message to `STDERR` before reraising any exceptions;
+  # this is useful to track down duplicate name or bit registrations.
+  #
+  # A earlier version included automatic registration of permissions, but this was removed in favor of
+  # explicit registration (in an initializer) for two reasons:
+  #
+  # 1. It gives you control over which permissions to register.
+  # 2. More importantly, the automatic registration does not play well with Rails caching features like
+  #    bootsnap: under some conditions, multiple rake tasks tend to step on each other's toes and trigger
+  #    duplicate registration exceptions.
   #
   # #### Standard permission classes
   #
@@ -381,12 +406,16 @@ module Fl::Core::Access
       begin
         Fl::Core::Access::Permission.register(self)
       rescue Fl::Core::Access::Permission::DuplicateName => x
+    open('/Users/emilscoffone/src/nc/code/rails/kp/log/emil.log', 'a') { |f| f.print("++++++++++ EXCEPTION: #{x.class} (#{x.message})\n") }
+        Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         bt = caller
         STDERR.print("duplicate permission name: '#{x.permission.name}' at #{bt[1]}\n")
         STDERR.print("  (originally registered at #{Fl::Core::Access::Permission.location(x.permission.name)})\n")
         
         raise
       rescue Fl::Core::Access::Permission::DuplicateBit => x
+    open('/Users/emilscoffone/src/nc/code/rails/kp/log/emil.log', 'a') { |f| f.print("++++++++++ EXCEPTION: #{x.class} (#{x.message})\n") }
+        Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         bt = caller
         bit = sprintf('0x%x', x.permission.bit)
         STDERR.print("duplicate permission bit: '#{bit}' at #{bt[1]}\n")
@@ -397,6 +426,10 @@ module Fl::Core::Access
           end
         end
         
+        raise
+      rescue => x
+    open('/Users/emilscoffone/src/nc/code/rails/kp/log/emil.log', 'a') { |f| f.print("++++++++++ EXCEPTION: #{x.class} (#{x.message})\n") }
+        Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         raise
       end
     end
@@ -526,8 +559,6 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Owner.new.register_with_report
-
   # The **:create** permission class.
   # This permission grants the ability to create assets (typically of a specific class).
   
@@ -547,8 +578,6 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Create.new.register_with_report
-
   # The **:read** permission class.
   # This permission grants read only access to assets.
   
@@ -567,8 +596,6 @@ module Fl::Core::Access
      super(NAME, BIT, GRANTS)
     end
   end
-
-  Permission::Read.new.register_with_report
 
   # The **:write** permission class.
   # Note that this permission grants write only access to assets; for read and write access,
@@ -590,8 +617,6 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Write.new.register_with_report
-
   # The **:delete** permission class.
   # This permission grants delete only access to assets; for additional read and write access,
   # use {#Permission::Manage}.
@@ -611,8 +636,6 @@ module Fl::Core::Access
      super(NAME, BIT, GRANTS)
     end
   end
-
-  Permission::Delete.new.register_with_report
 
   # The **:index** permission class.
   # Typically, this permission is used to grant index only access to a class object, and therefore controls
@@ -636,8 +659,6 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Index.new.register_with_report
-
   # The **:index_contents** permission class.
   # This permission is used to grant index only access to the contents of a collection object; it is
   # applied to class instances, and controls if an actor can index the contents of an object that manages
@@ -660,8 +681,6 @@ module Fl::Core::Access
     end
   end
 
-  Permission::IndexContents.new.register_with_report
-
   # The **:edit** permission class.
   # This permission grants read and write access to assets.
   
@@ -681,8 +700,6 @@ module Fl::Core::Access
     end
   end
 
-  Permission::Edit.new.register_with_report
-
   # The **:manage** permission class.
   # This permission grants read, write, and delete access to assets.
   
@@ -701,6 +718,4 @@ module Fl::Core::Access
      super(NAME, BIT, GRANTS)
     end
   end
-
-  Permission::Manage.new.register_with_report
 end

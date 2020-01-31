@@ -22,7 +22,5 @@ module Fl::Core::Actor
         super(NAME, BIT, GRANTS)
       end
     end
-
-    ManageMembers.new.register_with_report
   end
 end
