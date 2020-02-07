@@ -14,6 +14,10 @@ class TestClassOne
   def initialize(id)
     @id = id.to_i
   end
+
+  def fingerprint
+    "#{self.class.name}/#{self.id}"
+  end
 end
 
 class TestClassSubOne < TestClassOne
@@ -43,6 +47,10 @@ class TestClassTwo
 
   def initialize(id)
     @id = id.to_i
+  end
+
+  def fingerprint
+    "#{self.class.name}/#{self.id}"
   end
 end
 
@@ -447,6 +455,253 @@ RSpec.describe Fl::Core::ParametersHelper do
 
         expect do
           f = ph.object_from_parameter("TestClassSubOne/100", :v, [ TestClassOne, TestClassTwo ], true)
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+      end
+    end
+  end
+
+  describe('.fingerprint_from_parameters') do
+    it('should return fingerprint from object instance') do
+      f = ph.fingerprint_from_parameter(o10)
+      expect(f).to eql(o10.fingerprint)
+
+      f = ph.fingerprint_from_parameter(o11)
+      expect(f).to eql(o11.fingerprint)
+    end
+
+    describe('with fingerprint input') do
+      it('should return the fingerprint') do
+        f = ph.fingerprint_from_parameter('TestClassOne/10')
+        expect(f).to eql('TestClassOne/10')
+
+        f = ph.fingerprint_from_parameter('TestClassOne')
+        expect(f).to eql('TestClassOne')
+      end
+
+      it('should raise a conversion error on malformed fingerprints') do
+        expect do
+          f = ph.fingerprint_from_parameter('/10')
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+
+        expect do
+          f = ph.fingerprint_from_parameter('TestClassOne/foo')
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+      end
+    end
+
+    describe('with GlobalID input') do
+      it 'should return a fingerprint' do
+        o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+        gid1 = o1.to_global_id
+
+        o = ph.fingerprint_from_parameter(gid1)
+        expect(o).to eql(o1.fingerprint)
+
+        o = ph.fingerprint_from_parameter(gid1.to_s)
+        expect(o).to eql(o1.fingerprint)
+      end
+
+      it 'should raise a conversion error exception on an invalid GlobalID' do
+        expect do
+          ph.fingerprint_from_parameter('gid://foo')
+        end.to raise_exception(Fl::Core::ParametersHelper::ConversionError)
+      end        
+
+      it 'should succeed with an unknown app name' do
+        o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+        gid1 = o1.to_global_id
+
+        uri = gid1.uri.dup
+        uri.host = 'a.different.app'
+        o = ph.fingerprint_from_parameter(uri.to_s)
+        expect(o).to eql(o1.fingerprint)
+      end
+
+      it 'should accept an unknown class name' do
+        o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+        gid1 = o1.to_global_id
+
+        uri = gid1.uri.dup
+        uri.path = '/Fl::Core::NoSuchTestDatumOne/1'
+        o = ph.fingerprint_from_parameter(uri.to_s)
+        expect(o).to eql('Fl::Core::NoSuchTestDatumOne/1')
+      end
+    end
+    
+    describe('with hash input') do
+      it('should raise an exception on a missing key and no fallbacks') do
+        expect do
+          f = ph.fingerprint_from_parameter({ obj: "TestClassOne/#{o10.id}" }, :v)
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+      end
+
+      describe('if key is present') do
+        it('should return a fingerprint from an object value') do
+          f = ph.fingerprint_from_parameter({ obj: o10 }, :obj)
+          expect(f).to eql(o10.fingerprint)
+
+          f = ph.fingerprint_from_parameter({ obj: o10, v: o11 }, :v)
+          expect(f).to eql(o11.fingerprint)
+        end
+
+        describe('with fingerprint value') do
+          it('should return the fingerprint') do
+            f = ph.fingerprint_from_parameter({ obj: o10.fingerprint }, :obj)
+            expect(f).to eql(o10.fingerprint)
+
+            f = ph.fingerprint_from_parameter({
+                                                obj: o10.fingerprint,
+                                                v: o12.fingerprint
+                                              }, :v)
+            expect(f).to eql(o12.fingerprint)
+          end
+
+          it('should raise a conversion error on malformed fingerprints') do
+            expect do
+              f = ph.fingerprint_from_parameter({ obj: '/10' }, :obj)
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+
+            expect do
+              f = ph.fingerprint_from_parameter({ v: 'TestClassOne/foo' }, :v)
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+          end
+
+          it('should accept on unknown class') do
+            f = ph.fingerprint_from_parameter({ o: 'Unknown/10' }, :o)
+            expect(f).to eql('Unknown/10')
+          end
+        end
+
+        describe('with GlobalID value') do
+          it 'should extract the fingerprint' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            o = ph.fingerprint_from_parameter({ obj: gid1 }, :obj)
+            expect(o).to eql(o1.fingerprint)
+
+            o = ph.fingerprint_from_parameter({ obj: gid1.to_s }, :obj)
+            expect(o).to eql(o1.fingerprint)
+          end
+
+          it 'should raise a conversion error exception on an invalid GlobalID' do
+            expect do
+              ph.fingerprint_from_parameter({ obj: 'gid://foo' }, :obj)
+            end.to raise_exception(Fl::Core::ParametersHelper::ConversionError)
+          end
+
+          it 'should succeed with an unknown app name' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            uri = gid1.uri.dup
+            uri.host = 'a.different.app'
+            o = ph.fingerprint_from_parameter({ obj: uri.to_s }, :obj)
+            expect(o).to eql(o1.fingerprint)
+          end
+
+          it 'should accept an unknown class name' do
+            o1 = Fl::Core::TestDatumOne.create(title: 'plain title', content: 'plain content')
+            gid1 = o1.to_global_id
+
+            uri = gid1.uri.dup
+            uri.path = '/Fl::Core::NoSuchTestDatumOne/1'
+            o = ph.fingerprint_from_parameter({ obj: uri.to_s }, :obj)
+            expect(o).to eql('Fl::Core::NoSuchTestDatumOne/1')
+          end
+        end
+
+        describe('with :type/:id value') do
+          it('should construct the fingerprint') do
+            f = ph.fingerprint_from_parameter({ type: "TestClassOne", id: o10.id })
+            expect(f).to eql(o10.fingerprint)
+
+            f = ph.fingerprint_from_parameter({ type: "TestClassOne", id: "#{o10.id}" })
+            expect(f).to eql(o10.fingerprint)
+          end
+
+          it('should ignore the :key argument') do
+            f = ph.fingerprint_from_parameter({ type: "TestClassOne", id: o10.id }, :obj)
+            expect(f).to eql(o10.fingerprint)
+          end
+          
+          it('should raise a conversion error on missing :type or :id') do
+            expect do
+              f = ph.fingerprint_from_parameter({ type: "TestClassOne" })
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+
+            expect do
+              f = ph.fingerprint_from_parameter({ id: o10.id })
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+          end
+
+          it('should accept on unknown class') do
+            f = ph.fingerprint_from_parameter({ type: "Unknown", id: 10 })
+            expect(f).to eql('Unknown/10')
+          end
+        end
+
+        describe('with hash value') do
+          it('should generate the fingerprint') do
+            f = ph.fingerprint_from_parameter({ obj: { type: 'TestClassOne', id: o10.id } }, :obj)
+            expect(f).to eql(o10.fingerprint)
+
+            f = ph.fingerprint_from_parameter({ obj: { type: TestClassOne, id: "#{o10.id}" } }, :obj)
+            expect(f).to eql(o10.fingerprint)
+          end
+
+          it('should raise a conversion error on missing key') do
+            expect do
+              f = ph.fingerprint_from_parameter({ obj: { type: "TestClassOne", id: "#{o10.id}" } }, :k)
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+          end
+          
+          it('should raise a conversion error on missing :type or :id') do
+            expect do
+              f = ph.fingerprint_from_parameter({ o: { type: "TestClassOne" } }, :o)
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+
+            expect do
+              f = ph.fingerprint_from_parameter({ h: { id: o10.id } }, :h)
+            end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+          end
+
+          it('should accept on unknown class') do
+            f = ph.fingerprint_from_parameter({ v: { type: "Unknown", id: 10 } }, :v)
+            expect(f).to eql('Unknown/10')
+          end
+        end
+      end
+    end
+
+    describe('with the :expect argument') do
+      it('should accept a single class') do
+        f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", nil, TestClassOne)
+        expect(f).to eql(o10.fingerprint)
+
+        f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", :v, TestClassOne)
+        expect(f).to eql(o10.fingerprint)
+
+        f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", nil, 'TestClassOne')
+        expect(f).to eql(o10.fingerprint)
+
+        expect do
+          f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", nil, TestClassTwo)
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+      end
+
+      it('should accept an array of classes') do
+        f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", :v, [ TestClassOne, TestClassTwo ])
+        expect(f).to eql(o10.fingerprint)
+
+        f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", :v, [ 'TestClassOne', TestClassTwo ])
+        expect(f).to eql(o10.fingerprint)
+
+        f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", :v, [ TestClassOne, 'TestClassTwo' ])
+        expect(f).to eql(o10.fingerprint)
+
+        expect do
+          f = ph.fingerprint_from_parameter("TestClassOne/#{o10.id}", nil, [ TestClassTwo, TestClassFour ])
         end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
       end
     end
