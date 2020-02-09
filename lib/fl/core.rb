@@ -17,6 +17,7 @@ require 'fl/core/application_record'
 
 require 'fl/core/attribute_filters'
 require 'fl/core/captcha'
+require 'fl/core/digest_helper'
 require 'fl/core/generator_helper'
 require 'fl/core/html_helper'
 require 'fl/core/i18n'
