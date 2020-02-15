@@ -92,6 +92,8 @@ module Fl::Core
     #  o = MyClass.new(obj: 'SampleClass/10', key: 'value', other: 'other')
 
     def self.object_from_parameter(p, key = nil, expect = nil, strict = false)
+      return nil if p.nil?
+
       obj = nil
       h = nil
 
