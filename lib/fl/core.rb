@@ -28,6 +28,7 @@ require 'fl/core/query'
 require 'fl/core/time_zone'
 require 'fl/core/title_management'
 
+require 'fl/core/concerns'
 require 'fl/core/db'
 require 'fl/core/access'
 require 'fl/core/actor'
