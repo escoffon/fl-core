@@ -7,12 +7,9 @@ Install Node.js packages:
 - del (used by the cleanup task in gulp)
 - run-sequence (used by the gulp file)
 
-The fl-dgeni directory contain a (future?) Node package that defines a bunch of extensions for,
-and customizations of, the dgeni-packaages package.
-
 conf-sample.js is the configuration file to run the sample doc files (in ~/src/sampledoc).
 
-the Gulp file in ~/gulpfile.js has targets for running various documentation sets.
+The Gulp file in ~/gulpfile.js has targets for running various documentation sets.
 
 You may have to use <pre> to inline examples in documentation sections.
 The implementation of markdown does not seem to understand indents as code areas at times; it's not

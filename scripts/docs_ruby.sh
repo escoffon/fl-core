@@ -11,7 +11,7 @@ if test "$(type -t yard)" = '' ; then
 fi
 
 if test "x$1" = "x" ; then
-    echo "usage: $0 [doc|stats] [options]"
+    echo "usage: $0 [doc|stats|list|clean] [list-options]"
     exit 1
 else
     OP=$1
@@ -29,7 +29,7 @@ while test ! -f $CFGFILE ; do
     fi
 done
 
-RUBYDOCS="public/doc/fl/core/ruby"
+RUBYDOCS="spec/FlCoreTestApp/public/doc/fl/core/ruby"
 
 case $OP in
     doc) echo "generating documentation in $RUBYDOCS"
@@ -43,6 +43,10 @@ case $OP in
 	 fi
 	 ;;
 
+    clean) echo "removing documentation in $RUBYDOCS"
+	 rm -rf $RUBYDOCS
+	 ;;
+    
     stats) echo "generating statistics (including undocumented items)"
 	   if yard stats --yardopts $CFGFILE --list-undoc ; then
 	       echo "generated statistics"
@@ -51,6 +55,12 @@ case $OP in
 	       exit 1
 	   fi
 	   ;;
+
+    list) shift 
+	  echo "running list command: $@"
+	  yard list $@
+	  ;;
+
     *) echo "unknown operation: $OP"
        exit 1
        ;;

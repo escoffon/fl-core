@@ -2,7 +2,7 @@
 var path = require('canonical-path');
 var Package = require('dgeni').Package;
 
-const JSDOCS = 'public/doc/fl/core/js';
+const JSDOCS = 'spec/FlCoreTestApp/public/doc/fl/core/js';
 
 const STATE_ROOT = 'docs';
 const URL_ROOT = '/docs';
