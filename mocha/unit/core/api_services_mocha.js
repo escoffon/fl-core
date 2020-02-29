@@ -154,14 +154,21 @@ const SHALLOW_NESTED_API_CFG = {
 
 const axmock = new AxiosMockAdapter(myaxios);
 
+
 axmock
     .onGet('/my/models.json').reply(200, JSON.stringify({
-	models: [ MODEL_1, MODEL_2 ],
-	_pg: { _c: 2, _s:20 , _p: 2}
+	_status: { message: 'list of MyAPITestModel' },
+	payload: {
+	    models: [ MODEL_1, MODEL_2 ],
+	    _pg: { _c: 2, _s:20 , _p: 2}
+	}
     }))
 
     .onGet('/my/models/1.json').reply(function(cfg) {
-	rv = [ 200, JSON.stringify({ model: MODEL_1 }) ];
+	let rv = [ 200, JSON.stringify({
+	    _status: { message: 'single model MODEL_1' },
+	    payload: { model: MODEL_1 }
+	}) ];
 
 	// we do this to check that parameters are generated
 	if (_.isObject(cfg.params)) rv.push(cfg.params);
@@ -170,21 +177,27 @@ axmock
     })
 
     .onGet('/my/models/10.json').reply(404, JSON.stringify({
-	_error: { status: "not_found", message: "No user with id 10", details:null }
+	_error: { type: "not_found", message: "No model with id 10", details: null }
     }))
 
     .onPost('/my/models.json').reply(function(cfg) {
 	let j = JSON.parse(cfg.data);
 	let m = _.merge({}, MODEL_1, j.my_model);
 
-	return [ 200, JSON.stringify({ model: m }) ];
+	return [ 200, JSON.stringify({
+	    _status: { message: 'did create MODEL_1' },
+	    payload: { model: m }
+	}) ];
     })
 
     .onPatch('/my/models/1.json').reply(function(cfg) {
 	let j = JSON.parse(cfg.data);
 	let m = _.merge({}, MODEL_1, j.my_model);
 
-	return [ 200, JSON.stringify({ model: m }) ];
+	return [ 200, JSON.stringify({
+	    _status: { message: 'updated MODEL_1' },
+	    payload: { model: m }
+	}) ];
     })
 
     .onPatch('/my/models/10.json').reply(function(cfg) {
@@ -192,13 +205,16 @@ axmock
 	let m = _.merge({}, MODEL_1, j.my_model);
 
 	return [ 404, JSON.stringify({
-	    _error: { status: "not_found", message: "No user with id 10", details:null }
+	    _error: { status: "not_found", message: "No model with id 10" }
 	}) ];
     })
 
     .onGet('/my/bases/10/deps/20/more_models.json').reply(200, JSON.stringify({
-	more_models: [ MORE_MODEL_100, MORE_MODEL_200 ],
-	_pg: { _c: 2, _s:20 , _p: 2}
+	_status: { message: 'listed nested models' },
+	payload: {
+	    more_models: [ MORE_MODEL_100, MORE_MODEL_200 ],
+	    _pg: { _c: 2, _s:20 , _p: 2}
+	}
     }))
 
 ;
@@ -836,7 +852,7 @@ describe('fl.api_services module', function() {
 		    .catch(function(r) {
 			expect(r.response.status).to.eq(404);
 			let err = srv.response_error(r);
-			expect(err.status).to.eq('not_found');
+			expect(err.type).to.eq('not_found');
 			
 			return Promise.resolve(true);
 		    });
@@ -1175,9 +1191,7 @@ describe('fl.api_services module', function() {
 		    response: { status: 'test_status', message: 'test_message' }
 		});
 
-		expect(err).to.include({
-		    status: 'test_status', message: 'test_message'
-		});
+		expect(err).to.include({ type: 'test_status', message: 'test_message' });
 	    });
 
 	    it('should extract with incomplete data', function() {
@@ -1186,9 +1200,7 @@ describe('fl.api_services module', function() {
 		    response: { status: 'test_status', message: 'test_message', data: { }}
 		});
 
-		expect(err).to.include({
-		    status: 'test_status', message: 'test_message'
-		});
+		expect(err).to.include({ type: 'test_status', message: 'test_message' });
 	    });
 
 	    it('should extract with correct priorities', function() {
