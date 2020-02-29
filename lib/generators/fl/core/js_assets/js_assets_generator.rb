@@ -3,47 +3,6 @@ require 'json'
 module Fl::Core
   class JsAssetsGenerator < Rails::Generators::Base
     include Fl::Core::GeneratorHelper
-    
-    desc <<-DESC
-  This generator installs the Javascript core assets into vendor/javascript.
-  Some gems (for example, webpacker) do not support accessing assets outside of the
-  directory structure of the Rails application, and therefore you have to copy
-  those files over.
-
-  The generator also installs a starter documentation configuration directory and
-  the necessary Yard package references.
-
-  It takes one optional flag:
-    --nodoc    If present, the documentation configuration is not created.
-               By default, the documentation configuration is created.
-
-  For example, given this command:
-    rails generate fl:core:js_assets
-  The generator will create:
-    vendor/javascript/fl/core
-  as a copy of app/javascript/fl/core in the gem.
-
-  It will also create a package.json file, or modify an existing one, to register
-  Yarn packages used by the Javascript assets (many of which are used by the
-  documentation system).
-
-  Finally, unless the --nodoc flag is given, a default configuration file is
-  created in
-    doc/dgeni/conf.js
-  Template API and Guide content files are created under
-    doc/dgeni/contents
-  And a Gulp driver file
-    gulpfile.js
-  is created in the app's root directory. Running the Gulp tool generates
-  documentation in
-    public/doc/js
-  that documents the assets that were installed above, and any other sources in
-    app/javascript
-  (You can modify much of this behavior by editing the conf.js file.)
-  A driver script for the documentation system is placed in
-    scripts/docs_js.sh
-  that wraps the call to Gulp after the documentation directory is cleared.
-DESC
 
     class_option :nodoc, aliases: "-n", type: :boolean, required: false,
     	         desc: "Controls generation of documentation configuration"
