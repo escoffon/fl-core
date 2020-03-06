@@ -327,12 +327,12 @@ module Fl::Core
       #  override to add subclass-specific operations.
 
       def to_hash_operations_list
-        [ Fl::Core::Access::Access::Permission::Owner::NAME,
-          Fl::Core::Access::Access::Permission::Read::NAME,
-          Fl::Core::Access::Access::Permission::Write::NAME,
-          Fl::Core::Access::Access::Permission::Delete::NAME,
-          Fl::Core::Access::Access::Permission::Index::NAME,
-          Fl::Core::Access::Access::Permission::IndexContents::NAME
+        [ Fl::Core::Access::Permission::Owner::NAME,
+          Fl::Core::Access::Permission::Read::NAME,
+          Fl::Core::Access::Permission::Write::NAME,
+          Fl::Core::Access::Permission::Delete::NAME,
+          Fl::Core::Access::Permission::Index::NAME,
+          Fl::Core::Access::Permission::IndexContents::NAME
         ]
       end
 
