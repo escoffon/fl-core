@@ -44,17 +44,23 @@ en:
             validate:
               forbiddent_content_type: "content type %{ctype} in file %{filename} is not allowed"
 
-      captcha:
-        no-captcha: 'The request does not contain the CAPTCHA key %{key}'
-        verification-failure: 'CAPTCHA verification failure: %{messages}'
-
       access:
         permission:
           duplicate_name: "duplicate permission name '%{name}'"
           duplicate_bit: "duplicate bit value %{bit} in permission '%{name}'"
           missing: "unknown permission: %{name}"
 
-          
+      service:
+        forbidden: "You do not have permission :%{op} on object id %{id}"
+        not_found: "Could not find object with id %{id}"
+        owner_not_found: "Could not find owner object with id %{id}"
+        creation_failure: "Failed to create an instance of %{class}"
+        nested_creation_failure: "Failed to create instance of class %{class} nested in %{owner}"
+        captcha:
+          no-captcha: 'The request does not contain the CAPTCHA key %{key}'
+          verification-failure: 'CAPTCHA verification failure: %{messages}'
+
+      
     framework:
       access:
         grant:

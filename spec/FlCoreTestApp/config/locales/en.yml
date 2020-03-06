@@ -31,3 +31,13 @@
 
 en:
   hello: "Hello world"
+
+  # The following keys are used to test the Fl::Core::Service::Base functionality
+
+  test_datum_one_service:
+    not_found: "test_datum_one_service: not_found-%{id}-"
+    
+  my_module:
+    datum_one_service:
+      forbidden: "my_module.datum_one_service: forbidden-%{op}-%{id}-"
+      not_found: "my_module.datum_one_service: not_found-%{id}-"
