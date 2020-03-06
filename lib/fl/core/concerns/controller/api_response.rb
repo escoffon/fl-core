@@ -42,7 +42,7 @@ module Fl::Core::Concerns::Controller::ApiResponse
   # - **:type** is the value of *type* (converted to a string), and it "tags" the error; this is typically used
   #   by client software to error-dependent actions.
   # - **:message** is the value of *message*, if non-nil.
-  # - If *details* is provided, its value is copied into the **details** key.
+  # - If *details* is provided, a duplicate of its value is placed into the **details** key.
   #
   # @param type [String,Symbol] A string or symbol that tags the type of error; for example: `'not_found'` or
   #  `:authentication_failure`.
@@ -56,7 +56,15 @@ module Fl::Core::Concerns::Controller::ApiResponse
       type: type
     }
     _error[:message] = message if message.is_a?(String) && (message.length > 0)
-    { _error: (details.is_a?(Hash)) ? _error.merge({ details: details }) : _error }
+
+    if details.is_a?(Hash)
+      # We need to save a copy just in case the caller has passed something like obj.errors.messages,
+      # which is reset when the object is reset
+
+      _error[:details] = details.dup
+    end
+    
+    { _error: _error }
   end
 
   # Render success response data.
