@@ -3,8 +3,11 @@ module Fl::Core
     include Fl::Core::ModelHash
     include Fl::Core::TitleManagement
     include Fl::Core::AttributeFilters
-
+    include Fl::Core::Access::Access
+    
     self.table_name = :fl_core_test_datum_ones
+
+    has_access_control Fl::Core::TestCheckerOne.new
     
     belongs_to :owner, class_name: 'Fl::Core::TestActor', optional: true
     
@@ -17,6 +20,15 @@ module Fl::Core
     filtered_attribute :content, [ FILTER_HTML_STRIP_DANGEROUS_ELEMENTS, :spancolor ]
     
     protected
+
+    def to_hash_operations_list
+      [ Fl::Core::Access::Permission::Read::NAME,
+        Fl::Core::Access::Permission::Write::NAME,
+        Fl::Core::Access::Permission::Delete::NAME,
+        Fl::Core::Access::Permission::Index::NAME,
+        Fl::Core::Access::Permission::IndexContents::NAME
+      ]
+    end
 
     def to_hash_options_for_verbosity(actor, verbosity, opts)
       case verbosity

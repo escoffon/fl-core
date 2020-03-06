@@ -1,8 +1,30 @@
 RSpec.configure do |c|
+  c.include FactoryBot::Syntax::Methods
 #  c.include Fl::Core::Test::ObjectHelpers
 end
 
 RSpec.describe Fl::Core::ModelHash do
+  let(:a1) { create(:test_actor, name: 'a1') }
+  let(:a2) { create(:test_actor, name: 'a2') }
+  let(:a3) { create(:test_actor, name: 'a3') }
+  let(:a4) { create(:test_actor, name: 'a4') }
+
+  let(:d10) { create(:test_datum_one, owner: a1, title: 'd10') }
+  let(:d11) { create(:test_datum_one, owner: a1, title: 'd11') }
+  let(:d12) { create(:test_datum_one, owner: a1, title: 'd12') }
+  let(:d13) { create(:test_datum_one, owner: a1, title: 'd3') }
+
+  let(:g1) do
+    [
+      [ d10, [ [ a1, [ Fl::Core::Access::Permission::Edit::NAME ] ],
+               [ a2, [ Fl::Core::Access::Permission::Read::NAME,
+                       Fl::Core::Access::Permission::Delete::NAME ] ] ] ],
+      [ d12, [ [ a1, [ Fl::Core::Access::Permission::Read::NAME ] ],
+               [ a2, [ Fl::Core::Access::Permission::Read::NAME,
+                       Fl::Core::Access::Permission::Write::NAME ] ] ] ]
+    ]
+  end
+
   describe '#to_hash' do
     let(:o1) do
       o1 = Fl::Core::TestDatumOne.create(title: 'o1 title', content: 'o1 content')
@@ -12,16 +34,15 @@ RSpec.describe Fl::Core::ModelHash do
     end
 
     let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id ] }
-    let(:min_keys) { id_keys | [ :created_at, :updated_at, :title, :content ] }
+    let(:min_keys) { id_keys | [ :created_at, :updated_at, :title, :content, :permissions ] }
     let(:complete_keys) { min_keys | [ :details ] }
 
     it 'should list properties based on verbosity' do
       h = o1.to_hash(nil, { verbosity: :id })
-      expect(h.keys.sort).to match_array(id_keys.sort)
+      expect(h.keys).to match_array(id_keys)
       expect(h[:id]).to eql(o1.id)
       expect(h[:type]).to eql(o1.class.name)
 
-      min_keys = id_keys | [ :created_at, :updated_at, :title, :content ]
       h = o1.to_hash(nil, { verbosity: :minimal })
       expect(h.keys).to match_array(min_keys)
       expect(h[:title]).to eql(o1.title)
@@ -113,6 +134,19 @@ RSpec.describe Fl::Core::ModelHash do
       expect(d0.keys).to match_array(t_std_keys - [ :content ])
       m = d0[:master]
       expect(m.keys).to match_array(id_keys | [ :title ])
+    end
+
+    it 'should generate permission lists if access is enabled' do
+      d10.access_checker.grants = g1
+
+      pl = d10.to_hash(a1, { verbosity: :minimal })[:permissions]
+      expect(pl).to include({ read: true, write: true, delete: false, index: false, index_contents: false })
+
+      pl = d10.to_hash(a2, { verbosity: :minimal })[:permissions]
+      expect(pl).to include({ read: true, write: false, delete: true, index: false, index_contents: false })
+
+      pl = d10.to_hash(a3, { verbosity: :minimal })[:permissions]
+      expect(pl).to include({ read: false, write: false, delete: false, index: false, index_contents: false })
     end
   end
 end
