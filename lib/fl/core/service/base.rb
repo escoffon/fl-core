@@ -177,6 +177,19 @@ module Fl::Core::Service
       @status.dup
     end
 
+    # Get the a response data hash.
+    # This method returns the response data corresponding to *status*.
+    #
+    # @param s [Symbol] The status value (for example, {Fl::Core::Service::FORBIDDEN}).
+    #  If `nil`, get usee the current status value.
+    #
+    # @return [Hash,nil] Returns the response data, `nil` if not found.
+
+    def status_response_data(s = nil)
+      s = self.status[:status] if s.nil?
+      @status[:response_data][s]
+    end
+    
     # Clear the status.
     # The method sets the service in the success status.
 
