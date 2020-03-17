@@ -1233,7 +1233,9 @@ let FlAPIService = FlClassManager.make_class({
 	 * @name FlAPIService#response_status
 	 * @description Extract a status object from a successful response.
 	 *
-	 * @param {Object} r The response.
+	 * @param {Object} [r] The response object from Axios; if not provided, use the current internal value of the
+	 *  response object, which was stored after the last successful API call.
+	 *  Clients will typically call this method without arguments, in the `then` handler from an API call.
 	 *
 	 * @return {Object} Returns an object containing a status report:
 	 *  - *:status* The response status.
@@ -1241,21 +1243,7 @@ let FlAPIService = FlClassManager.make_class({
 	 */
 
 	response_status: function(r) {
-	    let s = {
-		status: r.status
-	    };
-
-	    let rd = r.data;
-	    if (_.isObject(rd) && _.isObject(rd._status))
-	    {
-		s = rd._status;
-	    }
-	    else
-	    {
-		s.message = r.statusText;
-	    }
-
-	    return s;
+	    return FlAPIService.extract_response_status((_.isUndefined(r)) ? this._response : r);
 	},
 
 	/**
@@ -1265,9 +1253,12 @@ let FlAPIService = FlClassManager.make_class({
 	 *  The method tries to detect the type of response: a general HTTP response,
 	 *  an API error status, or an exception raised.
 	 *
-	 * @param {Object} r The response object from Axios; this object describes a failed request,
+	 * @param {Object} [e] The error object from Axios; if not provided, use the current internal value of the
+	 *  error object, which was stored after the last unsuccessful API call.
+	 *  This object describes a failed request,
 	 *  including situations where Axios was unable to submit the request (for example, because the
 	 *  target URL is unavailable).
+	 *  Clients will typically call this method without arguments, in the `catch` handler from an API call.
 	 *
 	 * @return {Object} Returns an object containing an error report:
 	 *  - **type** The error type; if the response contains an **_error** object, this is the **type**
@@ -1276,47 +1267,8 @@ let FlAPIService = FlClassManager.make_class({
 	 *    property. Otherwise, it is set to the message from the response status code.
 	 */
 
-	response_error: function(r) {
-	    let err = { };
-	    let response = r.response;
-
-	    if (_.isObject(response))
-	    {
-		let rd = response.data;
-		if (_.isObject(rd) && _.isObject(rd._error))
-		{
-		    err = rd._error;
-		}
-
-		if (_.isUndefined(err.type)) err.type = (_.isUndefined(response.status)) ? 'error' : response.status;
-		
-		if (_.isUndefined(err.message))
-		{
-		    err.message = "response error";
-		    if (_.isString(response.statusText)) err.message = response.statusText;
-		    if (_.isString(response.message)) err.message = response.message;
-
-		    if (response.stack)
-		    {
-			err.details = {
-			    stack: response.stack.split("\n")
-			};
-		    }
-		}
-	    }
-	    else if (_.isError(r))
-	    {
-		err.message = r.message;
-		err.type = r.name;
-		if (r.stack)
-		{
-		    err.details = {
-			stack: r.stack.split("\n")
-		    };
-		}
-	    }
-
-	    return err;
+	response_error: function(e) {
+	    return FlAPIService.extract_response_error((_.isUndefined(e)) ? this._response : e);
 	},
 
 	/**
@@ -1691,6 +1643,100 @@ let FlAPIService = FlClassManager.make_class({
 
 	getServiceConfig: function() {
 	    return _.merge({ }, this._srv_cfg);
+	},
+
+	/**
+	 * @ngdoc method
+	 * @name FlAPIService#extract_response_status
+	 * @classmethod
+	 * @description Extract a status object from a successful response.
+	 *
+	 * @param {Object} r The response object from Axios.
+	 *
+	 * @return {Object} Returns an object containing a status report:
+	 *  - *:status* The response status.
+	 *  - *:message* A string containing a status message.
+	 */
+
+	extract_response_status: function(r) {
+	    let s = {
+		status: r.status
+	    };
+
+	    let rd = r.data;
+	    if (_.isObject(rd) && _.isObject(rd._status))
+	    {
+		s = rd._status;
+	    }
+	    else
+	    {
+		s.message = r.statusText;
+	    }
+
+	    return s;
+	},
+
+	/**
+	 * @ngdoc method
+	 * @name FlAPIService#extract_response_error
+	 * @classmethod
+	 * @description Extract or generate an error object from a failed response.
+	 *  The method tries to detect the type of response: a general HTTP response,
+	 *  an API error status, or an exception raised.
+	 *
+	 * @param {Object} e The error object from Axios.
+	 *  This object describes a failed request,
+	 *  including situations where Axios was unable to submit the request (for example, because the
+	 *  target URL is unavailable).
+	 *
+	 * @return {Object} Returns an object containing an error report:
+	 *  - **type** The error type; if the response contains an **_error** object, this is the **type**
+	 *    property. Otherwise, it is set to the response status code.
+	 *  - **message** The error message; if the response contains an **_error** object, this is the **message**
+	 *    property. Otherwise, it is set to the message from the response status code.
+	 */
+
+	extract_response_error: function(e) {
+	    let err = { };
+	    let response = e.response;
+
+	    if (_.isObject(response))
+	    {
+		let rd = response.data;
+		if (_.isObject(rd) && _.isObject(rd._error))
+		{
+		    err = rd._error;
+		}
+
+		if (_.isUndefined(err.type)) err.type = (_.isUndefined(response.status)) ? 'error' : response.status;
+		
+		if (_.isUndefined(err.message))
+		{
+		    err.message = "response error";
+		    if (_.isString(response.statusText)) err.message = response.statusText;
+		    if (_.isString(response.message)) err.message = response.message;
+
+		    if (response.stack)
+		    {
+			err.details = {
+			    stack: response.stack.split("\n")
+			};
+		    }
+		}
+	    }
+	    else if (_.isError(e))
+	    {
+		err.message = e.message;
+		err.type = e.name;
+		if (e.stack)
+		{
+		    err.details = {
+			stack: e.stack.split("\n")
+		    };
+		}
+	    }
+
+	    return err;
 	}
     },
     extensions: [ ]
