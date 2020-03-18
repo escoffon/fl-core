@@ -50,21 +50,23 @@ module Fl::Core::Access
   # #### Registration
   #
   # You will have to register permissions explictly with your system (Rails app, typically); for example,
-  # create the initializer `config/0000_permissions.rb` and populate it with registration calls:
+  # create the initializer `config/permissions.rb` and populate it with registration calls:
   #
   # ```
   # # Register permissions for the system
-  # Fl::Core::Access::Permission::Owner.new.register_with_report
-  # Fl::Core::Access::Permission::Create.new.register_with_report
-  # Fl::Core::Access::Permission::Read.new.register_with_report
-  # Fl::Core::Access::Permission::Write.new.register_with_report
-  # Fl::Core::Access::Permission::Delete.new.register_with_report
-  # Fl::Core::Access::Permission::Index.new.register_with_report
-  # Fl::Core::Access::Permission::IndexContents.new.register_with_report
-  # Fl::Core::Access::Permission::Edit.new.register_with_report
-  # Fl::Core::Access::Permission::Manage.new.register_with_report
+  # Rails.application.config.after_initialize do
+  #   Fl::Core::Access::Permission::Owner.new.register_with_report
+  #   Fl::Core::Access::Permission::Create.new.register_with_report
+  #   Fl::Core::Access::Permission::Read.new.register_with_report
+  #   Fl::Core::Access::Permission::Write.new.register_with_report
+  #   Fl::Core::Access::Permission::Delete.new.register_with_report
+  #   Fl::Core::Access::Permission::Index.new.register_with_report
+  #   Fl::Core::Access::Permission::IndexContents.new.register_with_report
+  #   Fl::Core::Access::Permission::Edit.new.register_with_report
+  #   Fl::Core::Access::Permission::Manage.new.register_with_report
   #
-  # MyPermission.new('additional data').register
+  #   MyPermission.new('additional data').register
+  # end
   # ```
   #
   # The `MyPermission.new('additional data').register` call registers `MyPermission` with the permission registry.
@@ -79,6 +81,12 @@ module Fl::Core::Access
   # 2. More importantly, the automatic registration does not play well with Rails caching features like
   #    bootsnap: under some conditions, multiple rake tasks tend to step on each other's toes and trigger
   #    duplicate registration exceptions.
+  #
+  # However, now we have to make sure that the initializer code does not pull in autoloaded classes, since
+  # that behavior is deprecated in Rails 6 and will likely become an error. (This applies to `MyPermission`,
+  # assuming that `MyPermission` is somewhere in the `app` directory, and therefore autoloaded; classes from
+  # a gem, like `Fl::Core::Access::Permission::Manage`, are explicitly loaded.)
+  # Wrap the registration with an `on_load` handler.
   #
   # #### Standard permission classes
   #
