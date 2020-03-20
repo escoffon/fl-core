@@ -1218,7 +1218,7 @@ let FlAPIService = FlClassManager.make_class({
 
 	_set_pagination_controls: function(r) {
 	    let self = this;
-	    let data = r.data;
+	    let data = r.data.payload;
 	    _.forEach(this._pg_names, function(k, idx) {
 		if (!_.isUndefined(data[k]))
 		{
