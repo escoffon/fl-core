@@ -527,6 +527,61 @@ RSpec.describe Fl::Core::ParametersHelper do
         expect(o).to eql('Fl::Core::NoSuchTestDatumOne/1')
       end
     end
+
+    describe('with string input') do
+      it('should return a fingerprint if not a valid format') do
+        f = ph.fingerprint_from_parameter('not_valid')
+        expect(f).to eql('not_valid')
+      end
+      
+      context('as an integer') do
+        it('should raise if :except is missing') do
+          expect do
+            f = ph.fingerprint_from_parameter('1234')
+          end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+        end
+
+        it('should return a fingerprint if :except is a string') do
+          f = ph.fingerprint_from_parameter('1234', nil, 'Fl::Core::TestDatumOne')
+          expect(f).to eql('Fl::Core::TestDatumOne/1234')
+        end
+
+        it('should raise if :except is a string for an unknown class') do
+          expect do
+            f = ph.fingerprint_from_parameter('1234', 'Fl::Core::oSuchTestDatumOne')
+          end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+        end
+
+        it('should return a fingerprint if :except is a class object') do
+          f = ph.fingerprint_from_parameter('1234', nil, Fl::Core::TestDatumOne)
+          expect(f).to eql('Fl::Core::TestDatumOne/1234')
+        end
+      end
+    end
+
+    describe('with integer input') do
+      it('should raise if :except is missing') do
+        expect do
+          f = ph.fingerprint_from_parameter(1234)
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+      end
+
+      it('should return a fingerprint if :except is a string') do
+        f = ph.fingerprint_from_parameter(1234, nil, 'Fl::Core::TestDatumOne')
+        expect(f).to eql('Fl::Core::TestDatumOne/1234')
+      end
+
+      it('should raise if :except is a string for an unknown class') do
+        expect do
+          f = ph.fingerprint_from_parameter(1234, 'Fl::Core::oSuchTestDatumOne')
+        end.to raise_error(Fl::Core::ParametersHelper::ConversionError)
+      end
+
+      it('should return a fingerprint if :except is a class object') do
+        f = ph.fingerprint_from_parameter(1234, nil, Fl::Core::TestDatumOne)
+        expect(f).to eql('Fl::Core::TestDatumOne/1234')
+      end
+    end
     
     describe('with hash input') do
       it('should raise an exception on a missing key and no fallbacks') do

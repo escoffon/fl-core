@@ -240,6 +240,8 @@ module Fl::Core
     #   extract the fingerprint.
     # - A string in the format _classname_/_id_, where _classname_ is the name of the class for the object,
     #   and _id_ is its object identifierK (in other words, a string containing a fingerprint).
+    # - An integer value, or a string containing an integer value, but only if *expect* is a string or a class
+    #   object. In this case, the fingerprint is constructed from the value of *expect* and *p*.
     # - A Hash containing the key _key_. In this case, the method fetches the value from that key, and tries
     #   again.
     # - If the hash does not contain _key_, then the method checks for **:global_id**, which it tries to resolve
@@ -316,8 +318,26 @@ module Fl::Core
           if uri.path.is_a?(String) && (uri.path.length > 0)
             fcn, fid = ActiveRecord::Base.split_fingerprint(uri.path.slice(1, uri.path.length))
           end
+        elsif p =~ /^[0-9]+$/
+          fid = p
+          if expect.is_a?(String)
+            fcn = expect
+          elsif expect.is_a?(Class)
+            fcn = expect.name
+          else
+            fcn = nil
+          end
         else
           fcn, fid = ActiveRecord::Base.split_fingerprint(p)
+        end
+      elsif p.is_a?(Integer)
+        fid = p
+        if expect.is_a?(String)
+          fcn = expect
+        elsif expect.is_a?(Class)
+          fcn = expect.name
+        else
+          fcn = nil
         end
       elsif p.is_a?(GlobalID)
         fcn, fid = ActiveRecord::Base.split_fingerprint(p.uri.path.slice(1, p.uri.path.length))
