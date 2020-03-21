@@ -652,6 +652,13 @@ module Fl::Core::Service
     public
 
     # Runs a query based on the request parameters.
+    #
+    # 1. Call {#has_index_permission?}; if the return value is `false`, return `nil`.
+    # 2. Call {#init_query_opts} to set up the query parameters.
+    # 3. Call {#index_query} to set up the query.
+    # 4. Call {#index_result} to get the result set.
+    # 5. Generate a response payload containing the results and the pagination controls.
+    #
     # The method catches any exceptions and sets the error state of the service from the
     # exception properties.
     #
@@ -668,6 +675,8 @@ module Fl::Core::Service
 
     def index(query_opts = {}, _q = {}, _pg = {})
       begin
+        return nil if !has_index_permission?
+
         qo = init_query_opts(query_opts, _q, _pg)
         q = index_query(qo)
         if q
@@ -868,6 +877,16 @@ module Fl::Core::Service
       "#{localization_prefix}.#{key}"
     end
 
+    # Check if the actor has permission to list objects (for the **:index** action).
+    # The default implementation calls {#class_allow_op?} using the permission
+    # {Fl::Core::Access::Permission::Index}.
+    #
+    # @return [Boolean] Returns `false` if the permission is not granted.
+
+    def has_index_permission?()
+      class_allow_op?(Fl::Core::Access::Permission::Index::NAME)
+    end
+      
     # Build a query to list objects.
     # This method is expected to return a ActiveRecord::Relation set up according to the query
     # parameters in <i>query_opts</i>. The default implementation returns `nil`; subclasses are

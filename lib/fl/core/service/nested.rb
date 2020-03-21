@@ -23,11 +23,20 @@ module Fl::Core::Service
     # @option cfg [Boolean] :disable_captcha Controls the CAPTCHA checks: set it to `true` to
     #  disable verification, even if the individual method options requested.
     #  This is mainly used during testing. The default value is `false`.
+    # @option cfg [Symbol,String] :owner_id_name The name of the key in {#params} that holds the
+    #  object identifier of the owner resource. For example, if the route path is
+    #  `/my/things/:thing_id/others`, then a path `/my/things/1234/others` results in the key **:thing_id**
+    #  with value `'1234'` in {#params}.
+    #  If this option is not provided, the key is set to the last component in the owner class name, underscored and
+    #  with a `_id` postfix. So if the owner class is `My::Thing`, then the **:owner_id_name** is
+    #  `thing_id`.
     #
     # @raise Raises an exception if the target model class has not been defined.
 
     def initialize(owner_class, actor, params = nil, controller = nil, cfg = {})
       @owner_class = owner_class
+      @owner_id_name = (cfg[:owner_id_name] || generate_owner_id_name).to_sym
+
       super(actor, params, controller, cfg)
     end
 
@@ -36,9 +45,14 @@ module Fl::Core::Service
     #
     # @return [Class] Returns the owner class.
 
-    def owner_class()
-      @owner_class
-    end
+    attr_reader :owner_class
+
+    # @!attribute [r] owner_id_name
+    # The name of the key in {#params} that holds the identifier for the owner object..
+    #
+    # @return [Symbol] Returns the name of the key that holds the owner object identifier.
+
+    attr_reader :owner_id_name
 
     # Look up an owner in the database, and check if the service's actor has permissions on it.
     # This method uses the owner id entry in {#params} to look up the object in the database
@@ -54,7 +68,7 @@ module Fl::Core::Service
     # @param op [Symbol,nil] op The operation for which to request permission.
     #  If `nil`, no access check is performed and the call is the equivalent of a simple database lookup.
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
-    #  identifier for the owner; array elements are tried until a hit. A `nil` value defaults to **:owner_id**.
+    #  identifier for the owner; array elements are tried until a hit. A `nil` value defaults to {#owner_id_name}.
     # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
     #  If `nil`, use the value returned by {#params}.
     # @option [Object] context The context to pass to the access checker method {#allow_op?}.
@@ -67,7 +81,7 @@ module Fl::Core::Service
     #  to {#initialize}.
 
     def get_and_check_owner(op, idname = nil, params = nil, context = nil)
-      idname = idname || :owner_id
+      idname = idname || owner_id_name
       params = normalize_params(params || self.params)
       ctx = (:context == :params) ? params : context
 
@@ -77,7 +91,7 @@ module Fl::Core::Service
                         error_response_data('owner_not_found',
                                             localized_message('no_owner', id: flatten_param_keys(kvp).join(','))))
       else
-        self.clear_status if allow_op?(obj, permission, ctx, idname, params)
+        self.clear_status if allow_op?(obj, op, ctx, idname, params)
       end
       
       obj
@@ -156,6 +170,28 @@ module Fl::Core::Service
       end
 
       obj
+    end
+
+    protected
+
+    # Check if the actor has permission to list objects (for the **:index** action).
+    # Overrides the default to call {#get_and_check_owner} using the permission
+    # {Fl::Core::Access::Permission::IndexContents}; if the return value is non-nil, return `true`,
+    # otherwise return `false`.
+    #
+    # @return [Boolean] Returns `false` if the permission is not granted.
+
+    def has_index_permission?()
+      owner = get_and_check_owner(Fl::Core::Access::Permission::IndexContents::NAME)
+      return (!owner.nil? && success?) ? true : false
+    end
+
+    # Generate the name of the owner id parameter from the current value os the owner class.
+    #
+    # @return [Symbol] Returns the owner id name.
+
+    def generate_owner_id_name()
+      "#{@owner_class.name.split('::').last.underscore}_id".to_sym
     end
   end
 end
