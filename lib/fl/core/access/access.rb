@@ -85,14 +85,6 @@ module Fl::Core::Access
 
         checker.configure(self)
       end
-
-      # Get the access checker.
-      #
-      # @return [Fl::Core::Access::Checker] Returns the value that was passed to {#has_access_control}.
-
-      def access_checker()
-        self.class_variable_get(:@@_access_checker)
-      end
     end
 
     # The methods in this module are installed as class method of the including class.
@@ -107,6 +99,14 @@ module Fl::Core::Access
       
       def has_access_control?
         true
+      end
+
+      # Get the access checker.
+      #
+      # @return [Fl::Core::Access::Checker] Returns the value that was passed to {#has_access_control}.
+
+      def access_checker()
+        self.class_variable_get(:@@_access_checker)
       end
 
       # Check if an actor has permission to perform an operation on an asset.
