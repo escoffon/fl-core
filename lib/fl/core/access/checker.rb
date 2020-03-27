@@ -36,9 +36,10 @@ module Fl::Core::Access
     # granted = c.access_check(:read, u1, a)
     # ```
     #
-    # Note that the method signature accepts string (fingerprint of GlobalID) values for *actor* and *assets*.
+    # Note that the method signature accepts string (fingerprint or GlobalID) values for *actor* and *assets*.
     # This is useful in situations where the method is called directly from a checker instance, rather than
-    # indirectly from a {InstanceMethods#has_permission?}. For example, say we have defined a community model
+    # indirectly from a {Fl::Core::Access::Access::InstanceMethods#has_permission?}.
+    # For example, say we have defined a community model
     # `Community` that manages a list of members `Community::Member`; the permissions granted to each member
     # is stored in the `Community::Member` instance. In that situation, the `Community` checker accepts actor
     # (the potential member) and asset (the community) as fingerprints as well as objects, so that a client can
