@@ -9,7 +9,7 @@ module Fl::Core::Access
   # The methods in this module define and implement a framework for standardizing access control
   # management, but don't provide a specific access control algorithm, and don't enforce access
   # control at the record level. (That functionality is left to a higher level layer, typically in a
-  # service object.)
+  # service object like {Fl::Core::Service::Base}.)
   # Classes define the access check strategy by providing an instance of (a subclass of)
   # {Checker} to {ClassMacros#has_access_control}.
   #
@@ -57,7 +57,7 @@ module Fl::Core::Access
 
   module Access
     # The methods in this module will be installed as class methods of the including class.
-    # Of particular importance is {#has_access_control}, which is used to turn on access control for
+    # Of particular importance is {ClassMacros#has_access_control}, which is used to turn on access control for
     # the class.
 
     module ClassMacros
@@ -103,7 +103,7 @@ module Fl::Core::Access
 
       # Get the access checker.
       #
-      # @return [Fl::Core::Access::Checker] Returns the value that was passed to {#has_access_control}.
+      # @return [Fl::Core::Access::Checker] Returns the value that was passed to {ClassMacros#has_access_control}.
 
       def access_checker()
         self.class_variable_get(:@@_access_checker)

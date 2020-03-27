@@ -105,7 +105,7 @@ module Fl::Core::Service
     #
     # @param key [String,Symbol] This is the class-independent component of the translation key; the method
     #  tries `localization_key(key)` and <code>fl.core.service.<i>key</i></code>.
-    # @param *args [Hash] The rest of the call parameters contain a hash of key substitutions to pass to the
+    # @param args [Hash] The rest of the call parameters contain a hash of key substitutions to pass to the
     #  {I18n.translate_x} method.
     #
     # @return [String] Returns the localized message.
@@ -350,7 +350,7 @@ module Fl::Core::Service
     # 2. Look up the key **captchaResponse** in {#create_params}, and if not found
     #    sets the status to {Fl::Core::Service::UNPROCESSABLE_ENTITY} and return a failure value.
     # 3. Creates an instance of the CAPTCHA verifier using {Fl::Core::CAPTCHA.factory} and calls
-    #    its {Fl::Core::CAPTCHA::Base#verify} method.
+    #    its `verify` method.
     #    On error, sets the status to {Fl::Core::Service::UNPROCESSABLE_ENTITY}.
     # 4. Return the response from the verification method.
     #
@@ -359,10 +359,10 @@ module Fl::Core::Service
     #
     # @param [Boolean,Hash] opts The CAPTCHA options. If `nil` or `false`, return a success value: no
     #  verification is requested. If a hash or `true`, run the verification; the hash value is passed
-    #  to the {Fl::Core::CAPTCHA::Base} initializer.
+    #  to {Fl::Core::CAPTCHA.factory}.
     #
     # @return [Hash] Returns a hash with the same structure as the return value from
-    #  {Fl::Core::CAPTCHA::Base#verify}.
+    #  {Fl::Google::RECAPTCHA#verify}.
 
     def verify_captcha(opts, params)
       return { 'success' => true } unless do_captcha_checks?
@@ -406,10 +406,10 @@ module Fl::Core::Service
     # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
     #  initializer. If not present or `nil`, use the value returned by {#create_params}.
     # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
-    #  the method does a CAPTCHA validation using an appropriate subclass of {Fl::CAPTCHA::Base}
+    #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
-    #  If the value is a hash, it is passed to the initializer for {Fl::CAPTCHA::Base}.
+    #  If the value is a hash, it is passed to the initializer for the CAPTCHA object.
     # @option opts [Symbol,String,Fl::Core::Access::Permission,Class] :permission The permission
     #  to request in order to complete the operation.
     #  See {Fl::Core::Access::Helper.permission_name}.
@@ -481,10 +481,10 @@ module Fl::Core::Service
     # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
     #  initializer. If not present or `nil`, use the value returned by {#update_params}.
     # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
-    #  the method does a CAPTCHA validation using an appropriate subclass of {Fl::CAPTCHA::Base}
+    #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
-    #  If the value is a hash, it is passed to the initializer for {Fl::CAPTCHA::Base}.
+    #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
     # @option opts [Symbol,String] :permission The name of the permission to request in order to
     #  complete the operation. Defaults to {Fl::Core::Access::Grants::WRITE}.
     # @option opts [Object] :context The context to pass to the access checker method {#allow_op?}.
@@ -656,7 +656,7 @@ module Fl::Core::Service
     # 1. Call {#has_index_permission?}; if the return value is `false`, return `nil`.
     # 2. Call {#init_query_opts} to set up the query parameters.
     # 3. Call {#index_query} to set up the query.
-    # 4. Call {#index_result} to get the result set.
+    # 4. Call {#index_results} to get the result set.
     # 5. Generate a response payload containing the results and the pagination controls.
     #
     # The method catches any exceptions and sets the error state of the service from the

@@ -79,7 +79,7 @@ module Fl::Core::Concerns::Controller::Params
   # This is a wrapper around {#normalize_param_value}, using the key **:_q**.
   #
   # @return [ActionController::Parameters] Returns the query parameters. Controller implementations
-  #  of {#query_parameters} are responsible for allowing only permitted ones.
+  #  of {#query_params} are responsible for allowing only permitted ones.
 
   def normalize_query_params()
     normalize_param_value(:_q)

@@ -4,11 +4,17 @@ require 'fl/google/recaptcha'
 # This namespace defines APIs to manage the implementation of CAPTCHA used by the framework.
 #
 # Implementations of CAPTCHA define the following method:
-#   def verify(response, ip = nil)
-#   end
+#
+# ```
+# def verify(response, ip = nil)
+# end
+# ```
+#
 # where
+#
 # - *response* is a string containing the response as submitted by the form.
 # - *ip* is a string containing an optional IP address for the requestor.
+#
 # The method returns a hash containing the response from the verification API, using the format
 # returned by the Google RECAPTCHA API's response.
 # In addition to the key/value pairs

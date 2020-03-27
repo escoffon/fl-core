@@ -117,10 +117,10 @@ module Fl::Core::Service
     # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
     #  initializer. If not present or `nil`, use the value returned by {#create_params}.
     # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
-    #  the method does a CAPTCHA validation using an appropriate subclass of {Fl::CAPTCHA::Base}
+    #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
-    #  If the value is a hash, it is passed to the initializer for {Fl::CAPTCHA::Base}.
+    #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
     # @option opts [Symbol,String] :permission The name of the permission to request in order to
     #  complete the operation. Defaults to {Fl::Core::Access::Grants::CREATE}.
     # @option opts [Object] :context The context to pass to the access checker method {#class_allow_op?}.
