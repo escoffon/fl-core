@@ -36,11 +36,11 @@ module Fl::Core::Concerns::Controller::ServiceStatus
     rde = rd[:_error] || { }
     _error[:message] = rde[:message] if rde[:message].is_a?(String)
 
-    if rd[:details].is_a?(Hash)
+    if rde[:details].is_a?(Hash)
       # We need to save a copy just in case the caller has passed something like obj.errors.messages,
       # which is reset when the object is reset
 
-      _error[:details] = rd[:details].dup
+      _error[:details] = rde[:details].dup
     end
     
     { _error: _error }

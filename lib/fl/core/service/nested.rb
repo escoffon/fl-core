@@ -140,7 +140,7 @@ module Fl::Core::Service
       idname = (opts.has_key?(:owner_id_name)) ? opts[:owner_id_name].to_sym : :owner_id
       attrname = (opts.has_key?(:owner_attribute_name)) ? opts[:owner_attribute_name].to_sym : :owner
       p = (opts[:params]) ? opts[:params].to_h : create_params(self.params).to_h
-      op = (opts[:permission]) ? opts[:permission].to_sym : Fl::Core::Access::Grants::CREATE
+      op = (opts[:permission]) ? opts[:permission] : Fl::Core::Access::Grants::CREATE::NAME
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
@@ -160,9 +160,9 @@ module Fl::Core::Service
             unless obj.save
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                               error_response_data('nested_creation_failure',
-                                                  localize_message('nested_creation_failure',
-                                                                   owner: owner.fingerprint,
-                                                                   class: self.model_class.name),
+                                                  localized_message('nested_creation_failure',
+                                                                    owner: owner.fingerprint,
+                                                                    class: self.model_class.name),
                                                   (obj) ? obj.errors.messages : nil))
             end
           end

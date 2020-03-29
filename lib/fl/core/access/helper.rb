@@ -126,7 +126,7 @@ module Fl::Core::Access
       plist = [ plist ] unless plist.is_a?(Array)
       plist.reduce([ ]) do |acc, p|
         n = self.permission_name(p)
-        acc << n if Fl::Core::Access::Permission.lookup(n)
+        acc << n if !n.nil? && Fl::Core::Access::Permission.lookup(n)
         acc
       end
     end
