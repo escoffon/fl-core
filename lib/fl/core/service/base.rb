@@ -768,7 +768,7 @@ module Fl::Core::Service
     #
     # The method builds the pagination controls as follows:
     #
-    # 1. Initialize with the values from **:_pg** in *opts*, if any.
+    # 1. Initialize with the values from **:_pg** in *pars*, if any.
     # 2. Set the value of **:_c** to the length of the *results* array, or to 0 if *results* is `nil`.
     # 3. If *opts* does not have a **:limit** value, set **:_s** to -1 and **:_p** to 1, since we cannot determine
     #    the page size and therefore calculate a starting page from the **:offset** option.
