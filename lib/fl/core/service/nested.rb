@@ -92,8 +92,8 @@ module Fl::Core::Service
       @parent, kvp = find_object(self.parent_class, idname, params)
       if @parent.nil?
         self.set_status(Fl::Core::Service::NOT_FOUND,
-                        error_response_data('parent_not_found',
-                                            localized_message('no_parent', id: flatten_param_keys(kvp).join(','))))
+                        error_response_data('no_parent',
+                                            localized_message('parent_not_found', id: flatten_param_keys(kvp).join(','))))
         return nil
       end
       

@@ -59,7 +59,6 @@ en:
         captcha:
           no-captcha: 'The request does not contain the CAPTCHA key %{key}'
           verification-failure: 'CAPTCHA verification failure: %{messages}'
-
       
     framework:
       access:
