@@ -111,7 +111,7 @@ module Fl::Core::Service
     # The parent object is also cached, and is available to subclasses via tyhe {#parent} attribute.
     # If the method is called twice, the cached object is used for access control.
     #
-    # @param op [Symbol,nil] op The operation for which to request permission.
+    # @param action [String,Symbol,nil] The action for which to check for permission.
     #  If `nil`, no access check is performed and the call is the equivalent of a simple database lookup.
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
     #  identifier for the parent; array elements are tried until a hit. A `nil` value defaults to {#parent_id_name}.
@@ -164,7 +164,7 @@ module Fl::Core::Service
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
     #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
-    # @option opts [Object] :context The context to pass to the access checker method {#class_allow_op?}.
+    # @option opts [Object] :context The context to pass to the access check method {#has_action_permission?}.
     #  The special value `:params` (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
     #  Defaults to `:params`.

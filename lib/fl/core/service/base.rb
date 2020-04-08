@@ -394,15 +394,14 @@ module Fl::Core::Service
     # If the permission call fails, it sets the status to {Fl::Core::Service::FORBIDDEN} and returns `nil`.
     # Otherwise, it sets the status to {Fl::Core::Service::OK} and returns the object.
     #
-    # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The permission to check.
-    #  See {Fl::Core::Access::Helper.permission_name} for a description of this value.
+    # @param action [String,Symbol,nil] The action for which to check for permission.
     #  If `nil`, no access check is performed and the call is the equivalent of a simple database lookup.
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
     #  identifier; array elements are tried until a hit.
     #  A `nil` value defaults to **:id**.
     # @param params [Hash] The parameters where to look up the **:id** key used to fetch the object.
     #  If `nil`, use the _params_ value that was passed to the constructor.
-    # @option context [Object] The context to pass to the access checker method {#allow_op?}.
+    # @option context [Object] The context to pass to the access check method {#has_action_permission?}.
     #  The special value `:params` (a Symbol named `params`) indicates that the value of *params* is to be
     #  passed as the context.
     #  Defaults to `nil`.
@@ -501,7 +500,7 @@ module Fl::Core::Service
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
     #  If the value is a hash, it is passed to the initializer for the CAPTCHA object.
-    # @option opts [Object] :context The context to pass to the access checker method {#class_allow_op?}.
+    # @option opts [Object] :context The context to pass to the access check method {#has_action_permission?}.
     #  The special value **:params** (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
     #  Defaults to **:params**.
@@ -571,7 +570,7 @@ module Fl::Core::Service
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
     #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
-    # @option opts [Object] :context The context to pass to the access checker method {#allow_op?}.
+    # @option opts [Object] :context The context to pass to the access check method {#has_action_permission?}.
     #  The special value `:params` (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
     #  Defaults to `:params`.
