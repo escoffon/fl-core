@@ -39,5 +39,5 @@ en:
     
   my_module:
     datum_one_service:
-      forbidden: "my_module.datum_one_service: forbidden-%{op}-%{id}-"
+      forbidden: "my_module.datum_one_service: forbidden-%{action}-%{id}-"
       not_found: "my_module.datum_one_service: not_found-%{id}-"

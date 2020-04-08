@@ -36,7 +36,8 @@ module Fl::Core::Service
     def initialize(owner_class, actor, params = nil, controller = nil, cfg = {})
       @owner_class = owner_class
       @owner_id_name = (cfg[:owner_id_name] || generate_owner_id_name).to_sym
-
+      @owner = nil
+      
       super(actor, params, controller, cfg)
     end
 
@@ -48,22 +49,67 @@ module Fl::Core::Service
     attr_reader :owner_class
 
     # @!attribute [r] owner_id_name
-    # The name of the key in {#params} that holds the identifier for the owner object..
+    # The name of the key in {#params} that holds the identifier for the owner object.
     #
     # @return [Symbol] Returns the name of the key that holds the owner object identifier.
 
     attr_reader :owner_id_name
 
-    # Look up an owner in the database, and check if the service's actor has permissions on it.
+    protected
+
+    # @!attribute owner [r]
+    # The owner object. This value is set by {#get_and_check_owner}.
+    #
+    # @return [ActiveRecord::Base] The owner.
+
+    attr_reader :owner
+
+    public
+    
+    # Look up an owner in the database.
     # This method uses the owner id entry in {#params} to look up the object in the database
     # (using the owner model class as the context for `find`, and the value of *idname* as the lookup key).
     # If it does not find the object, it sets the status to {Fl::Core::Service::NOT_FOUND} and
     # returns `nil`.
-    # If it finds the object, it then calls {Fl::Core::Access::Access::InstanceMethods#has_permission?} to
+    # If it finds the object, it caches it and then returns it.
+    #
+    # The owner object is available to subclasses via the {#owner} attribute.
+    # If the method is called twice, the cached object is returned directly.
+    #
+    # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
+    #  identifier for the owner; array elements are tried until a hit. A `nil` value defaults to {#owner_id_name}.
+    # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
+    #  If `nil`, use the value returned by {#params}.
+    #
+    # @return [ActiveRecord::Base, nil] Returns the master object, or `nil` if the owner was not found.
+
+    def get_owner(idname = nil, params = nil)
+      return @owner if !@owner.nil?
+      
+      idname = idname || owner_id_name
+      params = normalize_params(params || self.params)
+
+      @owner, kvp = find_object(self.owner_class, idname, params)
+      if @owner.nil?
+        self.set_status(Fl::Core::Service::NOT_FOUND,
+                        error_response_data('owner_not_found',
+                                            localized_message('no_owner', id: flatten_param_keys(kvp).join(','))))
+        return nil
+      end
+      
+      @owner
+    end
+    
+    # Look up an owner in the database, and check if the service's actor has permissions on it.
+    # This method calls {#get_owner} and, if the return value is non-nil,
+    # it then calls {Fl::Core::Access::Access::InstanceMethods#has_permission?} to
     # confirm that the actor has *op* access to the object.
     # If the permission call fails, it sets the status to {Fl::Core::Service::FORBIDDEN} and returns the
     # object.
     # Otherwise, it sets the status to {Fl::Core::Service::OK} and returns the object.
+    #
+    # The owner object is also cached, and is available to subclasses via tyhe {#owner} attribute.
+    # If the method is called twice, the cached object is used for access control.
     #
     # @param op [Symbol,nil] op The operation for which to request permission.
     #  If `nil`, no access check is performed and the call is the equivalent of a simple database lookup.
@@ -71,7 +117,7 @@ module Fl::Core::Service
     #  identifier for the owner; array elements are tried until a hit. A `nil` value defaults to {#owner_id_name}.
     # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
     #  If `nil`, use the value returned by {#params}.
-    # @option [Object] context The context to pass to the access checker method {#allow_op?}.
+    # @option [Object] context The context to pass to the access checker method {#has_action_permission?}.
     #  The special value **:params** (a Symbol named `params`) indicates that the value of _params_ is to be
     #  passed as the context.
     #  Defaults to +nil+.
@@ -80,18 +126,12 @@ module Fl::Core::Service
     #  that the check operation succeded. The object class will be the value of the owner_class parameter
     #  to {#initialize}.
 
-    def get_and_check_owner(op, idname = nil, params = nil, context = nil)
-      idname = idname || owner_id_name
-      params = normalize_params(params || self.params)
-      ctx = (:context == :params) ? params : context
-
-      obj, kvp = find_object(self.owner_class, idname, params)
-      if obj.nil?
-        self.set_status(Fl::Core::Service::NOT_FOUND,
-                        error_response_data('owner_not_found',
-                                            localized_message('no_owner', id: flatten_param_keys(kvp).join(','))))
-      else
-        self.clear_status if allow_op?(obj, op, ctx, idname, params)
+    def get_and_check_owner(action, idname = nil, params = nil, context = nil)
+      obj = get_owner(idname, params)
+      return nil if obj.nil?
+      
+      if !action.nil?
+        self.clear_status if has_action_permission?(action, obj, context)
       end
       
       obj
@@ -112,6 +152,9 @@ module Fl::Core::Service
     # it sets the status to {Fl::Core::Service::UNPROCESSABLE_ENTITY} and loads an error response data hash
     # that includes the object's error messages.
     #
+    # Note that the method uses {#get_and_check_owner} with action `create` to confirm that the actor does
+    # have permission to create a nested object instance.
+    #
     # @param opts [Hash] Options to the method. This section describes the common options; subclasses may
     #  define type-specific ones.
     # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
@@ -121,8 +164,6 @@ module Fl::Core::Service
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
     #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
-    # @option opts [Symbol,String] :permission The name of the permission to request in order to
-    #  complete the operation. Defaults to {Fl::Core::Access::Grants::CREATE}.
     # @option opts [Object] :context The context to pass to the access checker method {#class_allow_op?}.
     #  The special value `:params` (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
@@ -140,7 +181,6 @@ module Fl::Core::Service
       idname = (opts.has_key?(:owner_id_name)) ? opts[:owner_id_name].to_sym : :owner_id
       attrname = (opts.has_key?(:owner_attribute_name)) ? opts[:owner_attribute_name].to_sym : :owner
       p = (opts[:params]) ? opts[:params].to_h : create_params(self.params).to_h
-      op = (opts[:permission]) ? opts[:permission] : Fl::Core::Access::Grants::CREATE::NAME
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
@@ -149,12 +189,12 @@ module Fl::Core::Service
               p
             end
 
-      owner = get_and_check_owner(op, idname, nil, ctx)
+      owner = get_owner(idname, nil)
       obj = nil
       if owner && success?
         rs = verify_captcha(opts[:captcha], p)
         if rs['success']
-          if allow_op?(owner, op, ctx, idname, p)
+          if has_action_permission?('create', owner, ctx)
             p[attrname] = owner
             obj = self.model_class.new(p)
             unless obj.save
@@ -174,16 +214,58 @@ module Fl::Core::Service
 
     protected
 
-    # Check if the actor has permission to list objects (for the **:index** action).
-    # Overrides the default to call {#get_and_check_owner} using the permission
-    # {Fl::Core::Access::Permission::IndexContents}; if the return value is non-nil, return `true`,
-    # otherwise return `false`.
+    # Check that access checks are enabled and supported.
+    # Overrides the base implementation to ignore *obj* and use the {#owner} instead.
+    #
+    # @param action [String,Symbol,nil] The action for which to check for permission.
+    # @param obj [Object, Class, nil] The object that makes the `has_permission?` call; if `nil`, the
+    #  {#model_class} is used.
+    # @param opts [Hash] A hash of options to pass to the access check methods.
+    #
+    # @return [Boolean] Returns `true` if access checks are enabled, and *obj* responds to `has_permission?`;
+    #  otherwise, it returns `false`.
+
+    def do_access_checks?(action, obj = nil, opts = nil)
+      obj = get_owner if !obj.is_a?(owner_class)
+      (_disable_access_checks || !obj.respond_to?(:has_permission?)) ? false : true
+    end
+
+    # Perform the permission check for an action.
+    # Overrides the base implementation for the following actions:
+    #
+    # - **index** uses {Fl::Core::Access::Permission::IndexContents} if *obj* is a class instance rather than
+    #   a class. In nested service implementations, *obj* is the owner object, and controls access for the
+    #   dependent objects.
+    # - **create** uses {Fl::Core::Access::Permission::Write} if *obj* is a class instance rather than
+    #   a class. In nested service implementations, *obj* is the owner object, and controls access for the
+    #   dependent objects.
+    #
+    # @param action [String] The action for which to check for permission; the value has been normalized to a
+    #  string by {#has_action_permission?}.
+    # @param obj [Object,Class] The object to use to check the permission.
+    #  For collection-level actions like `index` and `create`, this is typically {#model_class};
+    #  for member-level actions like `update`, it is typically an instance of {#model_class}.
+    # @param opts [Hash] A hash of options to pass to the access check methods.
     #
     # @return [Boolean] Returns `false` if the permission is not granted.
 
-    def has_index_permission?()
-      owner = get_and_check_owner(Fl::Core::Access::Permission::IndexContents::NAME)
-      return (!owner.nil? && success?) ? true : false
+    def _has_action_permission?(action, obj, opts = nil)
+      case action
+      when 'index'
+        if obj.is_a?(Class)
+          return obj.has_permission?(Fl::Core::Access::Permission::Index::NAME, self.actor, opts)
+        else
+          return obj.has_permission?(Fl::Core::Access::Permission::IndexContents::NAME, self.actor, opts)
+        end          
+      when 'create'
+        if obj.is_a?(Class)
+          return obj.has_permission?(Fl::Core::Access::Permission::Create::NAME, self.actor, opts)
+        else
+          return obj.has_permission?(Fl::Core::Access::Permission::Write::NAME, self.actor, opts)
+        end
+      else
+        return super(action, obj, opts)
+      end
     end
 
     # Generate the name of the owner id parameter from the current value os the owner class.

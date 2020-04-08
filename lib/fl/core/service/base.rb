@@ -20,6 +20,8 @@ module Fl::Core::Service
   #
   # {Fl::Core::Service::Base} is the base class that implements the common framework for request processing;
   # you subclass it to customize the behavior for a specific model class.
+  # There is also a subclass {Fl::Core::Service::Nested} that provides the base class for service objects
+  # used by nested resources.
   
   class Base
     include Fl::Core::Concerns::Controller::ApiResponse
@@ -82,6 +84,28 @@ module Fl::Core::Service
       clear_status
     end
 
+    protected
+
+    # @!attribute _disable_access_checks [r]
+    # The access check flag.
+    # This internal attribute is set to `true` if access checks are disabled; {#initialize} sets it
+    # based on the value of the **:disable_access_checks** key in *cfg*.
+    #
+    # @return [Boolean] Return `true` if access checks are disabled, `false` otherwise.
+
+    attr_reader :_disable_access_checks
+    
+    # @!attribute _disable_captcha [r]
+    # The CAPTCHA check flag.
+    # This internal attribute is set to `true` if CAPTCHA checks are disabled; {#initialize} sets it
+    # based on the value of the **:disable_captcha** key in *cfg*.
+    #
+    # @return [Boolean] Return `true` if CAPTCHA checks are disabled, `false` otherwise.
+
+    attr_reader :_disable_captcha
+
+    public
+    
     # @!attribute [r] localization_prefix
     # The localization prefix.
     # This string is prefixed to localization strings; it is obtained from the class name by replacing 
@@ -229,71 +253,136 @@ module Fl::Core::Service
       @status[:status] == Fl::Core::Service::OK
     end
 
-    # Check if the class object associated with the service grants a permission.
-    # This check is done for operations triggered by the class object, like running the `index`
-    # or `create` action.
+    # Check if the actor has permission to execute an action.
+    # This method first normalizes *action*: if `nil`, get {#params}[:action]; if a string, leave it as is;
+    # if a symbol, convert to a string; and otherwise, return `false`.
+    # Then, it calls {#do_access_checks?}, passing it the normalized *action*, *obj*, and *opts*; if the return
+    # value is `false`, access checks are not enabled for this operation, and therefore it returns `true`.
+    # Otherwise, it calls {#_has_action_permission?}, which implements the actual access check process.
+    # If the return value is `true`, it clear the state and returns `true` to indicate that the action is
+    # allowed. If it is `false`, it sets the error state and returns `false`.
     #
-    # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The permission to check.
-    #  See {Fl::Core::Access::Helper.permission_name} for a description of this value.
-    # @param ctx [Object] The context to pass to the `has_permission?` method.
+    # @param action [String,Symbol,nil] The action for which to check for permission.
+    #  If `nil`, use the value of **:action** from the {#params} attribute.
+    # @param obj [Object,Class] The object to use to check the permission.
+    #  For collection-level actions like `index` and `create`, this is typically {#model_class};
+    #  for member-level actions like `update`, it is typically an instance of {#model_class}.
+    # @param opts [Hash] A hash of options to pass to the access check methods.
     #
-    # @return [Boolean] Returns `true` if the service's {#actor} is granted *permission*,
-    #  `false` otherwise. A `false` return value also sets the status to {Fl::Core::Service::FORBIDDEN}.
-    #  If the {#model_class} does not respond to `has_permission?`, or if permission checking is disabled,
-    #  `true` is returned.
+    # @return [Boolean] Returns `false` if the permission is not granted.
 
-    def class_allow_op?(permission, ctx = nil)
-      if do_access_checks?(self.model_class)
-        if !self.model_class.has_permission?(permission, self.actor, ctx)
-          self.set_status(Fl::Core::Service::FORBIDDEN,
-                          error_response_data('no_permission',
-                                              localized_message('forbidden', id: self.model_class.name, op: op)))
-          return false
-        end
+    def has_action_permission?(action = nil, obj = nil, opts = nil)
+        a = if action.nil?
+            params[:action]
+          elsif action.is_a?(String)
+            action
+          elsif action.is_a?(Symbol)
+            action.to_s
+          else
+            nil
+          end
+      return false if a.nil?
+
+      if !do_access_checks?(a, obj, opts)
+        self.clear_status
+        return true
+      elsif _has_action_permission?(a, obj, opts)
+        self.clear_status
+        return true
+      else
+        id = if obj.is_a?(Class)
+               obj.name
+             elsif obj.respond_to?(:fingerprint)
+               obj.fingerprint
+             elsif obj.is_a?(Integer) || (obj.is_a?(String) && (obj =~ /^[0-9]$/))
+               self.model_class.fingerprint(obj)
+             elsif obj.nil?
+               self.model_class.fingerprint(params[:id])
+             else
+               obj.to_s
+             end
+        self.set_status(Fl::Core::Service::FORBIDDEN,
+                        error_response_data('no_permission',
+                                            localized_message('forbidden', id: id, action: action)))
+        return false
       end
-
-      self.clear_status
-      true
     end
 
-    # Check if an object grants a permission.
-    # This check is done for operations triggered by a class instance, like running the `show`
-    # or `update` action.
+    protected
+    
+    # Perform the permission check for an action.
+    # This method defines the access check algorithms for the standard Rails actions:
     #
-    # Note that the *idname* and *params* parameters are used for error reporting.
+    # 1. Set the requested permission based on the value of *action*, as described below.
+    # 2. Calls {Fl::Core::Access::Access::ClassMethods#has_permission?} on *obj* using the requested permission.
     #
-    # @param obj [Object] The object to check; this is typically an instance of {#model_class}.
-    # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The permission to check.
-    #  See {Fl::Core::Access::Helper.permission_name} for a description of this value.
-    # @param ctx [Object] The context to pass to the `has_permission?` method.
-    # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
-    #  identifier.
-    #  Defaults to **:id** if `nil`.
-    # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
+    # The following action names are supported:
     #
-    # @return [Boolean] Returns `true` if the service's {#actor} is granted *permission*,
-    #  `false` otherwise. A `false` return value also sets the status to {Fl::Core::Service::FORBIDDEN}.
-    #  If *obj* does not respond to `has_permission?`, or if permission checking is disabled,
-    #  `true` is returned.
+    # - **index** with permission {Fl::Core::Access::Permission::Index}.
+    # - **create** with permission {Fl::Core::Access::Permission::Create}.
+    # - **show** with permission {Fl::Core::Access::Permission::Read}.
+    # - **update** with permission {Fl::Core::Access::Permission::Write}.
+    # - **destroy** with permission {Fl::Core::Access::Permission::Delete}.
+    # 
+    # Subclasses will have to override this implementation for two reasons.
+    # The first is to implement access checks for a nonstandard action. For example, for a service that
+    # implements the `search` action:
+    #
+    # ```
+    # class MyService < Fl::Core::Servcie::Base
+    #   def _has_action_permission?(action, obj, opts = nil)
+    #     if action == 'search'
+    #       run_search_access_checks(action, obj, opts)
+    #     else
+    #       super(action, obj, opts)
+    #     end
+    #   end
+    # end
+    # ```
+    #
+    # The second reason is to use a different access control mechanism for a standard action:
+    #
+    # ```
+    # class MyService < Fl::Core::Servcie::Base
+    #   def _has_action_permission?(action, obj, opts = nil)
+    #     if action == 'index'
+    #       run_my_index_access_checks(action, obj, opts)
+    #     else
+    #       super(action, obj, opts)
+    #     end
+    #   end
+    # end
+    # ```
+    #
+    # @param action [String] The action for which to check for permission; the value has been normalized to a
+    #  string by {#has_action_permission?}.
+    # @param obj [Object,Class] The object to use to check the permission.
+    #  For collection-level actions like `index` and `create`, this is typically {#model_class};
+    #  for member-level actions like `update`, it is typically an instance of {#model_class}.
+    # @param opts [Hash] A hash of options to pass to the access check methods.
+    #
+    # @return [Boolean] Returns `false` if the permission is not granted.
 
-    def allow_op?(obj, permission, ctx = nil, idname = nil, params = nil)
-      if do_access_checks?(obj)
-        if !obj.has_permission?(permission, self.actor, ctx)
-          idname = idname || :id
-          params = params || self.params
-          kvp = map_param_keys(idname, params)
-          self.set_status(Fl::Core::Service::FORBIDDEN,
-                          error_response_data('no_permission',
-                                              localized_message('forbidden',
-                                                                id: flatten_param_keys(kvp).join(','),
-                                                                op: permission)))
-          return false
-        end
-      end
+    def _has_action_permission?(action, obj, opts = nil)
+      p = case action
+          when 'index'
+            Fl::Core::Access::Permission::Index::NAME
+          when 'create'
+            Fl::Core::Access::Permission::Create::NAME
+          when 'show'
+            Fl::Core::Access::Permission::Read::NAME
+          when 'update'
+            Fl::Core::Access::Permission::Write::NAME
+          when 'destroy'
+            Fl::Core::Access::Permission::Delete::NAME
+          else
+            nil
+          end
 
-      self.clear_status
-      true
+      (p.nil?) ? false : obj.has_permission?(p, self.actor, opts)
     end
+
+    public
 
     # Look up an object in the database, and check if the service's actor has permissions on it.
     # This method uses the **:id** entry in *params* to look up the object in the database
@@ -322,21 +411,23 @@ module Fl::Core::Service
     #  Note that the object is returned only if all the checks succeed; in particular, if permission for the
     #  operation is not granted, no object is returned even if one was found in the database.
 
-    def get_and_check(permission, idname = nil, params = nil, context = nil)
+    def get_and_check(action, idname = nil, params = nil, opts = nil)
       idname = idname || :id
       params = normalize_params(params || self.params)
-      ctx = (:context == :params) ? params : context
+      opts = params if (opts == :params)
 
       obj, kvp = find_object(self.model_class, idname, params)
       if obj.nil?
         self.set_status(Fl::Core::Service::NOT_FOUND,
                         error_response_data('not_found',
                                             localized_message('not_found', id: flatten_param_keys(kvp).join(','))))
-      elsif !permission.nil?
-        if allow_op?(obj, permission, ctx, idname, params)
-          self.clear_status
-        else
-          obj = nil
+      else
+        if !action.nil?
+          if has_action_permission?(action, obj, opts)
+            self.clear_status
+          else
+            obj = nil
+          end
         end
       end
       
@@ -395,7 +486,7 @@ module Fl::Core::Service
     # it sets the status to {Fl::Core::Service::UNPROCESSABLE_ENTITY} and loads a message and the
     # **:details** key in the error status from the object's **errors**. 
     #
-    # The method calls {#class_allow_op?} for `opts[:permission]` to confirm that the
+    # The method calls {#has_action_permission?} with action `create` to confirm that the
     # service's *actor* has permission to create objects. If the permission is not granted, `nil` is returned.
     #
     # If an object is created successfully, the method calls {#after_create} to give subclasses a hook
@@ -410,10 +501,6 @@ module Fl::Core::Service
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
     #  If the value is a hash, it is passed to the initializer for the CAPTCHA object.
-    # @option opts [Symbol,String,Fl::Core::Access::Permission,Class] :permission The permission
-    #  to request in order to complete the operation.
-    #  See {Fl::Core::Access::Helper.permission_name}.
-    #  Defaults to {Fl::Core::Access::Permission::Create::NAME}.
     # @option opts [Object] :context The context to pass to the access checker method {#class_allow_op?}.
     #  The special value **:params** (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
@@ -425,7 +512,6 @@ module Fl::Core::Service
 
     def create(opts = {})
       p = (opts[:params]) ? opts[:params].to_h : create_params(self.params).to_h
-      op = (opts[:permission]) ? opts[:permission] : Fl::Core::Access::Permission::Create::NAME
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
@@ -434,7 +520,7 @@ module Fl::Core::Service
               p
             end
 
-      if class_allow_op?(op, ctx)
+      if has_action_permission?('create', self.model_class, ctx)
         rs = verify_captcha(opts[:captcha], p)
         if rs['success']
           begin
@@ -469,7 +555,7 @@ module Fl::Core::Service
     # it sets the status to {Fl::Core::Service::UNPROCESSBLE_ENTITY} and loads a message and the
     # **:details** key in the error status from the object's `errors`. 
     #
-    # The method calls {#allow_op?} for `opts[:permission]` to confirm that the
+    # The method calls {#has_action_permission?} with action `update` to confirm that the
     # service's {#actor} has permission to update the object.
     # If the permission is not granted, `nil` is returned.
     #
@@ -485,8 +571,6 @@ module Fl::Core::Service
     #  (typically {Fl::Google::RECAPTCHA}, which implements
     #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
     #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
-    # @option opts [Symbol,String] :permission The name of the permission to request in order to
-    #  complete the operation. Defaults to {Fl::Core::Access::Grants::WRITE}.
     # @option opts [Object] :context The context to pass to the access checker method {#allow_op?}.
     #  The special value `:params` (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
@@ -498,7 +582,6 @@ module Fl::Core::Service
 
     def update(opts = {})
       p = (opts[:params]) ? opts[:params].to_h : update_params(self.params).to_h
-      op = (opts[:permission]) ? opts[:permission] : Fl::Core::Access::Permission::Write::NAME
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
@@ -508,7 +591,7 @@ module Fl::Core::Service
             end
       idname = (opts[:idname]) ? opts[:idname].to_sym : :id
 
-      obj = get_and_check(op, idname, p, ctx)
+      obj = get_and_check('update', idname, p, ctx)
       if obj && success?
         rs = verify_captcha(opts[:captcha], p)
         if rs['success']
@@ -653,7 +736,7 @@ module Fl::Core::Service
 
     # Runs a query based on the request parameters.
     #
-    # 1. Call {#has_index_permission?}; if the return value is `false`, return `nil`.
+    # 1. Call {#has_action_permission?} for the `index` action; if the return value is `false`, return `nil`.
     # 2. Call {#init_query_opts} to set up the query parameters.
     # 3. Call {#index_query} to set up the query.
     # 4. Call {#index_results} to get the result set.
@@ -675,7 +758,7 @@ module Fl::Core::Service
 
     def index(query_opts = {}, _q = {}, _pg = {})
       begin
-        return nil if !has_index_permission?
+        return nil if !has_action_permission?('index', self.model_class)
 
         qo = init_query_opts(query_opts, _q, _pg)
         q = index_query(qo)
@@ -847,13 +930,15 @@ module Fl::Core::Service
 
     # Check that access checks are enabled and supported.
     #
+    # @param action [String,Symbol,nil] The action for which to check for permission.
     # @param obj [Object, Class, nil] The object that makes the `has_permission?` call; if `nil`, the
     #  {#model_class} is used.
+    # @param opts [Hash] A hash of options to pass to the access check methods.
     #
     # @return [Boolean] Returns `true` if access checks are enabled, and *obj* responds to `has_permission?`;
     #  otherwise, it returns `false`.
 
-    def do_access_checks?(obj = nil)
+    def do_access_checks?(action, obj = nil, opts = nil)
       obj = self.model_class if obj.nil?
       (@_disable_access_checks || !obj.respond_to?(:has_permission?)) ? false : true
     end
@@ -875,16 +960,6 @@ module Fl::Core::Service
 
     def localization_key(key)
       "#{localization_prefix}.#{key}"
-    end
-
-    # Check if the actor has permission to list objects (for the **:index** action).
-    # The default implementation calls {#class_allow_op?} using the permission
-    # {Fl::Core::Access::Permission::Index}.
-    #
-    # @return [Boolean] Returns `false` if the permission is not granted.
-
-    def has_index_permission?()
-      class_allow_op?(Fl::Core::Access::Permission::Index::NAME)
     end
       
     # Build a query to list objects.

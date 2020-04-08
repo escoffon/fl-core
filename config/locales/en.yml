@@ -51,7 +51,7 @@ en:
           missing: "unknown permission: %{name}"
 
       service:
-        forbidden: "You do not have permission :%{op} on object id %{id}"
+        forbidden: "You do not have permission to perform action :%{action} for object %{id}"
         not_found: "Could not find object with id %{id}"
         owner_not_found: "Could not find owner object with id %{id}"
         creation_failure: "Failed to create an instance of %{class}"

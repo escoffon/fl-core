@@ -69,7 +69,7 @@ RSpec.describe Fl::Core::Service::Base do
     it 'should use the backstop catalog' do
       s1 = TestDatumOneService.new(nil)
 
-      msg = s1.localized_message('forbidden', id: 'IDVALUE', op: 'OPVALUE')
+      msg = s1.localized_message('forbidden', id: 'IDVALUE', action: 'OPVALUE')
       expect(msg).to include('IDVALUE')
       expect(msg).to include('OPVALUE')
     end
@@ -80,15 +80,15 @@ RSpec.describe Fl::Core::Service::Base do
       expect(msg).to eql('test_datum_one_service: not_found-IDVALUE-')
 
       s2 = MyModule::DatumOneService.new(nil)
-      msg = s2.localized_message('forbidden', id: 'IDVALUE', op: 'OPVALUE')
+      msg = s2.localized_message('forbidden', id: 'IDVALUE', action: 'OPVALUE')
       expect(msg).to eql('my_module.datum_one_service: forbidden-OPVALUE-IDVALUE-')
-      msg = s2.localized_message('not_found', id: 'IDVALUE', op: 'OPVALUE')
+      msg = s2.localized_message('not_found', id: 'IDVALUE', action: 'OPVALUE')
       expect(msg).to eql('my_module.datum_one_service: not_found-IDVALUE-')
     end
   end
 
   describe '#get_and_check' do
-    context 'with nil permission' do
+    context 'with nil action' do
       it 'should find an existing object' do
         params = { id: d10.id }
         s1 = TestDatumOneService.new(a1, params)
@@ -159,7 +159,7 @@ RSpec.describe Fl::Core::Service::Base do
       end
     end
 
-    context 'with permission' do
+    context 'with action' do
       it 'should grant access if permission allows it' do
         d10.access_checker.grants = g1
 
@@ -170,22 +170,20 @@ RSpec.describe Fl::Core::Service::Base do
         s2 = TestDatumOneService.new(a2, params)
         expect(s2.success?).to eql(true)
 
-        obj = s1.get_and_check(Fl::Core::Access::Permission::Read::NAME)
+        # :show uses Fl::Core::Access::Permission::Read::NAME
+        obj = s1.get_and_check('show')
         expect(s1.success?).to eql(true)
         expect(obj).to be_a(Fl::Core::TestDatumOne)
         expect(obj.fingerprint).to eql(d10.fingerprint)
 
-        obj = s1.get_and_check(Fl::Core::Access::Permission::Write::NAME)
+        # :update uses Fl::Core::Access::Permission::Write::NAME
+        obj = s1.get_and_check('update')
         expect(s1.success?).to eql(true)
         expect(obj).to be_a(Fl::Core::TestDatumOne)
         expect(obj.fingerprint).to eql(d10.fingerprint)
 
-        obj = s1.get_and_check(Fl::Core::Access::Permission::Edit::NAME)
-        expect(s1.success?).to eql(true)
-        expect(obj).to be_a(Fl::Core::TestDatumOne)
-        expect(obj.fingerprint).to eql(d10.fingerprint)
-
-        obj = s2.get_and_check(Fl::Core::Access::Permission::Read::NAME)
+        # :show uses Fl::Core::Access::Permission::Read::NAME
+        obj = s2.get_and_check('show')
         expect(s2.success?).to eql(true)
         expect(obj).to be_a(Fl::Core::TestDatumOne)
         expect(obj.fingerprint).to eql(d10.fingerprint)
@@ -201,18 +199,20 @@ RSpec.describe Fl::Core::Service::Base do
         s2 = TestDatumOneService.new(a2, params)
         expect(s2.success?).to eql(true)
 
-        obj = s1.get_and_check(Fl::Core::Access::Permission::Delete::NAME)
+        # :destroy uses Fl::Core::Access::Permission::Delete::NAME
+        obj = s1.get_and_check('destroy')
         expect(s1.success?).to eql(false)
         expect(obj).to be_nil
         _expect_no_permission(s1.status)
 
-        obj = s2.get_and_check(Fl::Core::Access::Permission::Edit::NAME)
+        # :update uses Fl::Core::Access::Permission::Write::NAME
+        obj = s2.get_and_check('update')
         expect(s2.success?).to eql(false)
         expect(obj).to be_nil
         _expect_no_permission(s2.status)
       end
 
-      it 'should deny access for an unknown permission' do
+      it 'should deny access for an unknown action' do
         d10.access_checker.grants = g1
 
         params = { id: d10.id }
@@ -243,12 +243,12 @@ RSpec.describe Fl::Core::Service::Base do
         s2 = TestDatumOneService.new(a2, params)
         expect(s2.success?).to eql(true)
 
-        obj = s1.get_and_check(Fl::Core::Access::Permission::Delete::NAME)
+        obj = s1.get_and_check('show')
         expect(s1.success?).to eql(false)
         expect(obj).to be_nil
         _expect_no_permission(s1.status)
 
-        obj = s2.get_and_check(Fl::Core::Access::Permission::Delete::NAME)
+        obj = s2.get_and_check('show')
         expect(s2.success?).to eql(false)
         expect(obj).to be_nil
         _expect_no_permission(s2.status)
@@ -262,7 +262,7 @@ RSpec.describe Fl::Core::Service::Base do
         s3 = TestDatumOneService.new(a3, params)
         expect(s3.success?).to eql(true)
 
-        obj = s3.get_and_check(Fl::Core::Access::Permission::Delete::NAME)
+        obj = s3.get_and_check('destroy')
         expect(s3.success?).to eql(false)
         expect(obj).to be_nil
         _expect_no_permission(s3.status)
