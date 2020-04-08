@@ -64,8 +64,8 @@ module Fl::Core::Access
     #  Implementations may accept string values, which should be object fingerprints or GlobalIDs.
     # @param asset [Object,Class,String] The target of the request (the asset for which *permission* is requested).
     #  Implementations may accept string values, which should be object fingerprints or GlobalIDs.
-    # @param context [any] The context in which to do the check; this is arbitrary data to pass to the
-    #  checker parameter.
+    # @param opts [Hash] A hash containing additional information for the method; its contents are checker-specific.
+    #  (Not all checkers need additional options.)
     #
     # @return [Boolean,nil] An access check method is expected to return a boolean value `true` if access
     #  rights were granted, and `false` if access rights were denied.
@@ -73,7 +73,7 @@ module Fl::Core::Access
     #  when checking for access; a `nil` return value indicates that access rights were not granted,
     #  and it *must* be interpreted as such.
 
-    def access_check(permission, actor, asset, context = nil)
+    def access_check(permission, actor, asset, opts = nil)
       return false
     end
 

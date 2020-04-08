@@ -122,7 +122,7 @@ module Fl::Core::Access
       # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The requested permission.
       #  See {Fl::Core::Access::Helper.permission_name}.
       # @param actor [Object] The actor requesting permissions.
-      # @param context [any] An arbitrary value containing the context in which to do the check.
+      # @param opts [Hash] Additional options to pass to {Checker#access_check}.
       #
       # @return [Boolean,nil] Returns the value from a call to {Fl::Core::Access::Checker#access_check}:
       #  the boolean value `true` if access rights were granted, and `false` if access rights were denied.
@@ -130,8 +130,8 @@ module Fl::Core::Access
       #  when checking for access; a `nil` return value indicates that access rights were not granted,
       #  and it **must** be interpreted as such.
 
-      def has_permission?(permission, actor, context = nil)
-        self.access_checker.access_check(permission, actor, self, context)
+      def has_permission?(permission, actor, opts = nil)
+        self.access_checker.access_check(permission, actor, self, opts)
       end
     end
     
@@ -194,7 +194,7 @@ module Fl::Core::Access
       # @param permission [Symbol,String,Fl::Core::Access::Permission,Class] The requested permission.
       #  See {Fl::Core::Access::Helper.permission_name}.
       # @param actor [Object] The actor requesting permissions.
-      # @param context An arbitrary value containing the context in which to do the check.
+      # @param opts [Hash] Additional options to pass to {Checker#access_check}.
       #
       # @return [Boolean,nil] Returns the value from a call to {Fl::Core::Access::Checker#access_check}:
       #  the boolean value `true` if access rights were granted, and `false` if access rights were denied.
@@ -202,8 +202,8 @@ module Fl::Core::Access
       #  when checking for access; a `nil` return value indicates that access rights were not granted,
       #  and it **must** be interpreted as such.
 
-      def has_permission?(permission, actor, context = nil)
-        self.access_checker.access_check(permission, actor, self, context)
+      def has_permission?(permission, actor, opts = nil)
+        self.access_checker.access_check(permission, actor, self, opts)
       end
     end
 
