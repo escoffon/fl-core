@@ -6,9 +6,9 @@ module Fl::Core::Service
   class Nested < Base
     # Initializer.
     #
-    # @param owner_class [Class] The class object of the owner. Since it is possible to nest objects
-    #  within different owners, we need to provide the class at the instance level, rather than at the
-    #  class level as we do fo the model class. An example of a nested object that takes multiple owner
+    # @param parent_class [Class] The class object of the parent. Since it is possible to nest objects
+    #  within different parents, we need to provide the class at the instance level, rather than at the
+    #  class level as we do for the model class. An example of a nested object that takes multiple parent
     #  types is a comment, which can be created in the context of multiple commentables.
     # @param actor [Object] The actor (typically an object that mixed in {Fl::Core::Actor})
     #  on whose behalf the service operates. It may be `nil`.
@@ -23,98 +23,98 @@ module Fl::Core::Service
     # @option cfg [Boolean] :disable_captcha Controls the CAPTCHA checks: set it to `true` to
     #  disable verification, even if the individual method options requested.
     #  This is mainly used during testing. The default value is `false`.
-    # @option cfg [Symbol,String] :owner_id_name The name of the key in {#params} that holds the
-    #  object identifier of the owner resource. For example, if the route path is
+    # @option cfg [Symbol,String] :parent_id_name The name of the key in {#params} that holds the
+    #  object identifier of the parent resource. For example, if the route path is
     #  `/my/things/:thing_id/others`, then a path `/my/things/1234/others` results in the key **:thing_id**
     #  with value `'1234'` in {#params}.
-    #  If this option is not provided, the key is set to the last component in the owner class name, underscored and
-    #  with a `_id` postfix. So if the owner class is `My::Thing`, then the **:owner_id_name** is
+    #  If this option is not provided, the key is set to the last component in the parent class name, underscored and
+    #  with a `_id` postfix. So if the parent class is `My::Thing`, then the **:parent_id_name** is
     #  `thing_id`.
     #
     # @raise Raises an exception if the target model class has not been defined.
 
-    def initialize(owner_class, actor, params = nil, controller = nil, cfg = {})
-      @owner_class = owner_class
-      @owner_id_name = (cfg[:owner_id_name] || generate_owner_id_name).to_sym
-      @owner = nil
+    def initialize(parent_class, actor, params = nil, controller = nil, cfg = {})
+      @parent_class = parent_class
+      @parent_id_name = (cfg[:parent_id_name] || generate_parent_id_name).to_sym
+      @parent = nil
       
       super(actor, params, controller, cfg)
     end
 
-    # @!attribute [r] owner_class
-    # The owner class.
+    # @!attribute [r] parent_class
+    # The parent class.
     #
-    # @return [Class] Returns the owner class.
+    # @return [Class] Returns the parent class.
 
-    attr_reader :owner_class
+    attr_reader :parent_class
 
-    # @!attribute [r] owner_id_name
-    # The name of the key in {#params} that holds the identifier for the owner object.
+    # @!attribute [r] parent_id_name
+    # The name of the key in {#params} that holds the identifier for the parent object.
     #
-    # @return [Symbol] Returns the name of the key that holds the owner object identifier.
+    # @return [Symbol] Returns the name of the key that holds the parent object identifier.
 
-    attr_reader :owner_id_name
+    attr_reader :parent_id_name
 
     protected
 
-    # @!attribute owner [r]
-    # The owner object. This value is set by {#get_and_check_owner}.
+    # @!attribute parent [r]
+    # The parent object. This value is set by {#get_and_check_parent}.
     #
-    # @return [ActiveRecord::Base] The owner.
+    # @return [ActiveRecord::Base] The parent.
 
-    attr_reader :owner
+    attr_reader :parent
 
     public
     
-    # Look up an owner in the database.
-    # This method uses the owner id entry in {#params} to look up the object in the database
-    # (using the owner model class as the context for `find`, and the value of *idname* as the lookup key).
+    # Look up an parent in the database.
+    # This method uses the parent id entry in {#params} to look up the object in the database
+    # (using the parent model class as the context for `find`, and the value of *idname* as the lookup key).
     # If it does not find the object, it sets the status to {Fl::Core::Service::NOT_FOUND} and
     # returns `nil`.
     # If it finds the object, it caches it and then returns it.
     #
-    # The owner object is available to subclasses via the {#owner} attribute.
+    # The parent object is available to subclasses via the {#parent} attribute.
     # If the method is called twice, the cached object is returned directly.
     #
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
-    #  identifier for the owner; array elements are tried until a hit. A `nil` value defaults to {#owner_id_name}.
+    #  identifier for the parent; array elements are tried until a hit. A `nil` value defaults to {#parent_id_name}.
     # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
     #  If `nil`, use the value returned by {#params}.
     #
-    # @return [ActiveRecord::Base, nil] Returns the master object, or `nil` if the owner was not found.
+    # @return [ActiveRecord::Base, nil] Returns the master object, or `nil` if the parent was not found.
 
-    def get_owner(idname = nil, params = nil)
-      return @owner if !@owner.nil?
+    def get_parent(idname = nil, params = nil)
+      return @parent if !@parent.nil?
       
-      idname = idname || owner_id_name
+      idname = idname || parent_id_name
       params = normalize_params(params || self.params)
 
-      @owner, kvp = find_object(self.owner_class, idname, params)
-      if @owner.nil?
+      @parent, kvp = find_object(self.parent_class, idname, params)
+      if @parent.nil?
         self.set_status(Fl::Core::Service::NOT_FOUND,
-                        error_response_data('owner_not_found',
-                                            localized_message('no_owner', id: flatten_param_keys(kvp).join(','))))
+                        error_response_data('parent_not_found',
+                                            localized_message('no_parent', id: flatten_param_keys(kvp).join(','))))
         return nil
       end
       
-      @owner
+      @parent
     end
     
-    # Look up an owner in the database, and check if the service's actor has permissions on it.
-    # This method calls {#get_owner} and, if the return value is non-nil,
+    # Look up an parent in the database, and check if the service's actor has permissions on it.
+    # This method calls {#get_parent} and, if the return value is non-nil,
     # it then calls {Fl::Core::Access::Access::InstanceMethods#has_permission?} to
     # confirm that the actor has *op* access to the object.
     # If the permission call fails, it sets the status to {Fl::Core::Service::FORBIDDEN} and returns the
     # object.
     # Otherwise, it sets the status to {Fl::Core::Service::OK} and returns the object.
     #
-    # The owner object is also cached, and is available to subclasses via tyhe {#owner} attribute.
+    # The parent object is also cached, and is available to subclasses via tyhe {#parent} attribute.
     # If the method is called twice, the cached object is used for access control.
     #
     # @param op [Symbol,nil] op The operation for which to request permission.
     #  If `nil`, no access check is performed and the call is the equivalent of a simple database lookup.
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
-    #  identifier for the owner; array elements are tried until a hit. A `nil` value defaults to {#owner_id_name}.
+    #  identifier for the parent; array elements are tried until a hit. A `nil` value defaults to {#parent_id_name}.
     # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
     #  If `nil`, use the value returned by {#params}.
     # @option [Object] context The context to pass to the access checker method {#has_action_permission?}.
@@ -123,11 +123,11 @@ module Fl::Core::Service
     #  Defaults to +nil+.
     #
     # @return [Object, nil] Returns an object, or +nil+. Note that a non-nil return value is not a guarantee
-    #  that the check operation succeded. The object class will be the value of the owner_class parameter
+    #  that the check operation succeded. The object class will be the value of the parent_class parameter
     #  to {#initialize}.
 
-    def get_and_check_owner(action, idname = nil, params = nil, context = nil)
-      obj = get_owner(idname, params)
+    def get_and_check_parent(action, idname = nil, params = nil, context = nil)
+      obj = get_parent(idname, params)
       return nil if obj.nil?
       
       if !action.nil?
@@ -137,7 +137,7 @@ module Fl::Core::Service
       obj
     end
 
-    # Create a model for a given owner.
+    # Create a model for a given parent.
     # This method is used for classes created within the "context" of another class, as is the case for
     # nested resources. For example, say we have a `Story` object that is associated with a `User` author,
     # and the story controller is nested inside the user context.
@@ -145,14 +145,14 @@ module Fl::Core::Service
     # user's identifier; the route pattern is `/users/:user_id/stories`.
     # The story object has an attribute `:author` that contains the story's author, which in this case is
     # set to the user that corresponds to `:user_id`.
-    # With all that in mind, the value for **:owner_id_name** is `:user_id`, and for
-    # **:owner_attribute_name** it is `:author`.
+    # With all that in mind, the value for **:parent_id_name** is `:user_id`, and for
+    # **:parent_attribute_name** it is `:author`.
     #
     # The method attempts to create and save an instance of the model class; if either operation fails,
     # it sets the status to {Fl::Core::Service::UNPROCESSABLE_ENTITY} and loads an error response data hash
     # that includes the object's error messages.
     #
-    # Note that the method uses {#get_and_check_owner} with action `create` to confirm that the actor does
+    # Note that the method uses {#get_and_check_parent} with action `create` to confirm that the actor does
     # have permission to create a nested object instance.
     #
     # @param opts [Hash] Options to the method. This section describes the common options; subclasses may
@@ -168,18 +168,18 @@ module Fl::Core::Service
     #  The special value `:params` (a Symbol named `params`) indicates that the create parameters are to be
     #  passed as the context.
     #  Defaults to `:params`.
-    # @option opts [Symbol,String] :owner_id_name The name of the parameter in {#params} that
-    #  contains the object identifier for the owner. Defaults to `:owner_id`.
-    # @option opts [Symbol,String] :owner_attribute_name The name of the attribute passed to the initializer
-    #  that contains the owner object. Defaults to `:owner`.
+    # @option opts [Symbol,String] :parent_id_name The name of the parameter in {#params} that
+    #  contains the object identifier for the parent. Defaults to `:parent_id`.
+    # @option opts [Symbol,String] :parent_attribute_name The name of the attribute passed to the initializer
+    #  that contains the parent object. Defaults to `:parent`.
     #
     # @return [Object] Returns the created object on success, `nil` on error.
     #  Note that a non-nil return value does not indicate that the call was successful; for that, you should
     #  call {#success?} or check if the instance is valid.
 
     def create_nested(opts = {})
-      idname = (opts.has_key?(:owner_id_name)) ? opts[:owner_id_name].to_sym : :owner_id
-      attrname = (opts.has_key?(:owner_attribute_name)) ? opts[:owner_attribute_name].to_sym : :owner
+      idname = (opts.has_key?(:parent_id_name)) ? opts[:parent_id_name].to_sym : :parent_id
+      attrname = (opts.has_key?(:parent_attribute_name)) ? opts[:parent_attribute_name].to_sym : :parent
       p = (opts[:params]) ? opts[:params].to_h : create_params(self.params).to_h
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
@@ -189,19 +189,19 @@ module Fl::Core::Service
               p
             end
 
-      owner = get_owner(idname, nil)
+      parent = get_parent(idname, nil)
       obj = nil
-      if owner && success?
+      if parent && success?
         rs = verify_captcha(opts[:captcha], p)
         if rs['success']
-          if has_action_permission?('create', owner, ctx)
-            p[attrname] = owner
+          if has_action_permission?('create', parent, ctx)
+            p[attrname] = parent
             obj = self.model_class.new(p)
             unless obj.save
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                               error_response_data('nested_creation_failure',
                                                   localized_message('nested_creation_failure',
-                                                                    owner: owner.fingerprint,
+                                                                    parent: parent.fingerprint,
                                                                     class: self.model_class.name),
                                                   (obj) ? obj.errors.messages : nil))
             end
@@ -215,7 +215,7 @@ module Fl::Core::Service
     protected
 
     # Check that access checks are enabled and supported.
-    # Overrides the base implementation to ignore *obj* and use the {#owner} instead.
+    # Overrides the base implementation to ignore *obj* and use the {#parent} instead.
     #
     # @param action [String,Symbol,nil] The action for which to check for permission.
     # @param obj [Object, Class, nil] The object that makes the `has_permission?` call; if `nil`, the
@@ -226,7 +226,7 @@ module Fl::Core::Service
     #  otherwise, it returns `false`.
 
     def do_access_checks?(action, obj = nil, opts = nil)
-      obj = get_owner if !obj.is_a?(owner_class)
+      obj = get_parent if !obj.is_a?(parent_class)
       (_disable_access_checks || !obj.respond_to?(:has_permission?)) ? false : true
     end
 
@@ -234,10 +234,10 @@ module Fl::Core::Service
     # Overrides the base implementation for the following actions:
     #
     # - **index** uses {Fl::Core::Access::Permission::IndexContents} if *obj* is a class instance rather than
-    #   a class. In nested service implementations, *obj* is the owner object, and controls access for the
+    #   a class. In nested service implementations, *obj* is the parent object, and controls access for the
     #   dependent objects.
     # - **create** uses {Fl::Core::Access::Permission::Write} if *obj* is a class instance rather than
-    #   a class. In nested service implementations, *obj* is the owner object, and controls access for the
+    #   a class. In nested service implementations, *obj* is the parent object, and controls access for the
     #   dependent objects.
     #
     # @param action [String] The action for which to check for permission; the value has been normalized to a
@@ -268,12 +268,12 @@ module Fl::Core::Service
       end
     end
 
-    # Generate the name of the owner id parameter from the current value os the owner class.
+    # Generate the name of the parent id parameter from the current value os the parent class.
     #
-    # @return [Symbol] Returns the owner id name.
+    # @return [Symbol] Returns the parent id name.
 
-    def generate_owner_id_name()
-      "#{@owner_class.name.split('::').last.underscore}_id".to_sym
+    def generate_parent_id_name()
+      "#{@parent_class.name.split('::').last.underscore}_id".to_sym
     end
   end
 end
