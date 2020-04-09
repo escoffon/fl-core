@@ -587,30 +587,90 @@ module Fl::Core::Service
             end
       idname = (opts[:idname]) ? opts[:idname].to_sym : :id
 
-      obj = nil
-      begin
-        obj = get_and_check('update', idname, p, ctx)
-        if obj && success?
+      obj = get_and_check('update', idname, p, ctx)
+      if obj && success?
+        begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
             unless obj.update(p)
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                               error_response_data('update_failure',
-                                                  localized_message('update_failure',
-                                                                    class: obj.class.name, id: obj.id),
-                                                  (obj) ? obj.errors.messages : nil))
+                                                  localized_message('update_failure', fingerprint: obj.fingerprint),
+                                                  { details: obj.errors.messages }))
             end
           end
+        rescue => exc
+          self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                          error_response_data('update_failure',
+                                              localized_message('update_failure', fingerprint: obj.fingerprint),
+                                              { message: exc.message }))
         end
-      rescue => exc
-        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                        error_response_data('update_failure',
-                                            localized_message('update_failure',
-                                                              class: obj.class.name, id: obj.id),
-                                            { details: { message: exc.message } }))
       end
 
       return obj
+    end
+    
+    # Destroy an instance of the model class.
+    # This method attempts to destroy an instance of the model class; if the operation fails,
+    # it sets the status to {Fl::Core::Service::UNPROCESSBLE_ENTITY} and loads a message and the
+    # **:details** key in the error status from the object's `errors`. 
+    #
+    # The method calls {#has_action_permission?} with action `destroy` to confirm that the
+    # service's {#actor} has permission to destroy the object.
+    # If the permission is not granted, `false` is returned.
+    #
+    # @param opts [Hash] Options to the method. This section describes the common options; subclasses may
+    #  define type-specific ones.
+    # @option opts [Symbol,String] :idname The name of the key in **:params** that contains the object
+    #  identifier.
+    #  Defaults to **:id**.
+    # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
+    #  initializer. If not present or `nil`, use the value returned by {#update_params}.
+    # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
+    #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
+    #  (typically {Fl::Google::RECAPTCHA}, which implements
+    #  {https://www.google.com/recaptcha/intro Google reCAPTCHA}).
+    #  If the value is a hash, it is passed to {Fl::Core::CAPTCHA.factory}.
+    # @option opts [Object] :context The context to pass to the access check method {#has_action_permission?}.
+    #  The special value `:params` (a Symbol named `params`) indicates that the create parameters are to be
+    #  passed as the context.
+    #  Defaults to `:params`.
+    #
+    # @return [Boolean] Returns `true` if the object was destroyed, `false` otherwise. In the latter case,
+    #  {#status} contains additional information.
+
+    def destroy(opts = {})
+      p = (opts[:params]) ? opts[:params].to_h : update_params(self.params).to_h
+      ctx = if opts.has_key?(:context)
+              (opts[:context] == :params) ? p : opts[:context]
+            else
+              # This is equivalent to setting the default to :params
+
+              p
+            end
+      idname = (opts[:idname]) ? opts[:idname].to_sym : :id
+
+      obj = get_and_check('destroy', idname, p, ctx)
+      if obj && success?
+        begin
+          rs = verify_captcha(opts[:captcha], p)
+          if rs['success']
+            return true if obj.destroy
+
+            self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                            error_response_data('destroy_failure',
+                                                localized_message('destroy_failure', fingerprint: obj.fingerprint),
+                                                { details: obj.errors.messages }))
+          end
+        rescue => exc
+          self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                          error_response_data('update_failure',
+                                              localized_message('update_failure', fingerprint: obj.fingerprint),
+                                              { message: exc.message }))
+        end
+      end
+
+      return false
     end
 
     # Convert parameters to `ActionController::Parameters`.

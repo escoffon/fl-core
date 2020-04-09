@@ -55,6 +55,8 @@ en:
         not_found: "Could not find object with id %{id}"
         parent_not_found: "Could not find parent object with id %{id}"
         creation_failure: "Failed to create an instance of %{class}"
+        update_failure: "Failed to update object %{fingerprint}"
+        destroy_failure: "Failed to destroy object %{fingerprint}"
         nested_creation_failure: "Failed to create instance of class %{class} nested in %{parent}"
         captcha:
           no-captcha: 'The request does not contain the CAPTCHA key %{key}'

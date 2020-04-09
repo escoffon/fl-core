@@ -189,10 +189,10 @@ module Fl::Core::Service
               p
             end
 
-      begin
-        parent = get_parent(idname, nil)
-        obj = nil
-        if parent && success?
+      parent = get_parent(idname, nil)
+      obj = nil
+      if parent && success?
+        begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
             if has_action_permission?('create', parent, ctx)
@@ -208,16 +208,15 @@ module Fl::Core::Service
               end
             end
           end
+        rescue => exc
+          self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                          error_response_data('creation_failure',
+                                              localized_message('creation_failure', class: self.model_class.name),
+                                              { message: exc.message }))
         end
-
-        return obj
-      rescue => exc
-        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                        error_response_data('creation_failure',
-                                            localized_message('creation_failure', class: self.model_class.name),
-                                            { message: exc.message }))
-        return nil
       end
+
+      return obj
     end
 
     protected
