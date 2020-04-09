@@ -189,27 +189,35 @@ module Fl::Core::Service
               p
             end
 
-      parent = get_parent(idname, nil)
-      obj = nil
-      if parent && success?
-        rs = verify_captcha(opts[:captcha], p)
-        if rs['success']
-          if has_action_permission?('create', parent, ctx)
-            p[attrname] = parent
-            obj = self.model_class.new(p)
-            unless obj.save
-              self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                              error_response_data('nested_creation_failure',
-                                                  localized_message('nested_creation_failure',
-                                                                    parent: parent.fingerprint,
-                                                                    class: self.model_class.name),
-                                                  (obj) ? obj.errors.messages : nil))
+      begin
+        parent = get_parent(idname, nil)
+        obj = nil
+        if parent && success?
+          rs = verify_captcha(opts[:captcha], p)
+          if rs['success']
+            if has_action_permission?('create', parent, ctx)
+              p[attrname] = parent
+              obj = self.model_class.new(p)
+              unless obj.save
+                self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                                error_response_data('nested_creation_failure',
+                                                    localized_message('nested_creation_failure',
+                                                                      parent: parent.fingerprint,
+                                                                      class: self.model_class.name),
+                                                    (obj) ? obj.errors.messages : nil))
+              end
             end
           end
         end
-      end
 
-      obj
+        return obj
+      rescue => exc
+        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                        error_response_data('creation_failure',
+                                            localized_message('creation_failure', class: self.model_class.name),
+                                            { message: exc.message }))
+        return nil
+      end
     end
 
     protected

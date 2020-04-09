@@ -519,10 +519,11 @@ module Fl::Core::Service
               p
             end
 
-      if has_action_permission?('create', self.model_class, ctx)
-        rs = verify_captcha(opts[:captcha], p)
-        if rs['success']
-          begin
+      begin
+        obj = nil
+        if has_action_permission?('create', self.model_class, ctx)
+          rs = verify_captcha(opts[:captcha], p)
+          if rs['success']
             obj = self.model_class.new(p)
             if obj.save
               after_create(obj, p)
@@ -532,20 +533,16 @@ module Fl::Core::Service
                                                   localized_message('creation_failure', class: self.model_class.name),
                                                   (obj) ? obj.errors.messages : nil))
             end
-          rescue => exc
-            self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                            error_response_data('creation_failure',
-                                                localized_message('creation_failure', class: self.model_class.name),
-                                                { message: exc.message }))
-            obj = nil
           end
-
-          obj
-        else
-          nil
         end
-      else
-        nil
+
+        return obj
+      rescue => exc
+        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                        error_response_data('creation_failure',
+                                            localized_message('creation_failure', class: self.model_class.name),
+                                            { message: exc.message }))
+        return nil
       end
     end
     
@@ -590,11 +587,12 @@ module Fl::Core::Service
             end
       idname = (opts[:idname]) ? opts[:idname].to_sym : :id
 
-      obj = get_and_check('update', idname, p, ctx)
-      if obj && success?
-        rs = verify_captcha(opts[:captcha], p)
-        if rs['success']
-          begin
+      obj = nil
+      begin
+        obj = get_and_check('update', idname, p, ctx)
+        if obj && success?
+          rs = verify_captcha(opts[:captcha], p)
+          if rs['success']
             unless obj.update(p)
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                               error_response_data('update_failure',
@@ -602,21 +600,17 @@ module Fl::Core::Service
                                                                     class: obj.class.name, id: obj.id),
                                                   (obj) ? obj.errors.messages : nil))
             end
-          rescue => exc
-            self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                            error_response_data('update_failure',
-                                                localized_message('update_failure',
-                                                                  class: obj.class.name, id: obj.id),
-                                                { details: { message: exc.message } }))
           end
-        else
-          obj = nil
         end
-      else
-        obj = nil
+      rescue => exc
+        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                        error_response_data('update_failure',
+                                            localized_message('update_failure',
+                                                              class: obj.class.name, id: obj.id),
+                                            { details: { message: exc.message } }))
       end
 
-      obj
+      return obj
     end
 
     # Convert parameters to `ActionController::Parameters`.
