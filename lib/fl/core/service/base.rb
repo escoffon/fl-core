@@ -640,7 +640,7 @@ module Fl::Core::Service
     #  {#status} contains additional information.
 
     def destroy(opts = {})
-      p = (opts[:params]) ? opts[:params].to_h : update_params(self.params).to_h
+      p = (opts[:params]) ? opts[:params].to_h : self.params
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
