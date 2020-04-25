@@ -12,15 +12,15 @@ module Fl::Core
     # Convert a parameter to an object.
     # The value can be one of the following:
     #
-    # - A [https://github.com/rails/globalid][GlobalID], which is used to look up the object.
-    # - A string containing a [https://github.com/rails/globalid][GlobalID], which is used to look up
+    # - A {https://github.com/rails/globalid GlobalID}, which is used to look up the object.
+    # - A string containing a {https://github.com/rails/globalid GlobalID}, which is used to look up
     #   the object.
     # - A string in the format _classname_/_id_, where _classname_ is the name of the class for the object,
     #   and _id_ is its object identifier. The method uses the class' +find+ method to look up the object.
     # - A Hash containing the key _key_. In this case, the method fetches the value from that key, and tries
     #   again.
     # - If the hash does not contain _key_, then the method checks for **:global_id**, which it tries to resolve
-    #   as a [https://github.com/rails/globalid][GlobalID].
+    #   as a {https://github.com/rails/globalid GlobalID}.
     #   Otherwise, it looks for the key **:fingerprint**, and tries to resolve the fingerprint.
     #   Finally, it tries the two keys **:id** and **:type**, which
     #   will be used to look up the object via the +find+ method (**:type** is the class name).
@@ -235,8 +235,8 @@ module Fl::Core
     #
     # - An object that responds to the *:fingerprint* method, whose return value is returned.
     # - An object that responds to the *:to_global_id* method, whose return value is used to extract the fingerprint.
-    # - A [https://github.com/rails/globalid][GlobalID], which is used to extract the fingerprint.
-    # - A string containing a [https://github.com/rails/globalid][GlobalID], which is used to 
+    # - A {https://github.com/rails/globalid GlobalID}, which is used to extract the fingerprint.
+    # - A string containing a {https://github.com/rails/globalid GlobalID}, which is used to 
     #   extract the fingerprint.
     # - A string in the format _classname_/_id_, where _classname_ is the name of the class for the object,
     #   and _id_ is its object identifierK (in other words, a string containing a fingerprint).
@@ -245,7 +245,7 @@ module Fl::Core
     # - A Hash containing the key _key_. In this case, the method fetches the value from that key, and tries
     #   again.
     # - If the hash does not contain _key_, then the method checks for **:global_id**, which it tries to resolve
-    #   as a [https://github.com/rails/globalid][GlobalID].
+    #   as a {https://github.com/rails/globalid GlobalID}.
     #   Otherwise, it looks for the key **:fingerprint**, and tries to resolve the fingerprint.
     #   Finally, it tries the two keys **:id** and **:type**, which
     #   will be used to generate the fingerprint.
