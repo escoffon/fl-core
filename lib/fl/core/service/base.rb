@@ -399,8 +399,8 @@ module Fl::Core::Service
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
     #  identifier; array elements are tried until a hit.
     #  A `nil` value defaults to **:id**.
-    # @param params [Hash] The parameters where to look up the **:id** key used to fetch the object.
-    #  If `nil`, use the _params_ value that was passed to the constructor.
+    # @param pars [Hash] The parameters where to look up the **:id** key used to fetch the object.
+    #  If `nil`, use the value of {#params}.
     # @option context [Object] The context to pass to the access check method {#has_action_permission?}.
     #  The special value `:params` (a Symbol named `params`) indicates that the value of *params* is to be
     #  passed as the context.
@@ -410,12 +410,12 @@ module Fl::Core::Service
     #  Note that the object is returned only if all the checks succeed; in particular, if permission for the
     #  operation is not granted, no object is returned even if one was found in the database.
 
-    def get_and_check(action, idname = nil, params = nil, opts = nil)
+    def get_and_check(action, idname = nil, pars = nil, opts = nil)
       idname = idname || :id
-      params = normalize_params(params || self.params)
-      opts = params if (opts == :params)
+      pars = normalize_params(pars || self.params)
+      opts = pars if (opts == :params)
 
-      obj, kvp = find_object(self.model_class, idname, params)
+      obj, kvp = find_object(self.model_class, idname, pars)
       if obj.nil?
         self.set_status(Fl::Core::Service::NOT_FOUND,
                         error_response_data('not_found',
@@ -587,7 +587,7 @@ module Fl::Core::Service
             end
       idname = (opts[:idname]) ? opts[:idname].to_sym : :id
 
-      obj = get_and_check('update', idname, p, ctx)
+      obj = get_and_check('update', idname, self.params, ctx)
       if obj && success?
         begin
           rs = verify_captcha(opts[:captcha], p)
@@ -650,7 +650,7 @@ module Fl::Core::Service
             end
       idname = (opts[:idname]) ? opts[:idname].to_sym : :id
 
-      obj = get_and_check('destroy', idname, p, ctx)
+      obj = get_and_check('destroy', idname, self.params, ctx)
       if obj && success?
         begin
           rs = verify_captcha(opts[:captcha], p)
@@ -794,6 +794,7 @@ module Fl::Core::Service
     # 3. Call {#index_query} to set up the query.
     # 4. Call {#index_results} to get the result set.
     # 5. Generate a response payload containing the results and the pagination controls.
+    # 6. Call {#adjust_index_results} to 
     #
     # The method catches any exceptions and sets the error state of the service from the
     # exception properties.
@@ -803,9 +804,12 @@ module Fl::Core::Service
     # @param _q [Hash, ActionController::Parameters] The query parameters.
     # @param _pg [Hash, ActionController::Parameters] The pagination parameters.
     #
-    # @return [Hash, nil] If a query is generated, it returns a Hash containing two keys:
-    #  - *:results* are the results from the query; this is an array of objects.
+    # @return [Hash, nil] If a query is generated, it returns a Hash containing at least the following keys
+    #  ({#adjust_index_results} may add other keys):
+    #
+    #  - *:result* are the results from the query; this is an array of objects.
     #  - *:_pg* are the pagination controls returned by {#pagination_controls}.
+    #
     #  If no query is generated (in other words, if {#index_query} fails), it returns `nil`.
     #  It also returns `nil` if an exception was raised.
 
@@ -817,10 +821,10 @@ module Fl::Core::Service
         q = index_query(qo)
         if q
           r = index_results(q)
-          return {
+          return adjust_index_results({
             result: r,
             _pg: pagination_controls(r, qo, self.params)
-          }
+          })
         end
       rescue => exc
         self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY, error_response_data('query_error', exc.message))
@@ -1041,6 +1045,23 @@ module Fl::Core::Service
 
     def index_results(q)
       q.to_a
+    end
+
+    # Modify the value returned by {#index}.
+    # This method is called by {#index} to give subclasses the ability to modify (typically by augmenting) the
+    # standard return value without having to override {#index} itself.
+    # The default implementation returns *results*; subclasses that need to make modifications to its value can
+    # override it.
+    #
+    # @param results [Hash] The results value.
+    #
+    # @option results [Array<ActiveRecord::Base>] :result The results from the query.
+    # @option results [Hash] :_pg The pagination controls returned by {#pagination_controls}.
+    #
+    # @return [Hash] The return value for {#index}.
+
+    def adjust_index_results(results)
+      results
     end
 
     # Callback triggered after an object is created.

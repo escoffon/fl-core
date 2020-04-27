@@ -115,7 +115,7 @@ module Fl::Core::Service
     #  If `nil`, no access check is performed and the call is the equivalent of a simple database lookup.
     # @param idname [Symbol, Array<Symbol>] The name or names of the key in *params* that contain the object
     #  identifier for the parent; array elements are tried until a hit. A `nil` value defaults to {#parent_id_name}.
-    # @param [Hash] params The parameters where to look up the *idname* key used to fetch the object.
+    # @param [Hash] pars The parameters where to look up the *idname* key used to fetch the object.
     #  If `nil`, use the value returned by {#params}.
     # @option [Object] context The context to pass to the access checker method {#has_action_permission?}.
     #  The special value **:params** (a Symbol named `params`) indicates that the value of _params_ is to be
@@ -126,8 +126,8 @@ module Fl::Core::Service
     #  that the check operation succeded. The object class will be the value of the parent_class parameter
     #  to {#initialize}.
 
-    def get_and_check_parent(action, idname = nil, params = nil, context = nil)
-      obj = get_parent(idname, params)
+    def get_and_check_parent(action, idname = nil, pars = nil, context = nil)
+      obj = get_parent(idname, pars)
       return nil if obj.nil?
       
       if !action.nil?
