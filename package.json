@@ -8,9 +8,9 @@
     },
     "scripts": {},
     "devDependencies": {
-        "axios-mock-adapter": "^1.17.0",
+        "axios-mock-adapter": "^1.18.1",
         "chai": "^4.2.0",
         "fl-dgeni": "git+https://github.com/escoffon/fl-dgeni.git",
-        "mocha": "^7.1.0"
+        "mocha": "^7.1.2"
     }
 }

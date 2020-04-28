@@ -296,6 +296,30 @@ let FlModelCache = (function() {
 	if (id != undefined) this._model_cache.del(id);
     };
 
+    /**
+     * @ngdoc method
+     * @name FlModelCache#clear
+     * @description
+     *  Clears the cache.
+     */
+
+    FlModelCache.prototype.clear = function() {
+	this._model_cache.clear();
+    };
+
+    /**
+     * @ngdoc method
+     * @name FlModelCache#size
+     * @description
+     *  Returns the number of cached records.
+     *
+     * @return Returns the number of objects in the cache.
+     */
+
+    FlModelCache.prototype.size = function() {
+	return this._model_cache.size();
+    };
+
     return FlModelCache;
 })();
 
