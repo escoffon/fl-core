@@ -858,10 +858,12 @@ let FlAPIService = FlClassManager.make_class({
 	 * @ngdoc method
 	 * @name FlAPIService#_create_or_refresh_from_id
 	 * @description Refresh an existing model instance, or create a new one.
-	 *  This (internal) method is used in action implementation where the API returns object data,
+	 *  This (internal) method is used in action implementations where the API returns object data,
 	 *  such as for the `show` and `update` actions.
 	 *  If those implementations are called with a model instance in the *id* parameter, then the
-	 *  client has provided the target instance explicitly, and the implementation should use it.
+	 *  client has provided the target instance explicitly, and the implementation should use it;
+	 *  in this case, the method simply calls `refres` on it.
+	 *  Otherwise, it calls {@sref FlModelFactory#create} to convert *data* to an object instance.
 	 *  Since model instances are cached, this only makes a difference if the target instance had
 	 *  been created explicitly, rather than via the {@sref FlModelFactory#create} method: in this case,
 	 *  the instance may not be cached, and using `create` would result in two copies of the
@@ -877,7 +879,7 @@ let FlAPIService = FlClassManager.make_class({
 	 */
 
 	_create_or_refresh_from_id: function(id, data) {
-	    if (!_.isNil(id.__class) && _.isFunction(id.refresh))
+	    if (!_.isNil(id) && !_.isNil(id.__class) && _.isFunction(id.refresh))
 	    {
 		// This looks like a model instance, so just refresh it.
 
