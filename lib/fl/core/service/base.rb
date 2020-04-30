@@ -674,15 +674,28 @@ module Fl::Core::Service
     end
 
     # Convert parameters to `ActionController::Parameters`.
-    # This method expects *p* to contain a hash, or a JSON representation of a hash, of parameters,
+    # This method expects *sp* to contain a hash, or a JSON representation of a hash, of parameters,
     # and converts it to `ActionController::Parameters`.
-    # Therefore, it performs these steps:
     #
-    # 1. If *p* is `nil`, it uses the value of {#params}.
-    # 2. It then checks if it is a string value; in that case, it assumes that the client has generated
+    # 1. If *sp* is a string value, it assumes that the client has generated
     #    a JSON representation of the parameters, and parses it into a hash.
-    # 3. If the value is already a `ActionController::Parameters`, it returns it as is;
+    # 2. If the value is already a `ActionController::Parameters`, it returns it as is;
     #    otherwise, it constaructs a new `ActionController::Parameters` instance from the hash value.
+    #
+    # @param sp [Hash,ActionController::Parameters,String] The parameters to convert.
+    #  If a string value, it is assumed to contain a JSON representation.
+    #  If `nil`, use {#params}.
+    #
+    # @return [ActionController::Parameters] Returns the converted parameters.
+
+    def self.strong_params(sp)
+      sp = JSON.parse(sp) if sp.is_a?(String)
+      (sp.is_a?(ActionController::Parameters)) ? sp : ActionController::Parameters.new(sp)
+    end
+
+    # Convert parameters to `ActionController::Parameters`.
+    # This method calls {.strong_params}; if *p* is `nil`, it uses the value of {#params}, otherwise it
+    # uses *p*.
     #
     # @param p [Hash,ActionController::Parameters,String,nil] The parameters to convert.
     #  If a string value, it is assumed to contain a JSON representation.
@@ -691,9 +704,7 @@ module Fl::Core::Service
     # @return [ActionController::Parameters] Returns the converted parameters.
 
     def strong_params(p = nil)
-      sp = (p.nil?) ? self.params : p
-      sp = JSON.parse(sp) if sp.is_a?(String)
-      (sp.is_a?(ActionController::Parameters)) ? sp : ActionController::Parameters.new(sp)
+      self.class.strong_params((p.nil?) ? self.params : p)
     end
 
     # Get create parameters.
@@ -758,15 +769,27 @@ module Fl::Core::Service
     # the parameters as arrays, or they will be filtered out by the permission system.
     #
     # @param p [Hash,ActionController::Parameters] The parameters from which to extract the `to_hash`
+    #  parameters subset.
+    #
+    # @return [ActionController::Parameters] Returns the standard permitted `to_hash` parameters.
+
+    def self.to_hash_params(p)
+      strong_params(strong_params(p).fetch(:to_hash, { })).permit(:as_visible_to, :verbosity,
+                                                                  { only: [ ] }, { include: [ ] },
+                                                                  { except: [ ] }, { image_sizes: [ ] },
+                                                                  { to_hash: { } })
+    end
+
+    # Get `to_hash` parameters.
+    # This method calls {.to_hash_params}, passing *p* if non-nil, or the value of {#params} if `nil`.
+    #
+    # @param p [Hash,ActionController::Parameters] The parameters from which to extract the `to_hash`
     #  parameters subset. If `nil`, use {#params}.
     #
     # @return [ActionController::Parameters] Returns the standard permitted `to_hash` parameters.
 
     def to_hash_params(p = nil)
-      strong_params(strong_params(p).fetch(:to_hash, { })).permit(:as_visible_to, :verbosity,
-                                                                  { only: [ ] }, { include: [ ] },
-                                                                  { except: [ ] }, { image_sizes: [ ] },
-                                                                  { to_hash: { } })
+      self.class.to_hash_params((p.nil?) ? self.params : p)
     end
 
     protected
