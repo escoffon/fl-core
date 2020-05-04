@@ -29,15 +29,18 @@ module Fl::Core
       # Extract a title from HTML contents.
       #
       # @param contents [String] A string containing the contents from which to extract the title.
-      # @param max [Integer] The maximum number of characters in the title. The value +nil+ is used to indicate
-      #  the default value 40 when the *tail* parameter is present.
-      # @param tail [String] A string to append to the truncated contents.
+      # @param max [Integer] The maximum number of characters in the title. This includes the length of
+      #  *tail*, if present.
+      # @param tail [String,nil] A string to append to the truncated contents. Pass `nil` to indicate that no
+      #  tails string should be appended.
       #
       # @return [String] Returns a string that contains the text nodes of +contents+, up to the first
       #  +max+ characters.
 
       def extract_title(contents, max = 40, tail = '...')
         return '' unless contents
+
+        max -= tail.length if tail.is_a?(String)
 
         # we add a wrapper <fl-root> element so that the code fragment is valid XML; otherwise,
         # Nokogiri puts everything inside a <p> element.
@@ -56,7 +59,7 @@ module Fl::Core
         end
 
         if s.length > max
-          s = s[0, max] + tail
+          s = s[0, max] + ((tail.is_a?(String)) ? tail : '')
         end
 
         s
