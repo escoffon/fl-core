@@ -563,7 +563,9 @@ module Fl::Core
     # @option opts [Integer, Time, String] :updated_before to select comments updated before a given time.
     # @option opts [Integer, Time, String] :created_before to select comments created before a given time.
     #
-    # @return [Hash] Returns a hash containing any number of the following keys; all values are timestamps.
+    # @return [Hash] Returns a hash containing any number of the following keys; all values are `TimeWithZone`
+    #  instances.
+    #
     #  - **:c_after_ts** from **:created_after**.
     #  - **:c_before_ts** from **:created_before**.
     #  - **:u_after_ts** from **:updated_after**.
@@ -575,7 +577,7 @@ module Fl::Core
       if opts.has_key?(:created_after)
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts[:created_after])
-          rv[:c_after_ts] = dt if dt.valid?
+          rv[:c_after_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
       end
@@ -583,7 +585,7 @@ module Fl::Core
       if opts.has_key?(:updated_after)
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts[:updated_after])
-          rv[:u_after_ts] = dt if dt.valid?
+          rv[:u_after_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
       end
@@ -591,7 +593,7 @@ module Fl::Core
       if opts.has_key?(:created_before)
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts[:created_before])
-          rv[:c_before_ts] = dt if dt.valid?
+          rv[:c_before_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
       end
@@ -599,7 +601,7 @@ module Fl::Core
       if opts.has_key?(:updated_before)
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts[:updated_before])
-          rv[:u_before_ts] = dt if dt.valid?
+          rv[:u_before_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
       end
@@ -634,19 +636,20 @@ module Fl::Core
       wta = {}
       if ts[:c_after_ts]
         wt << '(created_at > :c_after_ts)'
-        wta[:c_after_ts] = Time.parse(ts[:c_after_ts].to_rfc3339).utc.rfc3339
+        wta[:c_after_ts] = ts[:c_after_ts]
       end
       if ts[:u_after_ts]
         wt << '(updated_at > :u_after_ts)'
-        wta[:u_after_ts] = Time.parse(ts[:u_after_ts].to_rfc3339).utc.rfc3339
+#        wta[:u_after_ts] = Time.parse(ts[:u_after_ts].to_rfc3339).utc.rfc3339
+        wta[:u_after_ts] = ts[:u_after_ts]
       end
       if ts[:c_before_ts]
         wt << '(created_at < :c_before_ts)'
-        wta[:c_before_ts] = Time.parse(ts[:c_before_ts].to_rfc3339).utc.rfc3339
+        wta[:c_before_ts] = ts[:c_before_ts]
       end
       if ts[:u_before_ts]
         wt << '(updated_at < :u_before_ts)'
-        wta[:u_before_ts] = Time.parse(ts[:u_before_ts].to_rfc3339).utc.rfc3339
+        wta[:u_before_ts] = ts[:u_before_ts]
       end
 
       (wt.count > 0) ? q.where(wt.join(' AND '), wta) : q
