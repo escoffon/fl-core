@@ -313,8 +313,14 @@ module Fl::Core::Service
     # Perform the permission check for an action.
     # This method defines the access check algorithms for the standard Rails actions:
     #
-    # 1. Set the requested permission based on the value of *action*, as described below.
-    # 2. Calls {Fl::Core::Access::Access::ClassMethods#has_permission?} on *obj* using the requested permission.
+    # 1. If *obj* does not respond to `has_permission?`, return `false`.
+    # 2. Set the requested permission based on the value of *action*, as described below.
+    # 3. Calls {Fl::Core::Access::Access::ClassMethods#has_permission?} on *obj* using the requested permission.
+    #
+    # The first step makes the permission checker very restrictive, since refuses to grant permission if *obj*
+    # does not support the standard access control protocol. Subclasses that manage objects that do not respond
+    # `has_permission?`, but that still want to implement some access control, will have to override this method
+    # to implement their specialized access control.
     #
     # The following action names are supported:
     #
@@ -364,6 +370,8 @@ module Fl::Core::Service
     # @return [Boolean] Returns `false` if the permission is not granted.
 
     def _has_action_permission?(action, obj, opts = nil)
+      return false unless obj.respond_to?(:has_permission?)
+      
       p = case action
           when 'index'
             Fl::Core::Access::Permission::Index::NAME
@@ -524,8 +532,8 @@ module Fl::Core::Service
         if has_action_permission?('create', self.model_class, ctx)
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            obj = self.model_class.new(p)
-            if obj.save
+            obj = new_object(p)
+            if !obj.nil? && obj.save
               after_create(obj, p)
             else
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
@@ -794,6 +802,21 @@ module Fl::Core::Service
 
     protected
 
+    # Factory for new objects.
+    # This method is used by {#create} to give subclasses the ability to override the class of a created
+    # object; this is typically used when a service object manages Single Table Inheritance hierarchies.
+    #
+    # The default implementation returns `self.model_class.new(p)`, which for most service object implementations
+    # is the desired behavior.
+    #
+    # @param p [Hash] The hash to pass to the initializer.
+    #
+    # @return [ActiveRecord::Base] Returns a new object, which has not yet been persisted.
+
+    def new_object(p)
+      return self.model_class.new(p)
+    end
+    
     # The backstop values for the query options.
 
     QUERY_BACKSTOPS = {
@@ -1019,8 +1042,7 @@ module Fl::Core::Service
     #  otherwise, it returns `false`.
 
     def do_access_checks?(action, obj = nil, opts = nil)
-      obj = self.model_class if obj.nil?
-      (@_disable_access_checks || !obj.respond_to?(:has_permission?)) ? false : true
+      !@_disable_access_checks
     end
 
     # Check that CAPTCHA checks are enabled and supported.
