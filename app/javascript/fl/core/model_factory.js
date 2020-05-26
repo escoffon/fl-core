@@ -145,17 +145,27 @@ let FlModelBase = FlClassManager.make_class({
 	 * @name FlModelBase#has_permission
 	 * @description
 	 *  Check if the object has granted a permission to the current user.
-	 *  This method looks up the property **permissions**, and if present it looks
-	 *  up _op_ in the list of permissions. If _op_ is present and has a string value,
-	 *  permission is granted.
+	 *  This method looks up the property **permissions**, and if present it then supports two
+	 *  types of checks. If **permissions** is an object, and *op* is a property of **permissions**
+	 *  with value `true`, then it returns `true`.
+	 *  If **permissions** is an array that includes *op*, then it returns `true`.
+	 *  Otherwise, it returns `false`.
 	 * 
 	 * @param {String} op The name of the permission to check; for example, `read` or `write`.
+	 *
+	 * @return {Boolean} Returns `true` if permission is granted, `false` otherwise.
 	 */
 
 	has_permission: function(op) {
-	    if (_.isObject(this.permissions) && _.isString(this.permissions[op]))
+	    // We need to do the array check first because an array will also return true for isObject
+
+	    if (_.isArray(this.permissions))
 	    {
-		return true;
+		return _.includes(this.permissions, op);
+	    }
+	    else if (_.isObject(this.permissions))
+	    {
+		return (this.permissions[op] == true);
 	    }
 	    else
 	    {
