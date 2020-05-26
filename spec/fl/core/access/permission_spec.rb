@@ -43,6 +43,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                Fl::Core::Access::Permission::Create::NAME,
                Fl::Core::Access::Permission::Index::NAME,
                Fl::Core::Access::Permission::IndexContents::NAME,
+               Fl::Core::Access::Permission::CreateContents::NAME,
                Fl::Core::Actor::Permission::ManageMembers::NAME ]
         
         expect(Fl::Core::Access::Permission.registered).to match_array(xr)
@@ -59,6 +60,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                                          Fl::Core::Access::Permission::Create::NAME,
                                          Fl::Core::Access::Permission::Index::NAME,
                                          Fl::Core::Access::Permission::IndexContents::NAME,
+                                         Fl::Core::Access::Permission::CreateContents::NAME,
                                          Fl::Core::Actor::Permission::ManageMembers::NAME ])
         expect(pg[:read]).to match_array([ :edit, :manage ])
         expect(pg[:write]).to match_array([ :edit, :manage ])
@@ -93,6 +95,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                Fl::Core::Access::Permission::Create::NAME,
                Fl::Core::Access::Permission::Index::NAME,
                Fl::Core::Access::Permission::IndexContents::NAME,
+               Fl::Core::Access::Permission::CreateContents::NAME,
                Fl::Core::Actor::Permission::ManageMembers::NAME,
                TestAccess::P1::NAME,
                TestAccess::P2::NAME ]

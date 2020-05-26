@@ -62,6 +62,7 @@ module Fl::Core::Access
   #   Fl::Core::Access::Permission::Delete.new.register_with_report
   #   Fl::Core::Access::Permission::Index.new.register_with_report
   #   Fl::Core::Access::Permission::IndexContents.new.register_with_report
+  #   Fl::Core::Access::Permission::CreateContents.new.register_with_report
   #   Fl::Core::Access::Permission::Edit.new.register_with_report
   #   Fl::Core::Access::Permission::Manage.new.register_with_report
   #
@@ -90,7 +91,7 @@ module Fl::Core::Access
   #
   # #### Standard permission classes
   #
-  # The following permission classes are registered:
+  # The following permission classes are defined:
   #
   # - {Permission::Owner} grants ownership.
   # - {Permission::Read} grants read only access.
@@ -98,6 +99,7 @@ module Fl::Core::Access
   # - {Permission::Delete} grants delete only access.
   # - {Permission::Index} grants index access (typically to a class object).
   # - {Permission::IndexContents} grants access to the list of members of a collection object.
+  # - {Permission::CreateContents} grants permission to create members of a collection object.
   # - {Permission::Edit} grants read and write access to assets.
   # - {Permission::Manage} grants read, write, and delete access to assets.
 
@@ -669,8 +671,8 @@ module Fl::Core::Access
 
   # The **:index_contents** permission class.
   # This permission is used to grant index only access to the contents of a collection object; it is
-  # applied to class instances, and controls if an actor can index the contents of an object that manages
-  # lists of other objects. For example, a user group objkect, which tracks a collection of user objects,
+  # applied to instance objects, and controls if an actor can index the contents of an object that manages
+  # lists of other objects. For example, a user group object, which tracks a collection of user objects,
   # may grant this permission to select actors to allow them to view the list of users.
   
   class Permission::IndexContents < Permission
@@ -681,6 +683,28 @@ module Fl::Core::Access
     BIT = 0x00000040
 
     # dependent permissions granted by **:index_contents**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, BIT, GRANTS)
+    end
+  end
+
+  # The **:create_contents** permission class.
+  # This permission is used to grant the ability to create contents of a collection object; it is
+  # applied to instance objects, and controls if an actor can create contents in an object that manages
+  # lists of other objects. For example, a user group object, which tracks a collection of user objects,
+  # may grant this permission to select actors to allow them to add users to the collection.
+  
+  class Permission::CreateContents < Permission
+    # The permission name.
+    NAME = :create_contents
+
+    # The permission bit.
+    BIT = 0x00000080
+
+    # dependent permissions granted by **:create_contents**.
     GRANTS = [ ]
 
     # Initializer.
