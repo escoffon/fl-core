@@ -173,10 +173,10 @@ module Fl::Core::Attachment::ActiveStorage
 
     # Generate a `to_hash` representation of an attachment element.
     # This method is typically **not** called standalone, but rather from inside
-    # {.to_hash_active_storage_attachment}.
+    # {.to_hash_active_storage_proxy}.
     #
-    # @param attachment [Attachment] The attachment.
-    # @param styles [Hash] The list of styles to return; the value is a hash where keys are symbols
+    # @param attachment [ActiveStorage::Attachment] The attachment.
+    # @param styles [Hash,Symbol] The list of styles to return; the value is a hash where keys are symbols
     #  containing the style names, and values are hashes containing the configuration for the variant
     #  corresponding to the style.
     #  See {.to_hash_attachment_styles} for a description of how this argument is generated.
@@ -187,16 +187,26 @@ module Fl::Core::Attachment::ActiveStorage
     #  Note that all styles except for `:original` and `:blob` are ignored if the attachment's record
     #  is not variable (*i.e.* if `attachment.variable?` returns `false`). Also in that case, `:original` and
     #  `:blob` both return the blob URL.
+    #  If *styles* is the symbol `:all`, it is converted to a hash containing all the available styles
+    #  via a call to {.to_hash_attachment_styles}.
     #
     # @return [Hash] Returns a hash containing the following keys:
     #
+    #  - **:type** is a string containing the name of the attachment class.
+    #  - **:id** is an integer containing the object identifier of the attachment.
+    #  - **:fingerprint** is a string containing the object fingerprint of the attachment.
+    #  - **:name** is a string containing the name of the attachment.
+    #  - **:record** is a string containing the fingerprint of the record containing the attachment.
+    #  - **:blob_id** is an integer containing the object identifier of the attachment's blob object.
     #  - **:content_type** is a string containing the MIME type for the original.
     #  - **:original_file_name** is a string containing the original file name for the attachment.
     #  - **:original_byte_size** is a string containing the original byte size for the attachment.
+    #  - **:metadata** is a hash containing metadata about the attachment.
     #  - **:variants** is an array of hashes, where each hash contains three keys: **:style** is the style
     #    name or hash, **:params** is the hash of the style parameters, **:url** the corresponding URL.
 
-    def self.to_hash_attachment_variants(attachment, styles)
+    def self.to_hash_attachment_variants(attachment, styles = :all)
+      styles = to_hash_attachment_styles(attachment) if styles == :all
       record = attachment.record
       aname = attachment.name.to_sym
 
@@ -227,7 +237,11 @@ module Fl::Core::Attachment::ActiveStorage
 
       h = {
         type: attachment.class.name,
+        id: attachment.id,
+        fingerprint: attachment.fingerprint,
         name: attachment.name,
+        record: ActiveRecord::Base.fingerprint(attachment.record_type, attachment.record_id),
+        blob_id: attachment.blob_id,
         content_type: attachment.content_type,
         original_filename: attachment.filename.sanitized,
         original_byte_size: attachment.byte_size,

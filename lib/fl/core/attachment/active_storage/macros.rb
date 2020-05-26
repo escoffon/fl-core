@@ -178,20 +178,19 @@ module Fl::Core::Attachment::ActiveStorage
 
         styles = opts[:styles] || { }
         class_eval do
-          self.attachment_options[name.to_sym] = opts
-
-          self.attachment_styles[name.to_sym] = case styles
-                                                when Hash
-                                                  styles.reduce({ }) do |acc, kvp|
-                                                    rk, rv = kvp
-                                                    acc[rk.to_sym] = rv
-                                                    acc
-                                                  end
-                                                when Proc
-                                                  styles
-                                                else
-                                                  { }
-                                                end
+          add_attachment_options(name.to_sym, opts)
+          add_attachment_styles(name.to_sym, case styles
+                                             when Hash
+                                               styles.reduce({ }) do |acc, kvp|
+                                                 rk, rv = kvp
+                                                 acc[rk.to_sym] = rv
+                                                 acc
+                                               end
+                                             when Proc
+                                               styles
+                                             else
+                                               { }
+                                             end)
 
           define_method("#{name}_options") do
             self.class.attachment_options(self.send(name))
@@ -317,20 +316,19 @@ module Fl::Core::Attachment::ActiveStorage
 
         styles = opts[:styles] || { }
         class_eval do
-          self.attachment_options[name.to_sym] = opts
-
-          self.attachment_styles[name.to_sym] = case styles
-                                                when Hash
-                                                  styles.reduce({ }) do |acc, kvp|
-                                                    rk, rv = kvp
-                                                    acc[rk.to_sym] = rv
-                                                    acc
-                                                  end
-                                                when Proc
-                                                  styles
-                                                else
-                                                  { }
-                                                end
+          add_attachment_options(name.to_sym, opts)
+          add_attachment_styles(name.to_sym, case styles
+                                             when Hash
+                                               styles.reduce({ }) do |acc, kvp|
+                                                 rk, rv = kvp
+                                                 acc[rk.to_sym] = rv
+                                                 acc
+                                               end
+                                             when Proc
+                                               styles
+                                             else
+                                               { }
+                                             end)
 
           define_method("#{name}_options") do
             self.class.attachment_options(self.send(name))

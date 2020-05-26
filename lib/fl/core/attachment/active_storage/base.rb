@@ -6,9 +6,14 @@ module Fl::Core::Attachment::ActiveStorage
 
     module ClassMethods
       # @!method attachment_options(aname = nil)
+      #   @!scope class
       #   Get the attachment style options registered with the class.
       #   If *aname* is `nil`, the method returns the attachment options from all attachments.
       #   Otherwise, it returns the options for the requested attachment.
+      #
+      #   In order to support class hierarchies rooted at some base class that defines common attachmkents,
+      #   the method looks for *aname* up the class hierarchy, until the first hit or the root class.
+      #
       #   @param aname [String,Symbol,ActiveStorage::Attached::One,nil] The name of the attachment,
       #    or all attachments if `nil`. If the value is a `ActiveStorage::Attached::One`, the attachment
       #    name is derived from its `name` property.
@@ -17,13 +22,15 @@ module Fl::Core::Attachment::ActiveStorage
       #    that were passed to `has_one_attached` for that attachment.
       #    If *aname* is not `nil`, the hash contains the options that were passed to `has_one_attached`.
         
-      def attachment_options(aname = nil)
-      end
-
       # @!method attachment_styles(aname = nil)
+      #   @!scope class
       #   Get the attachment styles registered with the class.
       #   If *aname* is `nil`, the method returns the variant styles from all attachments.
       #   Otherwise, it returns the variant styles for the requested attachment.
+      #
+      #   In order to support class hierarchies rooted at some base class that defines common attachmkents,
+      #   the method looks for *aname* up the class hierarchy, until the first hit or the root class.
+      #
       #   @param aname [String,Symbol,ActiveStorage::Attached::One,nil] The name of the attachment,
       #    or all attachments if `nil`. If the value is a `ActiveStorage::Attached::One`, the attachment
       #    name is derived from its `name` property.
@@ -33,18 +40,13 @@ module Fl::Core::Attachment::ActiveStorage
       #    If *aname* is not `nil`, keys are style names and values are hashes containing the variant
       #    options; if *aname* is not a registered attachment, an empty hash is returned.
         
-      def attachment_styles(aname = nil)
-      end
-
       # @!method attachment_style(aname, sname)
+      #   @!scope class
       #   Get a style for an attachment.
       #   @param aname [String,Symbol] The name of the attachment.
       #   @param sname [String,Symbol] The name of the style to look up.
       #   @return [Hash] Returns a hash containing the requested style; if no such style is present,
       #    returns an empty hash.
-        
-      def attachment_style(aname, sname)
-      end
     end
 
     # The methods in this module are installed as instance method of the including class.
@@ -285,7 +287,14 @@ module Fl::Core::Attachment::ActiveStorage
 
       base.class_eval do
         def self.attachment_options(aname = nil)
-          return @_attachment_options if aname.nil?
+          if aname.nil?
+            # We have to collect attachment options from the superclasses
+
+            sclass = self.superclass
+            sopts = (sclass.respond_to?(:attachment_options)) ? sclass.attachment_options(ak) : { }
+
+            return sopts.merge(@_attachment_options || { })
+          end
 
           ak = case aname
                when ActiveStorage::Attached::One
@@ -297,11 +306,24 @@ module Fl::Core::Attachment::ActiveStorage
                else
                  aname
                end
-          @_attachment_options[ak] || { }
+
+          if !@_attachment_options || !@_attachment_options.has_key?(ak)
+            sclass = self.superclass
+            return (sclass.respond_to?(:attachment_options)) ? sclass.attachment_options(ak) : { }
+          else
+            @_attachment_options[ak]
+          end
         end
         
         def self.attachment_styles(aname = nil)
-          return @_attachment_styles if aname.nil?
+          if aname.nil?
+            # We have to collect attachment styles from the superclasses
+
+            sclass = self.superclass
+            sstyles = (sclass.respond_to?(:attachment_styles)) ? sclass.attachment_styles(ak) : { }
+
+            return sstyles.merge(@_attachment_styles || { })
+          end
 
           ak = case aname
                when ActiveStorage::Attached::One
@@ -313,6 +335,12 @@ module Fl::Core::Attachment::ActiveStorage
                else
                  aname
                end
+
+          if !@_attachment_styles || !@_attachment_styles.has_key?(ak)
+            sclass = self.superclass
+            return (sclass.respond_to?(:attachment_styles)) ? sclass.attachment_styles(ak) : { }
+          end
+
           s = @_attachment_styles[ak]
           case s
           when Hash
@@ -334,6 +362,18 @@ module Fl::Core::Attachment::ActiveStorage
         def self.attachment_style(aname, sname)
           return sname if sname.is_a?(Hash)
           attachment_styles(aname)[sname.to_sym] || { }
+        end
+
+        protected
+
+        def self.add_attachment_options(aname, opts)
+          @_attachment_options = { } unless @_attachment_options.is_a?(Hash)
+          @_attachment_options[aname.to_sym] = opts
+        end
+
+        def self.add_attachment_styles(aname, styles)
+          @_attachment_styles = { } unless @_attachment_styles.is_a?(Hash)
+          @_attachment_styles[aname.to_sym] = styles
         end
         
         include InstanceMethods
