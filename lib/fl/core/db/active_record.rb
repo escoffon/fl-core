@@ -46,7 +46,8 @@ class ActiveRecord::Base
   #
   # @overload fingerprint(klass, id)
   #  Generate a "fingerprint" from a class/identifier pair. See above for a description of fingerprints.
-  #  @param klass [Class] The class to use (this should be a subclass of `ActiveRecord::Base`).
+  #  @param klass [Class,String] The class to use, or the name of the class to use (this should be a subclass
+  #   of `ActiveRecord::Base`).
   #  @param id [String,Integer] the object identifier to use.
   #  @return [String] Returns a string containing the class name and object identifier, as described above.
   #
@@ -71,7 +72,7 @@ class ActiveRecord::Base
       end
     else
       klass, id = args
-      "#{klass.name}/#{id}"
+      return (klass.is_a?(String)) ? "#{klass}/#{id}" : "#{klass.name}/#{id}"
     end
   end
 
