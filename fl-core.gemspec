@@ -28,12 +28,12 @@ Gem::Specification.new do |spec|
 
   spec.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
 
-  spec.add_dependency "rails", "~> 6.0.2", ">= 6.0.2.1"
-
   spec.add_runtime_dependency "nokogiri", "~> 1.10"
   spec.add_runtime_dependency "loofah", "~> 2.3"
   #- spec.add_runtime_dependency 'fl-google'
+  spec.add_runtime_dependency "mimemagic", "~> 0.3"
   
+  spec.add_development_dependency "rails", "~> 6.0.2", ">= 6.0.2.1"
   spec.add_development_dependency "bundler", "~> 2.0"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.0"
