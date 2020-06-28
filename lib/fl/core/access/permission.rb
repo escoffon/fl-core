@@ -416,7 +416,6 @@ module Fl::Core::Access
       begin
         Fl::Core::Access::Permission.register(self)
       rescue Fl::Core::Access::Permission::DuplicateName => x
-    open('/Users/emilscoffone/src/nc/code/rails/kp/log/emil.log', 'a') { |f| f.print("++++++++++ EXCEPTION: #{x.class} (#{x.message})\n") }
         Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         bt = caller
         STDERR.print("duplicate permission name: '#{x.permission.name}' at #{bt[1]}\n")
@@ -424,7 +423,6 @@ module Fl::Core::Access
         
         raise
       rescue Fl::Core::Access::Permission::DuplicateBit => x
-    open('/Users/emilscoffone/src/nc/code/rails/kp/log/emil.log', 'a') { |f| f.print("++++++++++ EXCEPTION: #{x.class} (#{x.message})\n") }
         Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         bt = caller
         bit = sprintf('0x%x', x.permission.bit)
@@ -438,7 +436,6 @@ module Fl::Core::Access
         
         raise
       rescue => x
-    open('/Users/emilscoffone/src/nc/code/rails/kp/log/emil.log', 'a') { |f| f.print("++++++++++ EXCEPTION: #{x.class} (#{x.message})\n") }
         Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         raise
       end

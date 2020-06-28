@@ -235,7 +235,7 @@ class ActiveRecord::Base
     false
   end
 
-  # Instance asset checker.
+  # Instance access checker.
   # Calls the class method {.has_access_control?} and returns its return value.
   #
   # @return [Boolean] Returns the return value from {.has_access_control?}.
