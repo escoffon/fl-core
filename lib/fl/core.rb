@@ -25,6 +25,7 @@ require 'fl/core/icalendar'
 require 'fl/core/model_hash'
 require 'fl/core/parameters_helper'
 require 'fl/core/query'
+require 'fl/core/text_search'
 require 'fl/core/time_zone'
 require 'fl/core/title_management'
 
