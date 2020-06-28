@@ -12,7 +12,7 @@ module Fl::Core::Actor
       NAME = :manage_actor_group_members
 
       # The permission bit.
-      BIT = 0x00000080
+      BIT = 0x00000100
 
       # dependent permissions granted by **:manage_actor_group_members**.
       GRANTS = [ ]

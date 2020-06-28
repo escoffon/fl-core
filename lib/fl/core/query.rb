@@ -101,6 +101,8 @@ module Fl::Core
     # @return [Array<Integer>] Returns an array of object identifiers.
 
     def convert_list_of_references(rl, klass)
+      rl = [ rl ] unless rl.is_a?(Array)
+      
       rl.reduce([ ]) do |acc, r|
         if r.is_a?(Integer)
           acc << r
@@ -137,6 +139,8 @@ module Fl::Core
     # @return [Array<String>] Returns an array of object fingerprints.
     
     def convert_list_of_polymorphic_references(rl)
+      rl = [ rl ] unless rl.is_a?(Array)
+      
       rl.reduce([ ]) do |acc, r|
         if r.is_a?(ActiveRecord::Base)
           acc << r.fingerprint if r.respond_to?(:fingerprint)
@@ -337,7 +341,7 @@ module Fl::Core
     #
     # Note that the names of the inclusion and exception lists for actors are configurable; for example, to
     # normalize lists of authors, the caller may pass two options, **:only_authors** and **:except_authors**,
-    # whereas to normalize a list of owner, the two options may be **:only_owners** and **:except_owners**.
+    # whereas to normalize a list of owners, the two options may be **:only_owners** and **:except_owners**.
     # The normalization strategy is independent of the semantics of those two properties, but is very much
     # aware of the semantics of the **:only_goups** and **:except_groups** options.
     #
@@ -368,7 +372,7 @@ module Fl::Core
     #  The **:except_groups** option expands to a list of object identifiers for actors that should be excluded;
     #  therefore, **:except_groups** acts like *:except_<key>*.
     # @param key [Symbol, String] This value is used to generate the names of the actor options.
-    #  For example, if the value of *prefix* is `author`, then the method looks up the two options **:only_authors**
+    #  For example, if the value of *prefix* is `authors`, then the method looks up the two options **:only_authors**
     #  and **:except_authors**.
     #
     # @return [Hash] Returns a hash with two entries:
@@ -393,20 +397,14 @@ module Fl::Core
 
       # 1. Build the arrays of object identifiers
 
-      only_uids = if only_actors
-                    t = (only_actors.is_a?(Array)) ? only_actors : [ only_actors ]
-                    t.map { |u| (u.is_a?(String)) ? u : u.fingerprint }
-                  else
-                    nil
-                  end
-
+      only_uids = (only_actors.nil?) ? nil : convert_list_of_polymorphic_references(only_actors)
       if only_groups
         t = (only_groups.is_a?(Array)) ? only_groups : [ only_groups ]
         glist = t.map { |g| (g.is_a?(String)) ? ActiveRecord::Base.find_by_fingerprint(g) : g }
 
         only_gids = []
         glist.each do |g|
-          if g
+          if g && g.respond_to?(:members)
             g.members.each do |u|
               f = u.fingerprint
               only_gids << f unless only_gids.include?(f)
@@ -417,20 +415,14 @@ module Fl::Core
         only_gids = nil
       end
 
-      except_uids = if except_actors
-                      t = (except_actors.is_a?(Array)) ? except_actors : [ except_actors ]
-                      t.map { |u| (u.is_a?(String)) ? u : u.fingerprint }
-                    else
-                      nil
-                    end
-
+      except_uids = (except_actors.nil?) ? nil : convert_list_of_polymorphic_references(except_actors)
       if except_groups
         t = (except_groups.is_a?(Array)) ? except_groups : [ except_groups ]
         glist = t.map { |g| (g.is_a?(String)) ? ActiveRecord::Base.find_by_fingerprint(g) : g }
 
         except_gids = []
         glist.each do |g|
-          if g
+          if g && g.respond_to?(:members)
             g.members.each do |u|
               f = u.fingerprint
               except_gids << f unless except_gids.include?(f)

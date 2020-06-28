@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_01_15_113655) do
+ActiveRecord::Schema.define(version: 2020_06_26_004924) do
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
@@ -60,6 +60,25 @@ ActiveRecord::Schema.define(version: 2020_01_15_113655) do
     t.index ["owner_type", "owner_id"], name: "fl_core_act_grp_owner_idx"
   end
 
+  create_table "fl_core_comments", force: :cascade do |t|
+    t.string "commentable_type"
+    t.integer "commentable_id"
+    t.string "commentable_fingerprint"
+    t.string "author_type"
+    t.integer "author_id"
+    t.string "author_fingerprint"
+    t.text "title"
+    t.text "contents"
+    t.text "contents_delta"
+    t.integer "num_comments", default: 0
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["author_fingerprint"], name: "fl_core_cmts_author_fp_idx"
+    t.index ["author_type", "author_id"], name: "fl_core_cmts_author_ref_idx"
+    t.index ["commentable_fingerprint"], name: "fl_core_cmts_cmtable_fp_idx"
+    t.index ["commentable_type", "commentable_id"], name: "fl_core_cmts_cmtable_ref_idx"
+  end
+
   create_table "fl_core_test_actor_twos", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", precision: 6, null: false
@@ -85,6 +104,24 @@ ActiveRecord::Schema.define(version: 2020_01_15_113655) do
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["owner_id"], name: "index_fl_core_test_datum_attachments_on_owner_id"
+  end
+
+  create_table "fl_core_test_datum_comment_twos", force: :cascade do |t|
+    t.string "content"
+    t.integer "owner_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["owner_id"], name: "index_fl_core_test_datum_comment_twos_on_owner_id"
+  end
+
+  create_table "fl_core_test_datum_comments", force: :cascade do |t|
+    t.string "title"
+    t.string "content"
+    t.integer "owner_id"
+    t.integer "num_comments"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["owner_id"], name: "index_fl_core_test_datum_comments_on_owner_id"
   end
 
   create_table "fl_core_test_datum_fours", force: :cascade do |t|

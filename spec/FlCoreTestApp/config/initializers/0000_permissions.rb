@@ -11,4 +11,7 @@ Fl::Core::Access::Permission::CreateContents.new.register_with_report
 Fl::Core::Access::Permission::Edit.new.register_with_report
 Fl::Core::Access::Permission::Manage.new.register_with_report
 
+Fl::Core::Comment::Permission::IndexComments.new.register_with_report
+Fl::Core::Comment::Permission::CreateComments.new.register_with_report
+
 Fl::Core::Actor::Permission::ManageMembers.new.register_with_report

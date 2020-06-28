@@ -41,5 +41,21 @@ class CreateFlCoreTestData < ActiveRecord::Migration[6.0]
 
       t.timestamps
     end
+
+    create_table :fl_core_test_datum_comments do |t|
+      t.string		:title
+      t.string		:content
+      t.references	:owner
+      t.integer		:num_comments
+      
+      t.timestamps
+    end
+
+    create_table :fl_core_test_datum_comment_twos do |t|
+      t.string		:content
+      t.references	:owner
+      
+      t.timestamps
+    end
   end
 end
