@@ -62,7 +62,12 @@ en:
         captcha:
           no-captcha: 'The request does not contain the CAPTCHA key %{key}'
           verification-failure: 'CAPTCHA verification failure: %{messages}'
-      
+
+      comment:
+        comment:
+          validate:
+            invalid_delta: "invalid Delta contents"
+
     framework:
       access:
         grant:

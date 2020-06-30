@@ -19,7 +19,7 @@ module Fl::Core::Comment
     # @raise [Fl::Core::ParametersHelper::ConversionError] Thrown by the helper method.
 
     def self.commentable_from_parameter(p, key = :commentable)
-      x = Proc.new { |obj| obj.class.include?(Fl::Comment::Commentable) }
+      x = Proc.new { |obj| obj.class.include?(Fl::Core::Comment::Commentable) }
       Fl::Core::ParametersHelper.object_from_parameter(p, key, x)
     end
 

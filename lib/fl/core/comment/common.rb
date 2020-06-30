@@ -37,6 +37,18 @@ module Fl::Core::Comment
       populate_title_if_needed(:contents, TITLE_LENGTH)
     end
 
+    # Validate the Delta contents.
+    # Minimal validation checks that it is a Hash containing the `'ops'` key (an array).
+
+    def _check_contents_delta
+      unless self.contents_delta.blank?
+        cd = self.contents_delta
+        if !cd.is_a?(Hash) || !cd['ops'].is_a?(Array)
+          self.errors.add(:contents_delta, I18n.tx('fl.core.comment.comment.validate.invalid_delta'))
+        end
+      end
+    end
+
     # @!visibility private
     DEFAULT_HASH_KEYS = [ :commentable, :author, :title, :contents, :contents_delta ]
 
@@ -71,8 +83,8 @@ module Fl::Core::Comment
       [ Fl::Core::Access::Permission::Read::NAME,
         Fl::Core::Access::Permission::Write::NAME,
         Fl::Core::Access::Permission::Delete::NAME,
-        Fl::Core::Access::Permission::IndexComments::NAME,
-        Fl::Core::Access::Permission::CreateComments::NAME
+        Fl::Core::Comment::Permission::IndexComments::NAME,
+        Fl::Core::Comment::Permission::CreateComments::NAME
       ]
     end
 
@@ -131,16 +143,16 @@ module Fl::Core::Comment
     # - In the context of the comment class, includes the modules
     #   {Fl::Core::AttributeFilters}, {Fl::Core::TitleManagement}, {Fl::Core::ModelHash},
     #   {Fl::Core::Comment::Helper}, and {Fl::Core::Comment::Commentable}.
-    # - Registers attribute filters for **:title** and **:contents+** the title is converted to text only,
+    # - Registers attribute filters for **:title** and **:contents** the title is converted to text only,
     #   and contents are stripped of dangerous HTML.
     # - Registers a `before_validation` callback to set up the title for validation;
     #   see {._before_validation_title_checks}.
     # - Registers a `before_save` callback to set up the title for saving; see {._before_save_title_checks}.
     # - Adds validation rules:
-    #   - *:commentable*, *:author*, and *:contents* must be present.
-    #   - Minimum content length for *:contents* is 1.
-    #   - Maximum content length for *:title* is 100.
-    #   - Validate with {PermissionValidator}
+    #   - **:commentable**, **:author**, **:contents**, and **:contents_delta** must be present.
+    #   - Minimum content length for **:contents** is 1.
+    #   - Maximum content length for **:title** is 100.
+    #   - Run a minimal validation on the Delta contents.
 
     included do
       include Fl::Core::AttributeFilters
@@ -157,9 +169,10 @@ module Fl::Core::Comment
 
       # Validation
 
-      validates_presence_of :commentable, :author, :contents
+      validates_presence_of :commentable, :author, :contents, :contents_delta
       validates_length_of :contents, :minimum => 1
       validates_length_of :title, :maximum => 100
+      validate :_check_contents_delta
 
       # Hooks
     

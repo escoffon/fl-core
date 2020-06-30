@@ -36,23 +36,23 @@ RSpec.describe 'Fl::Core::Comment', type: :model do
     create(:test_datum_comment_two, owner: a11, content: d21_content, grants: g)
   end
 
-  let(:c_d10_a10) { d10.add_comment(a10, 'c - d10 - a10', { }, 't - d10 - a10') }
-  let(:c_d10_a11) { d10.add_comment(a11, 'c - d10 - a11', { }, 't - d10 - a11') }
+  let(:c_d10_a10) { d10.add_comment(a10, 'c - d10 - a10', { ops: [ { insert: '' } ] }, 't - d10 - a10') }
+  let(:c_d10_a11) { d10.add_comment(a11, 'c - d10 - a11', { ops: [ { insert: '' } ] }, 't - d10 - a11') }
 
-  let(:c_d20_a10) { d20.add_comment(a10, 'c - d20 - a10', { }, 't - d20 - a10') }
-  let(:c_d20_a11) { d20.add_comment(a11, 'c - d20 - a11', { }, 't - d20 - a11') }
+  let(:c_d20_a10) { d20.add_comment(a10, 'c - d20 - a10', { ops: [ { insert: '' } ] }, 't - d20 - a10') }
+  let(:c_d20_a11) { d20.add_comment(a11, 'c - d20 - a11', { ops: [ { insert: '' } ] }, 't - d20 - a11') }
 
-  let(:c_d21_a10) { d21.add_comment(a10, 'c - d21 - a10', { }, 't - d21 - a10') }
-  let(:c_d21_a11) { d21.add_comment(a11, 'c - d21 - a11', { }, 't - d21 - a11') }
+  let(:c_d21_a10) { d21.add_comment(a10, 'c - d21 - a10', { ops: [ { insert: '' } ] }, 't - d21 - a10') }
+  let(:c_d21_a11) { d21.add_comment(a11, 'c - d21 - a11', { ops: [ { insert: '' } ] }, 't - d21 - a11') }
 
-  let(:sc1_d10_a10) { c_d10_a10.add_comment(a10, 'sc1 - d10 - a10', { }, 'st1 - d10 - a10') }
-  let(:sc2_d10_a10) { c_d10_a10.add_comment(a11, 'sc2 - d10 - a11', { }, 'st2 - d10 - a11') }
+  let(:sc1_d10_a10) { c_d10_a10.add_comment(a10, 'sc1 - d10 - a10', { ops: [ { insert: '' } ] }, 'st1 - d10 - a10') }
+  let(:sc2_d10_a10) { c_d10_a10.add_comment(a11, 'sc2 - d10 - a11', { ops: [ { insert: '' } ] }, 'st2 - d10 - a11') }
 
-  let(:sc1_d20_a10) { c_d20_a10.add_comment(a10, 'sc1 - d20 - a10', { }, 'st1 - d20 - a10') }
-  let(:sc2_d20_a10) { c_d20_a10.add_comment(a11, 'sc2 - d20 - a11', { }, 'st2 - d20 - a11') }
+  let(:sc1_d20_a10) { c_d20_a10.add_comment(a10, 'sc1 - d20 - a10', { ops: [ { insert: '' } ] }, 'st1 - d20 - a10') }
+  let(:sc2_d20_a10) { c_d20_a10.add_comment(a11, 'sc2 - d20 - a11', { ops: [ { insert: '' } ] }, 'st2 - d20 - a11') }
 
-  let(:sc1_d21_a10) { c_d21_a10.add_comment(a10, 'sc1 - d21 - a10', { }, 'st1 - d21 - a10') }
-  let(:sc2_d21_a10) { c_d21_a10.add_comment(a11, 'sc2 - d21 - a11', { }, 'st2 - d21 - a11') }
+  let(:sc1_d21_a10) { c_d21_a10.add_comment(a10, 'sc1 - d21 - a10', { ops: [ { insert: '' } ] }, 'st1 - d21 - a10') }
+  let(:sc2_d21_a10) { c_d21_a10.add_comment(a11, 'sc2 - d21 - a11', { ops: [ { insert: '' } ] }, 'st2 - d21 - a11') }
 
   describe "access check" do
     context "comments" do

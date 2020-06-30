@@ -51,7 +51,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         author: a10,
         commentable: d10,
         contents: 'contents1',
-        contents_delta: { }
+        contents_delta: { ops: [ { insert: '' } ] }
       )
       expect(c1.commentable?).to eql(true)
     end
@@ -65,7 +65,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         author: a10,
         commentable: d10,
         contents: 'contents1',
-        contents_delta: { }
+        contents_delta: { ops: [ { insert: '' } ] }
       )
       expect(c1.valid?).to eql(true)
       expect(c1.save).to eql(true)
@@ -79,7 +79,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         author: a10,
         commentable: d10,
         contents: 'contents1',
-        contents_delta: { }
+        contents_delta: { ops: [ { insert: '' } ] }
       )
       expect(c1.valid?).to eql(true)
       expect(c1.save).to eql(true)
@@ -94,7 +94,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         author: a10,
         commentable: d10,
         contents: 'contents1',
-        contents_delta: { },
+        contents_delta: { ops: [ { insert: '' } ] },
         title: 'title1'
       }
 
@@ -239,7 +239,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       it "should create an instance of an active record comment" do
         expect(d10.comments.count).to eql(0)
 
-        c1 = d10.add_comment(a10, 'contents1', { }, 'title1')
+        c1 = d10.add_comment(a10, 'contents1', { ops: [ { insert: '' } ] }, 'title1')
         expect(c1).to be_a(Fl::Core::Comment::ActiveRecord::Comment)
         expect(c1.valid?).to eql(true)
         expect(c1.persisted?).to eql(true)
@@ -250,12 +250,12 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     context "#comments_query" do
       let(:d100) do
         d = create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content')
-        d.add_comment(a10, 'a10 - c1', { }, 'a10 - t1')
-        d.add_comment(a11, 'a11 - c1', { }, 'a11 - t1')
-        d.add_comment(a10, 'a10 - c2', { }, 'a10 - t2')
-        d.add_comment(a12, 'a12 - c1', { }, 'a12 - t1')
-        d.add_comment(a12, 'a12 - c2', { }, 'a12 - t2')
-        d.add_comment(a13, 'a13 - c1', { }, 'a13 - t1')
+        d.add_comment(a10, 'a10 - c1', { ops: [ { insert: '' } ] }, 'a10 - t1')
+        d.add_comment(a11, 'a11 - c1', { ops: [ { insert: '' } ] }, 'a11 - t1')
+        d.add_comment(a10, 'a10 - c2', { ops: [ { insert: '' } ] }, 'a10 - t2')
+        d.add_comment(a12, 'a12 - c1', { ops: [ { insert: '' } ] }, 'a12 - t1')
+        d.add_comment(a12, 'a12 - c2', { ops: [ { insert: '' } ] }, 'a12 - t2')
+        d.add_comment(a13, 'a13 - c1', { ops: [ { insert: '' } ] }, 'a13 - t1')
         
         d
       end
@@ -341,11 +341,55 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
   end
 
   describe "comment" do
+    context "validation" do
+      it "should detect a missing :commentable attribute" do
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(author: a10, contents: 'c1 -c',
+                                                          contents_delta: { ops: [ { insert: 'c1 - c' } ] })
+        expect(c1.valid?).to eql(false)
+        expect(c1.errors.messages).to include(:commentable)
+      end
+
+      it "should detect a missing :author attribute" do
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, contents: 'c1 -c',
+                                                          contents_delta: { ops: [ { insert: 'c1 - c' } ] })
+        expect(c1.valid?).to eql(false)
+        expect(c1.errors.messages).to include(:author)
+      end
+
+      it "should detect a missing :contents attribute" do
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+                                                          contents_delta: { ops: [ { insert: 'c1 - c' } ] })
+        expect(c1.valid?).to eql(false)
+        expect(c1.errors.messages).to include(:contents)
+      end
+
+      it "should detect a missing :contents_delta attribute" do
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+                                                          contents: 'c1 -c')
+        expect(c1.valid?).to eql(false)
+        expect(c1.errors.messages).to include(:contents_delta)
+      end
+
+      it "should detect an invalid :contents_delta attribute" do
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+                                                          contents: 'c1 -c',
+                                                          contents_delta: [ 1 ])
+        expect(c1.valid?).to eql(false)
+        expect(c1.errors.messages).to include(:contents_delta)
+
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+                                                          contents: 'c1 -c',
+                                                          contents_delta: { foo: 10 })
+        expect(c1.valid?).to eql(false)
+        expect(c1.errors.messages).to include(:contents_delta)
+      end
+    end
+    
     context "#add_comment" do
       it "should create an instance of an active record subcomment" do
-        c1 = d10.add_comment(a10, 'contents1', { }, 'title1')
+        c1 = d10.add_comment(a10, 'contents1', { ops: [ { insert: '' } ] }, 'title1')
         expect(c1.comments.count).to eql(0)
-        sc1 = c1.add_comment(a11, 'subcontents1', { }, 'subtitle1')
+        sc1 = c1.add_comment(a11, 'subcontents1', { ops: [ { insert: '' } ] }, 'subtitle1')
 
         expect(sc1).to be_a(Fl::Core::Comment::ActiveRecord::Comment)
         expect(sc1.valid?).to eql(true)
@@ -354,16 +398,244 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       end
     end
 
+    context '#to_hash' do
+      let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id ] }
+      let(:min_keys) { id_keys | [ :created_at, :updated_at, :permissions,
+                                   :commentable, :author, :title, :contents, :contents_delta ] }
+      let(:std_keys) { min_keys | [ ] }
+      let(:vrb_keys) { std_keys | [ ] }
+      let(:cmp_keys) { vrb_keys | [ ] }
+
+      let(:c1) do
+        Fl::Core::Comment::ActiveRecord::Comment.create(
+          author: a10,
+          commentable: d10,
+          contents: 'contents1',
+          contents_delta: { ops: [ { insert: '' } ] }
+        )
+      end
+
+      it 'should list properties based on verbosity' do
+        h = c1.to_hash(a10, { verbosity: :id })
+        expect(h.keys.sort).to eql(id_keys.sort)
+        expect(h[:id]).to eql(c1.id)
+        expect(h[:type]).to eql(c1.class.name)
+        expect(h[:global_id]).to eql(c1.to_global_id.to_s)
+        expect(h[:fingerprint]).to eql(c1.fingerprint)
+
+        h = c1.to_hash(a10, { verbosity: :minimal })
+        expect(h.keys.sort).to eql(min_keys.sort)
+        expect(h[:author]).to be_a(Hash)
+        expect(h[:author][:fingerprint]).to eql(a10.fingerprint)
+        expect(h[:commentable]).to be_a(Hash)
+        expect(h[:commentable][:fingerprint]).to eql(d10.fingerprint)
+        expect(h[:title]).to eql(c1.title)
+        expect(h[:contents]).to eql(c1.contents)
+        expect(h[:contents_delta]).to eql(c1.contents_delta)
+        
+        h = c1.to_hash(a10, { verbosity: :standard })
+        expect(h.keys.sort).to eql(std_keys.sort)
+
+        h = c1.to_hash(a10, { verbosity: :verbose })
+        expect(h.keys.sort).to eql(vrb_keys.sort)
+        
+        h = c1.to_hash(a10, { verbosity: :complete })
+        expect(h.keys.sort).to eql(cmp_keys.sort)
+
+        h = c1.to_hash(a10, { verbosity: :ignore })
+        expect(h.keys.sort).to eq(id_keys.sort)
+      end
+      
+      it 'allows customization of key lists' do
+        c_keys = id_keys | [ :title ]
+        h = c1.to_hash(a10, { verbosity: :id, include: [ :title ] })
+        expect(h.keys).to match_array(c_keys)
+
+        c_keys = id_keys | [ :title ]
+        h = c1.to_hash(a10, { verbosity: :id, only: [ :title ] })
+        expect(h.keys).to match_array(c_keys)
+
+        c_keys = min_keys - [ :title, :author ]
+        h = c1.to_hash(a10, { verbosity: :minimal, except: [ :title, :author ] })
+        expect(h.keys).to match_array(c_keys)
+      end
+    end
+
+    context ".build_query" do
+      let(:cc) { Fl::Core::Comment::ActiveRecord::Comment }
+      
+      let(:d100) do
+        d = create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content')
+        d.add_comment(a10, 'd100 - a10 - c1', { ops: [ { insert: '' } ] }, 'd100 - a10 - t1')
+        d.add_comment(a11, 'd100 - a11 - c1', { ops: [ { insert: '' } ] }, 'd100 - a11 - t1')
+        d.add_comment(a10, 'd100 - a10 - c2', { ops: [ { insert: '' } ] }, 'd100 - a10 - t2')
+        d.add_comment(a12, 'd100 - a12 - c1', { ops: [ { insert: '' } ] }, 'd100 - a12 - t1')
+        d.add_comment(a12, 'd100 - a12 - c2', { ops: [ { insert: '' } ] }, 'd100 - a12 - t2')
+        d.add_comment(a13, 'd100 - a13 - c1', { ops: [ { insert: '' } ] }, 'd100 - a13 - t1')
+        
+        d
+      end
+
+      let(:d101) do
+        d = create(:test_datum_comment, owner: a10, title: 'd101.title', content: 'd101.content')
+        d.add_comment(a10, 'd101 - a10 - c1', { ops: [ { insert: '' } ] }, 'd101 - a10 - t1')
+        d.add_comment(a11, 'd101 - a11 - c1', { ops: [ { insert: '' } ] }, 'd101 - a11 - t1')
+        d.add_comment(a11, 'd101 - a11 - c2', { ops: [ { insert: '' } ] }, 'd101 - a11 - t2')
+        d.add_comment(a12, 'd101 - a12 - c1', { ops: [ { insert: '' } ] }, 'd101 - a12 - t1')
+        
+        d
+      end
+
+      let(:d102) do
+        create(:test_datum_comment, owner: a10, title: 'd102.title', content: 'd102.content')
+      end
+
+      it "should return all comments with default (empty) options" do
+        dl = [ d100, d101, d102 ]
+        
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
+               'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+
+      it "should support :only_commentables" do
+        dl = [ d100, d101, d102 ]
+        
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1' ]
+        q = cc.build_query(only_commentables: d100)
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(only_commentables: d101.fingerprint)
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
+               'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(only_commentables: [ d100.fingerprint, d101.to_global_id, d102.to_global_id.to_s ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ ]
+        q = cc.build_query(only_commentables: [ d102.to_global_id.to_s ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+
+      it "should support :except_commentables" do
+        dl = [ d100, d101, d102 ]
+        
+        xl = [ 'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(except_commentables: d100)
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1' ]
+        q = cc.build_query(except_commentables: d101.fingerprint)
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ ]
+        q = cc.build_query(except_commentables: [ d100.fingerprint, d101.to_global_id, d102.to_global_id.to_s ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
+               'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(except_commentables: [ d102.to_global_id.to_s ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+      
+      it "should support :only_authors" do
+        dl = [ d100, d101, d102 ]
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a10 - t2', 'd101 - a10 - t1' ]
+        q = cc.build_query(only_authors: [ a10.to_global_id.to_s ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2',
+               'd101 - a10 - t1', 'd101 - a12 - t1' ]
+        q = cc.build_query(only_authors: [ a10.to_global_id.to_s, a12.fingerprint ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+
+      it "should support :except_authors" do
+        dl = [ d100, d101, d102 ]
+
+        xl = [ 'd100 - a11 - t1', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
+               'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(except_authors: [ a10.to_global_id.to_s ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a11 - t1', 'd100 - a13 - t1',
+               'd101 - a11 - t1', 'd101 - a11 - t2' ]
+        q = cc.build_query(except_authors: [ a10.to_global_id.to_s, a12.fingerprint ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+
+      it "should support combinations of _commentables and _authors" do
+        dl = [ d100, d101, d102 ]
+        
+        xl = [ 'd100 - a10 - t1', 'd100 - a10 - t2' ]
+        q = cc.build_query(only_commentables: [ d100.to_global_id.to_s ], only_authors: a10.fingerprint)
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a11 - t1', 'd100 - a13 - t1',
+               'd101 - a11 - t1', 'd101 - a11 - t2' ]
+        q = cc.build_query(except_commentables: [ d102.to_global_id.to_s ], only_authors: [ a11, a13.to_global_id ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd101 - a10 - t1', 'd101 - a12 - t1' ]
+        q = cc.build_query(except_commentables: [ d100.to_global_id.to_s ], except_authors: [ a11, a13.to_global_id ])
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+
+      it "should support sorting" do
+        dl = [ d100, d101, d102 ]
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
+               'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(order: "title asc")
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to eql(xl.sort)
+
+        q = cc.build_query(order: "title desc")
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to eql(xl.sort.reverse)
+      end
+
+      it "should support pagination" do
+        dl = [ d100, d101, d102 ]
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
+               'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
+        q = cc.build_query(order: "title asc", limit: 2, offset: 2)
+        expect(q.count).to eql(2)
+        expect(_clist(q)).to eql(xl.sort[2, 2])
+      end
+    end
+
     context "#comments_query" do
       let(:d100) { create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content') }
       let(:c100) do
-        c = d100.add_comment(a10, 'a10 - c1', { }, 'a10 - t1')
-        c.add_comment(a10, 'a10 - sc1', { }, 'a10 - st1')
-        c.add_comment(a11, 'a11 - sc1', { }, 'a11 - st1')
-        c.add_comment(a10, 'a10 - sc2', { }, 'a10 - st2')
-        c.add_comment(a12, 'a12 - sc1', { }, 'a12 - st1')
-        c.add_comment(a12, 'a12 - sc2', { }, 'a12 - st2')
-        c.add_comment(a13, 'a13 - sc1', { }, 'a13 - st1')
+        c = d100.add_comment(a10, 'a10 - c1', { ops: [ { insert: '' } ] }, 'a10 - t1')
+        c.add_comment(a10, 'a10 - sc1', { ops: [ { insert: '' } ] }, 'a10 - st1')
+        c.add_comment(a11, 'a11 - sc1', { ops: [ { insert: '' } ] }, 'a11 - st1')
+        c.add_comment(a10, 'a10 - sc2', { ops: [ { insert: '' } ] }, 'a10 - st2')
+        c.add_comment(a12, 'a12 - sc1', { ops: [ { insert: '' } ] }, 'a12 - st1')
+        c.add_comment(a12, 'a12 - sc2', { ops: [ { insert: '' } ] }, 'a12 - st2')
+        c.add_comment(a13, 'a13 - sc1', { ops: [ { insert: '' } ] }, 'a13 - st1')
         
         c
       end

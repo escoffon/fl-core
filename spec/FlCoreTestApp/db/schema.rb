@@ -109,6 +109,7 @@ ActiveRecord::Schema.define(version: 2020_06_26_004924) do
   create_table "fl_core_test_datum_comment_twos", force: :cascade do |t|
     t.string "content"
     t.integer "owner_id"
+    t.text "grants"
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["owner_id"], name: "index_fl_core_test_datum_comment_twos_on_owner_id"

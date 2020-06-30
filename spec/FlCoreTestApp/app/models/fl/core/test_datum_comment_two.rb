@@ -8,11 +8,13 @@ module Fl::Core
       end
 
       def access_check(permission, actor, asset, context = nil)
+        return false if actor.nil?
+        
         asset_grants = asset.grants || { }
         return false if !asset_grants.is_a?(Hash) || (asset_grants.count < 1)
 
         g = asset_grants[actor.fingerprint] || [ ]
-        return g.include?(Fl::Core::Access::Helper.permission_name(permission))
+        return g.include?(Fl::Core::Access::Helper.permission_name(permission).to_s)
       end
     end
 
@@ -34,19 +36,12 @@ module Fl::Core
 
     filtered_attribute :content, [ FILTER_HTML_STRIP_DANGEROUS_ELEMENTS ]
 
+    serialize :grants, JSON
+    
     def initialize(attrs)
-      @grants = attrs.delete(:grants) if attrs.is_a?(Hash)
       super(attrs)
     end
 
-    def grants()
-      @grants
-    end
-
-    def grants=(g)
-      @grants = g
-    end
-    
     def my_summary()
       return self.content
     end
