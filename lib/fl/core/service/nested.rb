@@ -41,14 +41,12 @@ module Fl::Core::Service
       super(actor, params, controller, cfg)
     end
 
-    # @!attribute [r] parent_class
     # The parent class.
     #
     # @return [Class] Returns the parent class.
 
     attr_reader :parent_class
 
-    # @!attribute [r] parent_id_name
     # The name of the key in {#params} that holds the identifier for the parent object.
     #
     # @return [Symbol] Returns the name of the key that holds the parent object identifier.
@@ -57,7 +55,6 @@ module Fl::Core::Service
 
     protected
 
-    # @!attribute parent [r]
     # The parent object. This value is set by {#get_and_check_parent}.
     #
     # @return [ActiveRecord::Base] The parent.
@@ -66,7 +63,7 @@ module Fl::Core::Service
 
     public
     
-    # Look up an parent in the database.
+    # Look up a parent in the database.
     # This method uses the parent id entry in {#params} to look up the object in the database
     # (using the parent model class as the context for `find`, and the value of *idname* as the lookup key).
     # If it does not find the object, it sets the status to {Fl::Core::Service::NOT_FOUND} and
@@ -100,7 +97,7 @@ module Fl::Core::Service
       @parent
     end
     
-    # Look up an parent in the database, and check if the service's actor has permissions on it.
+    # Look up a parent in the database, and check if the service's actor has permissions on it.
     # This method calls {#get_parent} and, if the return value is non-nil,
     # it then calls {Fl::Core::Access::Access::InstanceMethods#has_permission?} to
     # confirm that the actor has *op* access to the object.
@@ -120,7 +117,7 @@ module Fl::Core::Service
     # @option [Object] context The context to pass to the access checker method {#has_action_permission?}.
     #  The special value **:params** (a Symbol named `params`) indicates that the value of _params_ is to be
     #  passed as the context.
-    #  Defaults to +nil+.
+    #  Defaults to `nil`.
     #
     # @return [Object, nil] Returns an object, or +nil+. Note that a non-nil return value is not a guarantee
     #  that the check operation succeded. The object class will be the value of the parent_class parameter

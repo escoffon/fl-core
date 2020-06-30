@@ -54,6 +54,7 @@ en:
         forbidden: "You do not have permission to perform action :%{action} for object %{id}"
         not_found: "Could not find object with id %{id}"
         parent_not_found: "Could not find parent object with id %{id}"
+        query_error: "Failed to list instances of %{class}"
         creation_failure: "Failed to create an instance of %{class}"
         update_failure: "Failed to update object %{fingerprint}"
         destroy_failure: "Failed to destroy object %{fingerprint}"

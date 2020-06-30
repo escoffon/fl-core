@@ -1,13 +1,16 @@
 # A concern to generate standardized success and error responses for an API-based controller.
-# Include it in a controller code, like this:
+# Include it in a controller or service object code, like this:
 #
 # ```
 # class ApplicationController < ActionController::Base
-#   include Fl::Core::Concerns::Controller::ApiResponse
+#   include Fl::Core::Concerns::Service::ApiResponse
 # end
 # ```
+#
+# The base service object {Fl::Core::Service::Base} includes this concern, so that there is no need to do so
+# in its subclasses.
 
-module Fl::Core::Concerns::Controller::ApiResponse
+module Fl::Core::Concerns::Service::ApiResponse
   extend ActiveSupport::Concern
 
   protected
@@ -62,6 +65,38 @@ module Fl::Core::Concerns::Controller::ApiResponse
       # which is reset when the object is reset
 
       _error[:details] = details.dup
+    end
+    
+    { _error: _error }
+  end
+
+  # Generate error response data from an exception.
+  # The error response consists of a hash containing the key `:_error` (which identifies the response as an error).
+  # The value of `:_error` is a hash containing the following key/value pairs:
+  #
+  # - **:type** is the value of *type* (converted to a string), and it "tags" the error; this is typically used
+  #   by client software to error-dependent actions.
+  # - **:message** is the value of *message*, if non-nil.
+  # - **:details** is populated with the exception message and, on development and test Rails environments, the
+  #   exception backtrace.
+  #
+  # @param type [String,Symbol] A string or symbol that tags the type of error; for example: `'not_found'` or
+  #  `:authentication_failure`.
+  # @param message [String] A string containing the error message.
+  # @param exc [Exception] The exception object.
+  #
+  # @return [Hash] Returns a hash as described above.
+  
+  def exception_response_data(type, message = nil, exc = nil)
+    _error = {
+      type: type
+    }
+    _error[:message] = message if message.is_a?(String) && (message.length > 0)
+
+    if exc.is_a?(Exception)
+      d = { message: exc.message }
+      d[:backtrace] = JSON.generate(exc.backtrace) if Rails.env.development? || Rails.env.test?
+      _error[:details] = d
     end
     
     { _error: _error }

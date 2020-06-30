@@ -5,4 +5,5 @@ module Fl::Core
   end
 end
 
+require 'fl/core/concerns/service'
 require 'fl/core/concerns/controller'

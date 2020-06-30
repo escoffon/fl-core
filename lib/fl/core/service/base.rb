@@ -24,7 +24,8 @@ module Fl::Core::Service
   # used by nested resources.
   
   class Base
-    include Fl::Core::Concerns::Controller::ApiResponse
+    include Fl::Core::Concerns::Service::Params
+    include Fl::Core::Concerns::Service::ApiResponse
     
     # The key in the request parameters that contains the CAPTCHA response.
     CAPTCHA_KEY = 'captchaResponse'
@@ -547,9 +548,9 @@ module Fl::Core::Service
         return obj
       rescue => exc
         self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                        error_response_data('creation_failure',
-                                            localized_message('creation_failure', class: self.model_class.name),
-                                            { message: exc.message }))
+                        exception_response_data('creation_failure',
+                                                localized_message('creation_failure', class: self.model_class.name),
+                                                exc))
         return nil
       end
     end
@@ -609,9 +610,9 @@ module Fl::Core::Service
           end
         rescue => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                          error_response_data('update_failure',
-                                              localized_message('update_failure', fingerprint: obj.fingerprint),
-                                              { message: exc.message }))
+                          exception_response_data('update_failure',
+                                                  localized_message('update_failure', fingerprint: obj.fingerprint),
+                                                  exc))
         end
       end
 
@@ -672,33 +673,13 @@ module Fl::Core::Service
           end
         rescue => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                          error_response_data('update_failure',
-                                              localized_message('update_failure', fingerprint: obj.fingerprint),
-                                              { message: exc.message }))
+                          exception_response_data('update_failure',
+                                                  localized_message('update_failure', fingerprint: obj.fingerprint),
+                                                  exc))
         end
       end
 
       return false
-    end
-
-    # Convert parameters to `ActionController::Parameters`.
-    # This method expects *sp* to contain a hash, or a JSON representation of a hash, of parameters,
-    # and converts it to `ActionController::Parameters`.
-    #
-    # 1. If *sp* is a string value, it assumes that the client has generated
-    #    a JSON representation of the parameters, and parses it into a hash.
-    # 2. If the value is already a `ActionController::Parameters`, it returns it as is;
-    #    otherwise, it constaructs a new `ActionController::Parameters` instance from the hash value.
-    #
-    # @param sp [Hash,ActionController::Parameters,String] The parameters to convert.
-    #  If a string value, it is assumed to contain a JSON representation.
-    #  If `nil`, use {#params}.
-    #
-    # @return [ActionController::Parameters] Returns the converted parameters.
-
-    def self.strong_params(sp)
-      sp = JSON.parse(sp) if sp.is_a?(String)
-      (sp.is_a?(ActionController::Parameters)) ? sp : ActionController::Parameters.new(sp)
     end
 
     # Convert parameters to `ActionController::Parameters`.
@@ -715,13 +696,32 @@ module Fl::Core::Service
       self.class.strong_params((p.nil?) ? self.params : p)
     end
 
+    # Get query parameters.
+    # This method is meant to be overridden by subclasses to implement class-specific lookup of creation
+    # parameters. A typical implementation uses the Rails strong parameters functionality, as in the
+    # example below.
+    #
+    # ```
+    #   def query_params(p = nil)
+    #     return normalize_query_params(p).permit({ p1: [ ] }, :p2)
+    #   end
+    # ```
+    #
+    # @param p [Hash,ActionController::Params,String] The parameter value.
+    #
+    # @return [ActionController::Parameters] Returns the query parameters.
+
+    def query_params(p = nil)
+      raise "please implement #{self.class.name}#query_params"
+    end
+
     # Get create parameters.
     # This method is meant to be overridden by subclasses to implement class-specific lookup of creation
     # parameters. A typical implementation uses the Rails strong parameters functionality, as in the
     # example below.
     #
     # ```
-    #   def create_params(p)
+    #   def create_params(p = nil)
     #     p = (p.nil?) ? params : strong_params(p)
     #     p.require(:my_context).permit(:param1, { param2: [] })
     #   end
@@ -744,7 +744,7 @@ module Fl::Core::Service
     # example below.
     #
     # ```
-    #   def update_params(p)
+    #   def update_params(p = nil)
     #     p = (p.nil?) ? params : strong_params(p)
     #     p.require(:my_context).permit(:param1, { param2: [] })
     #   end
@@ -847,8 +847,8 @@ module Fl::Core::Service
     #
     # @param query_opts [Hash] Query options to merge with the contents of <i>_q</i> and <i>_pg</i>.
     #  This is used to define service-specific defaults.
-    # @param _q [Hash, ActionController::Parameters] The query parameters.
-    # @param _pg [Hash, ActionController::Parameters] The pagination parameters.
+    # @param _q [Hash, ActionController::Parameters] The query parameters; if `nil`, extract them from `params`.
+    # @param _pg [Hash, ActionController::Parameters] The pagination parameters; if `nil`, extract them from `params`.
     #
     # @return [Hash, nil] If a query is generated, it returns a Hash containing at least the following keys
     #  ({#adjust_index_results} may add other keys):
@@ -859,10 +859,13 @@ module Fl::Core::Service
     #  If no query is generated (in other words, if {#index_query} fails), it returns `nil`.
     #  It also returns `nil` if an exception was raised.
 
-    def index(query_opts = {}, _q = {}, _pg = {})
+    def index(query_opts = {}, _q = nil, _pg = nil)
       begin
         return nil if !has_action_permission?('index', self.model_class)
 
+        _q = query_params() if _q.nil?
+        _pg = pagination_params if _pg.nil?
+        
         qo = init_query_opts(query_opts, _q, _pg)
         q = index_query(qo)
         if q
@@ -873,7 +876,10 @@ module Fl::Core::Service
           })
         end
       rescue => exc
-        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY, error_response_data('query_error', exc.message))
+        self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                        exception_response_data('query_error',
+                                                localized_message('query_error', class: self.model_class.name),
+                                                exc))
         return nil
       end
     end
