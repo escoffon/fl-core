@@ -101,6 +101,7 @@ module Fl::Core
     # @return [Array<Integer>] Returns an array of object identifiers.
 
     def convert_list_of_references(rl, klass)
+      return nil if rl.nil?
       rl = [ rl ] unless rl.is_a?(Array)
       
       rl.reduce([ ]) do |acc, r|
@@ -139,6 +140,7 @@ module Fl::Core
     # @return [Array<String>] Returns an array of object fingerprints.
     
     def convert_list_of_polymorphic_references(rl)
+      return nil if rl.nil?
       rl = [ rl ] unless rl.is_a?(Array)
       
       rl.reduce([ ]) do |acc, r|
