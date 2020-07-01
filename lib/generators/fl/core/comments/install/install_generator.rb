@@ -14,12 +14,37 @@ module Fl::Core::Comments
 
 EOD
     RESOURCES = "      resources :comments, only: [ :index, :create ]\n"
-    
-    source_root File.expand_path('../templates', __FILE__)
 
+    APP_ROOT = File.join('app', 'javascript', 'fl', 'core')
+    VENDOR_ROOT = File.join('vendor', 'javascript', 'fl', 'core')
+    APP_ASSETS = [
+      {
+        from: File.join(APP_ROOT, 'comment.js'),
+        to: File.join(VENDOR_ROOT, 'comment.js'),
+      },
+      {
+        from: File.join(APP_ROOT, 'comment_api_service.js'),
+        to: File.join(VENDOR_ROOT, 'comment_api_service.js'),
+      }
+    ]
+
+    source_root File.expand_path('../templates', __FILE__)
+    
     def self.source_paths
       [ File.expand_path('../templates', __FILE__) ]
     end
+
+    def run_generator()
+      @gem_root = File.expand_path('../../../../../..', __dir__)
+
+      create_migration_files()
+      create_controller_file()
+      add_route()
+
+      copy_assets()
+    end
+
+    private
 
     def create_migration_files
       MIGRATION_FILE_NAMES.each { |fn| create_migration_file(DB_MIGRATE, fn) }
@@ -47,7 +72,9 @@ EOD
       end
     end
 
-    private
+    def copy_assets
+      _copy_assets(APP_ASSETS, @gem_root, destination_root)
+    end
 
     def _scan_route(route_file)
       ns_re = /^\s*(namespace)\s+[':]?([a-zA-Z0-9_]+)'?\s+do/
@@ -150,6 +177,14 @@ EOD
         fd.write(routes.join(''))
       end
       say_status('modify', "added the fl:core:comments route to #{route_file}")
+    end
+
+    def _copy_assets(assets, iroot, oroot)
+      assets.each do |a|
+        ifile = File.join(iroot, a[:from])
+        ofile = File.join(oroot, a[:to])
+        copy_file(ifile, ofile)
+      end
     end
   end
 end

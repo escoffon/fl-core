@@ -1196,8 +1196,8 @@ let FlAPIService = FlClassManager.make_class({
 	    {
 		if (!_.isObject(cfg.params)) cfg.params = { };
 		
-		// The pagination controls are the starting set; if *params* contains :_pg, us that
-		// value to overrid defaults
+		// The pagination controls are the starting set; if *params* contains :_pg, use that
+		// value to override defaults
 		
 		let k = this._pg_names[0];
 		let pg = (_.isObject(cfg.params._pg)) ? cfg.params._pg : { };
