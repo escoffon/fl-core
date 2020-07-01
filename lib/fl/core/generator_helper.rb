@@ -49,7 +49,7 @@ module Fl::Core
     # Copy a migration file into the application's migrations directory.
     # The method checks if the file *name* is already in the target directory, and if so
     # issues a warning and skips the operation. Otherwise, it copies the original into the target,
-    # appending `.fl_framework` to the file name.
+    # appending `.fl_core` to the file name.
     #
     # @param migration_dir [String] THe location of the target migrations directory.
     # @param name [String] The file "name;" this is used to find the file, independently of the
@@ -63,14 +63,15 @@ module Fl::Core
       if in_name.nil?
         say_status('error', 'could not find the template migration file')
       else
-        out_name, out_file = find_migration_file(out_dir, "#{name}.fl_framework")
+        out_name, out_file = find_migration_file(out_dir, "#{name}.fl_core")
         if out_name
           say_status('warn', "migration file exists: #{File.basename(out_file)}")
         else
-          out_file = File.join(out_dir, "#{ts}_#{in_name}.fl_framework.rb")
-          say_status('create', "Creating migration file #{File.basename(out_file)}")
+          out_file = File.join(out_dir, "#{ts}_#{in_name}.fl_core.rb")
+          sroot = self.class.instance_variable_get(:@_source_root)
           self.class.source_root File.expand_path(migration_dir)
           copy_file(in_file, out_file)
+          self.class.source_root sroot
         end
       end
     end

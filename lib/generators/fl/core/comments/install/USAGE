@@ -1,0 +1,65 @@
+Description:
+  This generator installs support for the comments subsystem.
+
+  - It copies the comment migration file to the application's db/migrate directory.
+  - It creates a comments controller file in app/controllers/fl/core.
+  - It registers a route for the comments controller in config/routes.rb.
+  
+  For example, given this command:
+    rails generate fl:core:comments:install
+  the generator performs the following operations:
+  
+  - Create the migration file
+      db/migrate/TS_create_fl_core_comments.fl_core.rb
+    where TS is a timestamp.
+  - Create the controller file
+      app/controllers/fl/core/comments_controller.rb
+  - Adds a route for that controller in config/routes.rb.
+  
+  After the generator has run, you will have to perform a few additional steps:
+
+  - Run the migration (rake db:migrate).
+  - Examine the app/controllers/fl/core/comments_controller.rb file and make necessary
+    changes for your environment. The most common change is to add authentication; see
+    the comments in the code for hints.
+  - Add commentable functionality to existing classes. For example, to turn on comments
+    in class MyClass, add the lines
+      include Fl::Core::Comment::Commentable
+      include Fl::Core::Comment::ActiveRecord::Commentable
+
+      has_comments 
+    to the class definition:
+      class MyClass < ApplicationRecord
+        include Fl::Core::Comment::Commentable
+        include Fl::Core::Comment::ActiveRecord::Commentable
+
+        has_comments 
+      end
+
+    The `has_comments` directive accepts three configuration parameters:
+      - :orm is the ORM to use; currently we only support `activerecord`, but we have an
+        experimental Neo4j implementation.
+      - :summary is the method that collects a comment summary; this is used in some
+        components to store recent comments with a commentable data.
+	The value is the name of a method in the commentable, or a Proc, called by the
+	`comment_summary` method.
+	Defaults to :title.
+      - :counter controls automatic tracking of comment counts for a commentable.
+        See below for details.
+	Defaults to `false`, so no comment count tracking.
+    - Add support for automatic tracking of comment counts, if desired.
+  - Make sure that the commentable class adds access control checks for the two comment
+    permissions Fl::Core::Comment::Permission::IndexComments and
+    Fl::Core::Comment::Permission::CreateComments, if desired.
+
+Tracking comment counts
+  If you set the value of the :counter option to `true` or to the name of a column in the
+  commentable's table, the comment subsystem turns on some code that uses that column to
+  keep a count of comments associated with the commentable. This gives you the comment count
+  as an attribute in the commentable, at the (slight) cost of additional SQL access when
+  comments are created and destroyed. Comments themselves are also set up as commentables,
+  so that subcomments are supported; comment count tracking is turned on in comments.
+
+  To use this functionality, set the value of :counter to the name of the integer column in
+  the commentable's object table, or to `true` (in which case the column name is `num_comments`).
+  Then, create a migration to add the column to the commentable's object table.
