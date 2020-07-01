@@ -118,17 +118,21 @@ module Fl::Core::Comment
 
       rv = {}
       keys.each do |k|
-        case k
+        sk = k.to_sym
+        case sk
         when :commentable
-          rv[k] = c.to_hash(actor, verbosity: :id)
+          commentable_opts = to_hash_opts_with_defaults(to_hash_opts[:commentable], { verbosity: :id })
+          rv[sk] = c.to_hash(actor, commentable_opts)
         when :author
           author_opts = to_hash_opts_with_defaults(to_hash_opts[:author], {
                                                      verbosity: :id,
                                                      include: [ :username, :full_name, :avatar ]
                                                    })
-          rv[k] = u.to_hash(actor, author_opts)
+          rv[sk] = u.to_hash(actor, author_opts)
+        when :contents_delta
+          rv[sk] = JSON.generate(self.contents_delta)
         else
-          rv[k] = self.send(k) if self.respond_to?(k)
+          rv[sk] = self.send(k) if self.respond_to?(k)
         end
       end
 

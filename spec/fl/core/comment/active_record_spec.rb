@@ -431,7 +431,8 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         expect(h[:commentable][:fingerprint]).to eql(d10.fingerprint)
         expect(h[:title]).to eql(c1.title)
         expect(h[:contents]).to eql(c1.contents)
-        expect(h[:contents_delta]).to eql(c1.contents_delta)
+        expect(h[:contents_delta]).to be_a(String)
+        expect(JSON.parse(h[:contents_delta])).to eql(c1.contents_delta)
         
         h = c1.to_hash(a10, { verbosity: :standard })
         expect(h.keys.sort).to eql(std_keys.sort)

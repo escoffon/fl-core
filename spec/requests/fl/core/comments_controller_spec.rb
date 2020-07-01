@@ -524,7 +524,8 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(c['author']['fingerprint']).to eql(a10.fingerprint)
       expect(c['title']).to eql(d100_params[:title])
       expect(c['contents']).to eql(d100_params[:contents])
-      expect(c['contents_delta']).to eql(JSON.parse(d100_params[:contents_delta]))
+      expect(c['contents_delta']).to be_a(String)
+      expect(JSON.parse(c['contents_delta'])).to eql(JSON.parse(d100_params[:contents_delta]))
     end
 
     it "should create a comment if user has create permission" do
@@ -536,7 +537,8 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(c['author']['fingerprint']).to eql(a10.fingerprint)
       expect(c['title']).to eql(d200_params[:title])
       expect(c['contents']).to eql(d200_params[:contents])
-      expect(c['contents_delta']).to eql(JSON.parse(d200_params[:contents_delta]))
+      expect(c['contents_delta']).to be_a(String)
+      expect(JSON.parse(c['contents_delta'])).to eql(JSON.parse(d200_params[:contents_delta]))
     end
 
     it "should fail if user does not have create permission" do
