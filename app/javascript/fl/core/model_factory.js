@@ -483,7 +483,7 @@ let FlModelFactory = (function() {
 	return this._model_cache;
     };
 
-    FlModelFactory.prototype._create_internal = function(h) {
+    FlModelFactory.prototype._create_internal = function(h, null_on_failure) {
 	let o = this._model_cache.get(h);
 	if (o)
 	{
@@ -499,7 +499,7 @@ let FlModelFactory = (function() {
 	    }
 	    else
 	    {
-		o = null;
+		o = (null_on_failure) ? null : h;
 	    }
 	}
 
@@ -515,25 +515,29 @@ let FlModelFactory = (function() {
      * 
      * @param {Object|Array} obj_or_array The object containing a model instance's
      *  properties, or and array of objects containing multiple model instances.
+     * @param {Boolean} null_on_failure If the value is truthy, then if an instance cannot be built
+     *  the return value is `null`; otherwise, the original argument is returned.
+     *  The default is to return the original argument on failure, so that classes that convert properties
+     *  from a simple object to a class instance are still left with the simple object on conversion failure.
      * 
      * @return If *obj_or_array* is an object, returns the
      *  corresponding model instance (or `null` if no instance could be built).
      *  If an array, returns an array of model instances.
      */
 
-    FlModelFactory.prototype.create = function(obj_or_array) {
+    FlModelFactory.prototype.create = function(obj_or_array, null_on_failure) {
 	if (obj_or_array)
 	{
 	    if (_.isArray(obj_or_array))
 	    {
 		let self = this;
 		return _.map(obj_or_array, function(v, idx) {
-		    return self._create_internal(v);
+		    return self._create_internal(v, null_on_failure);
 		});
 	    }
 	    else
 	    {
-		return this._create_internal(obj_or_array);
+		return this._create_internal(obj_or_array, null_on_failure);
 	    }
 	}
 	else
