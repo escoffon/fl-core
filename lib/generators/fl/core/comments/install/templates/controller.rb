@@ -10,7 +10,7 @@ module Fl::Core
     # If you need to install a different class, change it here.
     
     def service_class
-      Fl::Core::Service::Comment::ActiveRecord
+      Fl::Core::Comment::ActiveRecord::Service
     end
 
     public

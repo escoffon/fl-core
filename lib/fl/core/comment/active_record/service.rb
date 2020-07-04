@@ -1,7 +1,7 @@
+require 'fl/core/service'
 require 'fl/core/comment'
-require 'fl/core/service/comment'
 
-module Fl::Core::Service::Comment
+module Fl::Core::Comment::ActiveRecord
   # Service object for comments that use an Active Record database.
   # This service manages comments in a flat space, and relies on submission parameters to determin the target
   # commentables (if any).
@@ -9,7 +9,7 @@ module Fl::Core::Service::Comment
   # of additional checks on each request. With nested services, there would have to be a controller for each
   # commentable class, which makes for a busier API with a fair amount of redundant operations.
 
-  class ActiveRecord < Fl::Core::Service::Base
+  class Service < Fl::Core::Service::Base
     include Fl::Core::Query
     
     self.model_class = Fl::Core::Comment::ActiveRecord::Comment
@@ -171,7 +171,7 @@ module Fl::Core::Service::Comment
       oh = ol.reduce({ }) do |acc, fp|
         if fp.is_a?(String)
           klass, id = self.model_class.split_fingerprint(fp)
-        elsif fp.is_a?(::ActiveRecord::Base)
+        elsif fp.is_a?(ActiveRecord::Base)
           klass = fp.class.name
           id = fp
         end
@@ -187,7 +187,7 @@ module Fl::Core::Service::Comment
       oh.reduce([ ]) do |acc, kvp|
         klass, kl = kvp
         begin
-          objs, ids = kl.partition { |o| o.is_a?(::ActiveRecord::Base) }
+          objs, ids = kl.partition { |o| o.is_a?(ActiveRecord::Base) }
           acc.concat(objs)
           acc.concat(klass.constantize.where('(id IN (?))', ids)) if ids.count > 0
         rescue => x

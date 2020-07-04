@@ -32,5 +32,3 @@ end
 require 'fl/core/service/base'
 require 'fl/core/service/nested'
 
-require 'fl/core/service/comment'
-

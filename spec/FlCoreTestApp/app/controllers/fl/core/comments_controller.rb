@@ -7,7 +7,7 @@ module Fl::Core
     private
 
     def service_class
-      Fl::Core::Service::Comment::ActiveRecord
+      Fl::Core::Comment::ActiveRecord::Service
     end
 
     public

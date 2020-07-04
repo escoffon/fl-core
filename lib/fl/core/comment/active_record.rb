@@ -7,3 +7,4 @@ end
 
 require 'fl/core/comment/active_record/commentable'
 require 'fl/core/comment/active_record/comment'
+require 'fl/core/comment/active_record/service'
