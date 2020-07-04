@@ -26,6 +26,8 @@ module Fl::Core::Service::Comment
     # @param cfg [Hash] Configuration options. See {Fl::Core::Service::Nested#initialize}.
 
     def initialize(actor, params = nil, controller = nil, cfg = {})
+      @query_params = nil
+      
       super(actor, params, controller, cfg)
     end
 
@@ -36,13 +38,20 @@ module Fl::Core::Service::Comment
     # @return [ActionController::Parameters] Returns the query parameters.
 
     def query_params(p = nil)
-      # We do not allow :except_commentables, because it opens a security hole if we are not careful, and it is
-      # a low use option anyway.
+      if @query_params.nil?
+        # We do not allow :except_commentables, because it opens a security hole if we are not careful, and it is
+        # a low use option anyway.
+        # Also, we convert :only_commentables to objects, which the access control needs to check for permissions
       
-      return normalize_query_params(p).permit({ only_commentables: [ ] },
-                                              { only_authors: [ ] }, { except_authors: [ ] },
-                                              :created_after, :updated_after, :created_before, :updated_before,
-                                              :order, :limit, :offset)
+        @query_params = normalize_query_params(p).permit({ only_commentables: [ ] },
+                                                         { only_authors: [ ] }, { except_authors: [ ] },
+                                                         :created_after, :updated_after, :created_before, :updated_before,
+                                                         :order, :limit, :offset)
+        only_c = convert_list_of_polymorphic_references(@query_params[:only_commentables])
+        @query_params[:only_commentables] = _instantiate_object_list(only_c)
+      end
+      
+      @query_params
     end
 
     # Get create parameters.
@@ -78,8 +87,9 @@ module Fl::Core::Service::Comment
     # Perform the permission check for an action.
     # Overrides the superclass for the following actions:
     #
-    # - **index** return `true` unconditionally. However, {#index_query} adjusts the query parameters to only
-    #   return results from commentables that are accessible to {actor}.
+    # - **index** iterates over all elements in **:only_ommentables** and for each confirms that {#actor}
+    #   has {Fl::Core::Comment::Permission::IndexContents} permission. If all commentables grant permission,
+    #   returns `true`; otherwise, return `false`.
     # - **create** returns `false` if {#actor} is `nil`.
     #   Otherwise, it checks if the **:commentable** from {#create_params} grants
     #   {Fl::Core::Comment::Permission::CreateComments} to {#actor}.
@@ -96,7 +106,19 @@ module Fl::Core::Service::Comment
     def _has_action_permission?(action, obj, opts = nil)
       case action
       when 'index'
-        return true
+        if query_params[:only_commentables].is_a?(Array)
+          not_granted = query_params[:only_commentables].reduce([ ]) do |acc, c|
+            if c.respond_to?(:has_permission?) && \
+               !c.has_permission?(Fl::Core::Comment::Permission::IndexComments::NAME, actor)
+              acc << c
+            end
+            acc
+          end
+
+          return (not_granted.count > 0) ? false : true
+        else
+          return true
+        end
       when 'create'
         return false if self.actor.nil?
         commentable = Fl::Core::Comment::Helper.commentable_from_parameter(create_params[:commentable])
@@ -120,12 +142,16 @@ module Fl::Core::Service::Comment
     def index_query(query_opts = {})
       # :only_commentables drops objects that do not grant {#actor} `index_comments`, and for good measure
       # we ignore :except_commentables
+      #
+      # The :only_commentable value is already in objects, and strictly speaking we don't need the filter,
+      # since the access check has failed if any commentables are not indexable (by actor), but we leave the
+      # filter in just in case.
+      # Similarly there should not be a need to call _instantiate_object_list here
 
       query_opts.delete(:except_commentables)
-      only_commentables = convert_list_of_polymorphic_references(query_opts[:only_commentables])
-      only_objects = _filter_object_list(_instantiate_object_list(only_commentables))
+      only_objects = _filter_object_list(_instantiate_object_list(query_opts[:only_commentables]))
 
-      # if only_objects ends up being empty, then we return no results: we must have at least one commentable
+      # if only_objects is empty, then we return no results: we must have at least one commentable
 
       return self.model_class.none if !only_objects.is_a?(Array) || (only_objects.count < 1)
 
@@ -141,9 +167,15 @@ module Fl::Core::Service::Comment
     def _instantiate_object_list(ol)
       return nil if ol.nil?
       ol = [ ol ] unless ol.is_a?(Array)
-      
+
       oh = ol.reduce({ }) do |acc, fp|
-        klass, id = self.model_class.split_fingerprint(fp)
+        if fp.is_a?(String)
+          klass, id = self.model_class.split_fingerprint(fp)
+        elsif fp.is_a?(::ActiveRecord::Base)
+          klass = fp.class.name
+          id = fp
+        end
+
         if acc.has_key?(klass)
           acc[klass] << id
         else
@@ -153,9 +185,11 @@ module Fl::Core::Service::Comment
       end
 
       oh.reduce([ ]) do |acc, kvp|
-        klass, ids = kvp
+        klass, kl = kvp
         begin
-          acc.concat(klass.constantize.where('(id IN (?))', ids))
+          objs, ids = kl.partition { |o| o.is_a?(::ActiveRecord::Base) }
+          acc.concat(objs)
+          acc.concat(klass.constantize.where('(id IN (?))', ids)) if ids.count > 0
         rescue => x
         end
 

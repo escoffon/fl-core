@@ -27,7 +27,8 @@ module Fl::Core
     # adding the include statement in ApplicationController; in that case, all you need to
     # do is comment out current_user.
 
-    # include DeviseTokenAuth::Concerns::SetUserByToken
+    # before_action :authenticate_user!
+    # skip_before_action :verify_authenticity_token
 
     def current_user
       nil

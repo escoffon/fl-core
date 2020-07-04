@@ -174,7 +174,7 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(_contents(p['comments'])).to match_array(xl)
     end
 
-    it "should filter via access control (1)" do
+    it "should fail is user has no index_comments permission (1)" do
       dl = [ d100, d101, d102, d200, d201, d202 ]
 
       xl = [ 'd200 - a10 - c1', 'd200 - a12 - c1', 'd200 - a13 - c1' ]
@@ -190,48 +190,45 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(p['comments'].count).to eql(xl.count)
       expect(_contents(p['comments'])).to match_array(xl)
 
-      xl = [ ]
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
             _q: { only_commentables: [ d200.fingerprint ] }
           }
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
-      expect(jr).to include('_status', 'payload')
-      p = jr['payload']
-      expect(p).to include('comments', '_pg')
-      expect(p['comments']).to be_a(Array)
-      expect(p['comments'].count).to eql(xl.count)
-      expect(_contents(p['comments'])).to match_array(xl)
+      expect(jr).to include('_error')
+      expect(jr['_error']).to be_a(Hash)
+      expect(jr['_error']).to include('type', 'message')
 
-      xl = [ ]
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
             _q: { only_commentables: [ d200.fingerprint ] }
           }
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
-      expect(jr).to include('_status', 'payload')
-      p = jr['payload']
-      expect(p).to include('comments', '_pg')
-      expect(p['comments']).to be_a(Array)
-      expect(p['comments'].count).to eql(xl.count)
-      expect(_contents(p['comments'])).to match_array(xl)
+      expect(jr).to include('_error')
+      expect(jr['_error']).to be_a(Hash)
+      expect(jr['_error']).to include('type', 'message')
 
-      xl = [ ]
       get comments_url(), params: {
             _q: { only_commentables: [ d200.fingerprint ] }
           }
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
-      expect(jr).to include('_status', 'payload')
-      p = jr['payload']
-      expect(p).to include('comments', '_pg')
-      expect(p['comments']).to be_a(Array)
-      expect(p['comments'].count).to eql(xl.count)
-      expect(_contents(p['comments'])).to match_array(xl)
+      expect(jr).to include('_error')
+      expect(jr['_error']).to be_a(Hash)
+      expect(jr['_error']).to include('type', 'message')
     end
 
-    it "should filter via access control (2)" do
+    it "should fail is user has no index_comments permission (2)" do
       dl = [ d100, d101, d102, d200, d201, d202 ]
+
+      get comments_url(), params: {
+            _q: { only_commentables: [ d200.fingerprint, d201.to_global_id.to_s ] }
+          }
+      expect(response).to have_http_status(:forbidden)
+      jr = JSON.parse(response.body)
+      expect(jr).to include('_error')
+      expect(jr['_error']).to be_a(Hash)
+      expect(jr['_error']).to include('type', 'message')
 
       xl = [ 'd200 - a10 - c1', 'd200 - a12 - c1', 'd200 - a13 - c1',
              'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
@@ -247,9 +244,18 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(p['comments'].count).to eql(xl.count)
       expect(_contents(p['comments'])).to match_array(xl)
 
-      xl = [ 'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
             _q: { only_commentables: [ d200.fingerprint, d201.fingerprint ] }
+          }
+      expect(response).to have_http_status(:forbidden)
+      jr = JSON.parse(response.body)
+      expect(jr).to include('_error')
+      expect(jr['_error']).to be_a(Hash)
+      expect(jr['_error']).to include('type', 'message')
+
+      xl = [ 'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
+      get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
+            _q: { only_commentables: [ d201.fingerprint ] }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -260,9 +266,18 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(p['comments'].count).to eql(xl.count)
       expect(_contents(p['comments'])).to match_array(xl)
 
-      xl = [ 'd101 - a10 - c1', 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
             _q: { only_commentables: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ] }
+          }
+      expect(response).to have_http_status(:forbidden)
+      jr = JSON.parse(response.body)
+      expect(jr).to include('_error')
+      expect(jr['_error']).to be_a(Hash)
+      expect(jr['_error']).to include('type', 'message')
+
+      xl = [ 'd101 - a10 - c1', 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
+      get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
+            _q: { only_commentables: [ d101.fingerprint ] }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -275,7 +290,7 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
 
       xl = [ 'd101 - a10 - c1', 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
       get comments_url(), params: {
-            _q: { only_commentables: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ] }
+            _q: { only_commentables: [ d101.fingerprint ] }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -306,10 +321,10 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(p['comments'].count).to eql(xl.count)
       expect(_contents(p['comments'])).to match_array(xl)
 
-      xl = [ 'd201 - a12 - c1' ]
+      xl = [ 'd201 - a12 - c1', 'd101 - a10 - c1', 'd101 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
             _q: {
-              only_commentables: [ d200.fingerprint, d201.fingerprint ],
+              only_commentables: [ d101.fingerprint, d201.fingerprint ],
               only_authors: [ a10.fingerprint, a12.to_global_id.to_s ]
             }
           }
@@ -326,8 +341,10 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
     it "should process :except_authors" do
       dl = [ d100, d101, d102, d200, d201, d202 ]
 
-      xl = [ 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
-      get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
+      xl = [ 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1',
+             'd200 - a12 - c1', 'd200 - a13 - c1',
+             'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
+      get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
               only_commentables: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ],
               except_authors: [ a10.fingerprint ]
@@ -342,10 +359,26 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
       expect(p['comments'].count).to eql(xl.count)
       expect(_contents(p['comments'])).to match_array(xl)
 
-      xl = [ 'd101 - a10 - c1' ]
-      get comments_url(), params: {
+      xl = [ 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
+      get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
             _q: {
-              only_commentables: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ],
+              only_commentables: [ d101.fingerprint ],
+              except_authors: [ a10.fingerprint ]
+            }
+          }
+      expect(response).to have_http_status(:ok)
+      jr = JSON.parse(response.body)
+      expect(jr).to include('_status', 'payload')
+      p = jr['payload']
+      expect(p).to include('comments', '_pg')
+      expect(p['comments']).to be_a(Array)
+      expect(p['comments'].count).to eql(xl.count)
+      expect(_contents(p['comments'])).to match_array(xl)
+
+      xl = [ 'd101 - a10 - c1' ]
+      get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
+            _q: {
+              only_commentables: [ d201.fingerprint, d101.fingerprint ],
               except_authors: [ a11.to_global_id.to_s, a12.fingerprint ]
             }
           }
