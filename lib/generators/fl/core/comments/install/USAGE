@@ -2,10 +2,15 @@ Description:
   This generator installs support for the comments subsystem.
 
   - It copies the comment migration file to the application's db/migrate directory.
-  - It creates a comments controller file in app/controllers/fl/core.
+  - It creates a comments controller file.
   - It registers a route for the comments controller in config/routes.rb.
-  
-  For example, given this command:
+  - It installs Javascript support for the Fl::Core::Comment object and an API service to the controller API.
+
+Arguments:
+  CONTROLLER_CLASS # The name of the controller class. The default is 'Fl::Core::CommentsController'
+
+Example:
+  Given this command:
     rails generate fl:core:comments:install
   the generator performs the following operations:
   
@@ -15,7 +20,22 @@ Description:
   - Create the controller file
       app/controllers/fl/core/comments_controller.rb
   - Adds a route for that controller in config/routes.rb.
+  - Adds vendor/javascript/fl/core/comment.js for the Fl::Core::Comment object.
+  - Adds vendor/javascript/fl/core/comments_api_service.js For the comment API service object.
+
+  With a custom controller class name:
+    rails generate fl:core:comments:install My::CustomCommentsController
+  the generator performs the following operations:
   
+  - Create the migration file
+      db/migrate/TS_create_fl_core_comments.fl_core.rb
+  - Create the controller file
+      app/controllers/my/custom_comments_controller.rb
+  - Adds a route for that controller in config/routes.rb.
+  - Adds vendor/javascript/fl/core/comment.js for the Fl::Core::Comment object.
+  - Adds vendor/javascript/my/custom_comments_api_service.js For the comment API service object.
+
+Post install:
   After the generator has run, you will have to perform a few additional steps:
 
   - Run the migration (rake db:migrate).

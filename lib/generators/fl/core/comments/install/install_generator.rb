@@ -5,15 +5,8 @@ module Fl::Core::Comments
     PWD = File.expand_path('.')
     DB_MIGRATE = File.expand_path('../../../../../../../db/migrate', __FILE__)
     MIGRATION_FILE_NAMES = [ 'create_fl_core_comments' ]
-    NAMESPACE = <<EOD
-  namespace :fl do
-    namespace :core do
-      resources :comments, only: [ :index, :create ]
-    end
-  end
 
-EOD
-    RESOURCES = "      resources :comments, only: [ :index, :create ]\n"
+    RESOURCES = "resources :<resource_name>, only: [ :index, :create ]"
 
     APP_ROOT = File.join('app', 'javascript', 'fl', 'core')
     VENDOR_ROOT = File.join('vendor', 'javascript', 'fl', 'core')
@@ -21,12 +14,10 @@ EOD
       {
         from: File.join(APP_ROOT, 'comment.js'),
         to: File.join(VENDOR_ROOT, 'comment.js'),
-      },
-      {
-        from: File.join(APP_ROOT, 'comment_api_service.js'),
-        to: File.join(VENDOR_ROOT, 'comment_api_service.js'),
       }
     ]
+
+    argument :controller_class, type: :string, default: 'Fl::Core::CommentsController'
 
     source_root File.expand_path('../templates', __FILE__)
     
@@ -51,31 +42,38 @@ EOD
     end
 
     def create_controller_file
-      outfile = File.join(destination_root, 'app', 'controllers', 'fl', 'core', 'comments_controller.rb')
-      copy_file('../templates/controller.rb', outfile)
+      outfile = File.join(destination_root, 'app', 'controllers', controller_class.underscore + '.rb')
+      template('controller.rb', outfile)
     end
 
     def add_route
       route_file = 'config/routes.rb'
 
       if File.exist?(route_file)
-        if !_has_route?(route_file)
-          _add_route(route_file)
+        route = _route_from_class(@controller_class)
+        if !_has_route?(route_file, route)
+          _add_route(route_file, route)
         else
-          say_status('status', "the fl:core:comments route is already defined")
+          say_status('status', "the #{route.join(':')} route is already defined")
         end
       else
         say_status('warning', "missing config.routes.el; creating one")
         File.open(route_file, "w") do |fd|
-          fd.print "Rails.application.routes.draw do\n#{NAMESPACE}\nend\n"
+          fd.print "Rails.application.routes.draw do\n#{_namespace_for_route(route)}\nend\n"
         end
       end
     end
 
     def copy_assets
       _copy_assets(APP_ASSETS, @gem_root, destination_root)
+      _copy_api_service_file(destination_root)
     end
 
+    def _route_from_class(cname)
+      components = @controller_class.underscore.split('/')
+      return components.push(components.pop.gsub('_controller', ''))
+    end
+    
     def _scan_route(route_file)
       ns_re = /^\s*(namespace)\s+[':]?([a-zA-Z0-9_]+)'?\s+do/
       res_do_re = /^\s*(resources)\s+[':]?([a-zA-Z0-9_]+)'?(.*)\s+do/
@@ -114,10 +112,37 @@ EOD
       end
     end
 
-    def _has_route?(route_file)
+    def _namespace_for_route(route)
+      level = 2
+      resource = route.last
+      namespace = route[0, route.count-1]
+      rv = [ ]
+      
+      namespace.each do |ns|
+        indent = sprintf("%#{level}s", '')
+        rv.push("#{indent}namespace :#{ns} do")
+        level += 2
+      end
+
+      indent = sprintf("%#{level}s", '')
+      rv.push("#{indent}#{RESOURCES.gsub('<resource_name>', resource)}")
+
+      namespace.each do |ns|
+        level -= 2
+        indent = sprintf("%#{level}s", '')
+        rv.push("#{indent}end")
+      end
+
+      return rv.push('').join("\n")
+    end
+    
+    def _has_route?(route_file, route)
+      namespace = route[0, route.count-1].join(':')
+      resource = route.last
+      
       found = false
-      _scan_route(route_file) do |line, type, name, namespaces|
-        if (type == :resources) && (name == 'comments') && (namespaces[0] == 'fl') && (namespaces[1] == 'core')
+      _scan_route(route_file) do |line, type, name, ns|
+        if (type == :resources) && (name == resource) && (ns.join(':') == namespace)
           found = true
         end
       end
@@ -125,19 +150,23 @@ EOD
       found
     end
 
-    def _add_route(route_file)
+    def _add_route(route_file, route)
       # since route files are not large, we store it all in memory so that we don't have to deal with tempfiles
       routes = [ ]
       added = false
       has_ns = false
 
-      _scan_route(route_file) do |line, type, name, namespaces|
+      namespace = route[0, route.count-1].join(':')
+      resource = route.last
+
+      _scan_route(route_file) do |line, type, name, ns|
         routes.push(line)
           
         if type == :enter
           has_ns = true
-          if (namespaces[0] == 'fl') && (namespaces[1] == 'core')
-            routes.push(RESOURCES)
+          if ns.join(':') == namespace
+            indent = sprintf("%#{(ns.count + 1) * 2}s", '')
+            routes.push("#{indent}#{RESOURCES.gsub('<resource_name>', resource)}\n")
             added = true
           end
         end
@@ -151,7 +180,7 @@ EOD
 
           _scan_route(route_file) do |line, type, name, namespaces|
             if (type == :enter) && !emitted
-              routes.push(NAMESPACE)
+              routes.push(_namespace_for_route(route)).push('')
               emitted = true
             end
             
@@ -164,7 +193,7 @@ EOD
             routes.push(line)
             
             if line =~ /routes.draw/
-              routes.push(NAMESPACE)
+              routes.push(_namespace_for_route(route)).push('')
             end
           end
         end
@@ -176,7 +205,7 @@ EOD
       File.open(route_file, "w") do |fd|
         fd.write(routes.join(''))
       end
-      say_status('modify', "added the fl:core:comments route to #{route_file}")
+      say_status('modify', "added the #{route.join(':')} route to #{route_file}")
     end
 
     def _copy_assets(assets, iroot, oroot)
@@ -185,6 +214,16 @@ EOD
         ofile = File.join(oroot, a[:to])
         copy_file(ifile, ofile)
       end
+    end
+
+    def _copy_api_service_file(oroot)
+      uclass = controller_class.underscore.split('/')
+      filename = uclass.pop.gsub('_controller', '_api_service')
+      outfile = File.join(destination_root, 'vendor',  'javascript', uclass.join('/'), filename + '.rb')
+
+      @api_service_root = "/#{uclass.join('/')}/#{filename}"
+      @api_service_class_name = "#{controller_class.gsub('Controller', '').gsub('::', '')}APIService"
+      template('comment_api_service.js', outfile)
     end
   end
 end

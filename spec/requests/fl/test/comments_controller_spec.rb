@@ -5,7 +5,7 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::ObjectHelpers
 end
 
-RSpec.describe "Fl::Core::CommentsController", type: :request do
+RSpec.describe "Fl::Test::CommentsController", type: :request do
   let(:a10) { create(:test_actor, name: 'a10') }
   let(:a11) { create(:test_actor, name: 'a11') }
   let(:a12) { create(:test_actor, name: 'a12') }
@@ -103,7 +103,7 @@ RSpec.describe "Fl::Core::CommentsController", type: :request do
   end
   
   def comments_url(fmt = :json)
-    Rails.application.routes.url_helpers.fl_core_comments_path(format: fmt)
+    Rails.application.routes.url_helpers.fl_test_comments_path(format: fmt)
   end
 
   describe "GET /fl/core/comments" do

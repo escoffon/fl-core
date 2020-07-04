@@ -1,4 +1,4 @@
-class <%=@controller_class%> < ApplicationController
+class Fl::Test::CommentsController < ApplicationController
   include Fl::Core::Concerns::Service::ApiResponse
   include Fl::Core::Concerns::Controller::ServiceStatus
   include Fl::Core::Concerns::Service::Params
@@ -29,6 +29,21 @@ class <%=@controller_class%> < ApplicationController
   # before_action :authenticate_user!
   # skip_before_action :verify_authenticity_token
 
+  # Hacked authentication for testing purposes; do NOT use for production
+  
+  def current_user
+    # for testing purposes, get the current user from a header
+
+    cu = nil
+    unless request.headers[:HTTP_CURRENTUSER].nil?
+      begin
+        cu = ActiveRecord::Base.find_by_fingerprint(request.headers[:HTTP_CURRENTUSER])
+      rescue => x
+      end
+    end
+    cu
+  end
+  
   unless self.instance_methods.include?(:current_user)
     def current_user
       nil
