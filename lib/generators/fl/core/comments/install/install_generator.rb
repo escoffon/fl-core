@@ -217,11 +217,12 @@ module Fl::Core::Comments
     end
 
     def _copy_api_service_file(oroot)
-      uclass = controller_class.underscore.split('/')
-      filename = uclass.pop.gsub('_controller', '_api_service')
-      outfile = File.join(destination_root, 'vendor',  'javascript', uclass.join('/'), filename + '.js')
-
-      @api_service_root = "/#{uclass.join('/')}"
+      path = controller_class.underscore.split('/')
+      file_root = path.pop.gsub('_controller', '')
+      outfile = File.join(destination_root, 'vendor',  'javascript', path.join('/'), "#{file_root}_api_service.js")
+      path.push(file_root)
+      
+      @api_service_root = "/#{path.join('/')}"
       @api_service_class_name = "#{controller_class.gsub('Controller', '').gsub('::', '')}APIService"
       template('comments_api_service.js', outfile)
     end
