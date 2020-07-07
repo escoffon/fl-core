@@ -11,6 +11,10 @@ module Fl::Core
     VENDOR_ROOT = File.join('vendor', 'javascript', 'fl', 'core')
     APP_ASSETS = [
       {
+        from: File.join(APP_ROOT, 'index.js'),
+        to: File.join(VENDOR_ROOT, 'index.js'),
+      },
+      {
         from: File.join(APP_ROOT, 'fl.js'),
         to: File.join(VENDOR_ROOT, 'fl.js'),
       },
