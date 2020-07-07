@@ -399,7 +399,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     end
 
     context '#to_hash' do
-      let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id ] }
+      let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id, :virtual_type ] }
       let(:min_keys) { id_keys | [ :created_at, :updated_at, :permissions,
                                    :commentable, :author, :title, :contents, :contents_delta ] }
       let(:std_keys) { min_keys | [ ] }
@@ -446,7 +446,49 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         h = c1.to_hash(a10, { verbosity: :ignore })
         expect(h.keys.sort).to eq(id_keys.sort)
       end
-      
+
+      it 'should always include :num_comments in :commentable' do
+        h = c1.to_hash(a10, { verbosity: :minimal })
+        expect(h.keys).to match_array(min_keys)
+        expect(h[:commentable]).to include(:num_comments)
+
+        h = c1.to_hash(a10, {
+                         verbosity: :minimal,
+                         to_hash: {
+                           commentable: {
+                             verbosity: :id,
+                             include: [ :title ]
+                           }
+                         }
+                       })
+        expect(h.keys).to match_array(min_keys)
+        expect(h[:commentable]).to include(:num_comments, :title)
+
+        h = c1.to_hash(a10, {
+                         verbosity: :minimal,
+                         to_hash: {
+                           commentable: {
+                             verbosity: :id,
+                             include: [ :num_comments ]
+                           }
+                         }
+                       })
+        expect(h.keys).to match_array(min_keys)
+        expect(h[:commentable]).to include(:num_comments)
+
+        h = c1.to_hash(a10, {
+                         verbosity: :minimal,
+                         to_hash: {
+                           commentable: {
+                             verbosity: :id,
+                             include: [ :title, :num_comments ]
+                           }
+                         }
+                       })
+        expect(h.keys).to match_array(min_keys)
+        expect(h[:commentable]).to include(:num_comments, :title)
+      end
+
       it 'allows customization of key lists' do
         c_keys = id_keys | [ :title ]
         h = c1.to_hash(a10, { verbosity: :id, include: [ :title ] })

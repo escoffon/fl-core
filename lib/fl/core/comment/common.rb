@@ -97,7 +97,8 @@ module Fl::Core::Comment
     # @return [Hash] Returns a Hash containing the comment representation.
     #
     # - *:commentable* A Hash containing the two keys *:id* and *:type*, respectively the id and class name
-    #   of the commentable object for which the comment was created.
+    #   of the commentable object for which the comment was created. This hash contains the key **:num_comments**
+    #   if defined by the commentable object.
     # - *:author* Information about the author; a Hash containing these keys (if supported):
     #   - *:id* The id.
     #   - *:username* The login name.
@@ -116,12 +117,18 @@ module Fl::Core::Comment
       c = self.commentable
       u = self.author
 
-      rv = {}
+      rv = { virtual_type: 'Fl::Core::Comment' }
       keys.each do |k|
         sk = k.to_sym
         case sk
         when :commentable
           commentable_opts = to_hash_opts_with_defaults(to_hash_opts[:commentable], { verbosity: :id })
+          if commentable_opts.has_key?(:include)
+            commentable_opts[:include] = [ commentable_opts[:include] ] unless commentable_opts[:include].is_a?(Array)
+            commentable_opts[:include] << :num_comments unless commentable_opts[:include].include?(:num_comments)
+          else
+            commentable_opts[:include] = [ :num_comments ]
+          end
           rv[sk] = c.to_hash(actor, commentable_opts)
         when :author
           author_opts = to_hash_opts_with_defaults(to_hash_opts[:author], {

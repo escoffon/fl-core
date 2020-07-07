@@ -143,7 +143,25 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(p).to include('comments', '_pg')
       expect(p['comments']).to be_a(Array)
       expect(p['comments'].count).to eql(xl.count)
+      expect(p['comments']).to be_a(Array)
+      expect(p['comments'][0]).to be_a(Hash)
+      expect(p['comments'][0]).to include('commentable', 'author', 'title', 'contents', 'contents_delta')
+      expect(p['comments'][0]['commentable']).to be_a(Hash)
+      expect(p['comments'][0]['author']).to be_a(Hash)
       expect(_contents(p['comments'])).to match_array(xl)
+    end
+
+    it "should return :num_comments in the :commentable hash" do
+      dl = [ d100, d101, d102, d200, d201, d202 ]
+        
+      xl = [ 'd100 - a10 - c1', 'd100 - a11 - c1', 'd100 - a10 - c2', 'd100 - a12 - c1', 'd100 - a12 - c2', 'd100 - a13 - c1' ]
+      get comments_url(), headers: { currenUser: a10.fingerprint }, params: {
+            _q: { only_commentables: [ d100.fingerprint ] }
+          }
+      expect(response).to have_http_status(:ok)
+      jr = JSON.parse(response.body)
+      cl = jr['payload']['comments']
+      expect(cl[0]['commentable']).to include('num_comments')
     end
 
     it "should return comments if commentable does not support access control" do
