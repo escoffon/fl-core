@@ -40,6 +40,8 @@ module Fl::Core
       # The following keys are placed in the list of keys to return:
       #
       # - **:type** in all cases.
+      # - **:virtual_type** optionally by some classes that define a "virtual" type name; see below for a
+      #   discussion of virtual types.
       # - **:id** if the object responds to `id`.
       # - **:global_id** the [GlobalID](https://github.com/rails/globalid) for the object, if it
       #   responds to `to_global_id`. (All ActiveRecord instances do.)
@@ -58,6 +60,18 @@ module Fl::Core
       # Additional keys will be placed as determined by +opts+ and {#to_hash_options_for_verbosity}.
       #
       # If the **:verbosity** option is not present, the method behaves as if its value was set to **:standard**.
+      #
+      # #### Type and virtual type
+      #
+      # The **:type** keys is a string containing the (Ruby) class name of the object, and is used for object
+      # instance lookups. Classes that want to declare themselves as a generic type for the purposes of an API
+      # also define **:virtual_type** to contain the generic name. For example, the {Fl::Core::Comment} subsystem
+      # supports ActiveRecord and Neo4j implementations of comments. A hashed ActiveRecord object sets **:type**
+      # to `Fl::Core::Comment::ActiveRecord::Comment` (for {Fl::Core::Comment::ActiveRecord::Comment}), and
+      # **:virtual_type** to `Fl::Core::Comment` to indicate
+      # to APIs that it contains generic comment data. The Fl Javascript object manager uses **:virtual_type**
+      # to create instances of `FlCoreComment` objects rather than `FlCoreCommentActiveRecordComment` as would
+      # be expected from **:type**.
       #
       # @param actor [Object] The actor for which we are building the hash representation. Some
       #  objects may return different contents, based on the requesting actor.

@@ -211,7 +211,7 @@ let FlModelBase = FlClassManager.make_class({
 
 let FlModelCache = (function() {
     function _type(h) {
-	let s = (_.isString(h)) ? h : h.type;
+	let s = (_.isString(h)) ? h : ((_.isString(h.virtual_type)) ? h.virtual_type : h.type);
 	return (_.isNil(s)) ? null : s.replace(/::/g, '');
     };
 
@@ -366,7 +366,7 @@ let FlModelCache = (function() {
 
 let FlModelFactory = (function() {
     function _type(h) {
-	let s = (_.isString(h)) ? h : h.type;
+	let s = (_.isString(h)) ? h : ((_.isString(h.virtual_type)) ? h.virtual_type : h.type);
 	return (_.isNil(s)) ? null : s.replace(/::/g, '');
     };
 
@@ -443,7 +443,11 @@ let FlModelFactory = (function() {
      * 
      * @param {String|Object} cname If the value is a string, it is the name of the data class
      *  to look up. If it is an object, it is a representation of a model's data, and is expected to
-     *  have the property **type**, which contains the name of the data class.
+     *  have the property **type** (and optionally **virtual_type**), which contains the name of the data class.
+     *  If **virtual_type** is present, use that value for the name of the data class; otherwise, use **type**.
+     *  The virtual type is defined by some classes that want to use a generic type name instead of the
+     *  specific one; for example, a class that is stored via ActiveRecord and one stored in Neo4j may both
+     *  map to a generic one at the API level.
      *
      * @return {Object} Returns the service object that was registered under _cname_; if no service
      *  object is registered under that name, returns `null`.
