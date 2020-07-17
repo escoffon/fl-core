@@ -2,7 +2,7 @@ module Fl
   module Core
     # The current version number for the `fl-core` gem.
     
-    VERSION = "0.3.5"
+    VERSION = "0.3.6"
 
     # The version date for the fl-core gem.
 
