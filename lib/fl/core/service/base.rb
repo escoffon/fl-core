@@ -605,7 +605,7 @@ module Fl::Core::Service
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                               error_response_data('update_failure',
                                                   localized_message('update_failure', fingerprint: obj.fingerprint),
-                                                  { details: obj.errors.messages }))
+                                                  obj.errors.messages))
             end
           end
         rescue => exc
@@ -669,7 +669,7 @@ module Fl::Core::Service
             self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                             error_response_data('destroy_failure',
                                                 localized_message('destroy_failure', fingerprint: obj.fingerprint),
-                                                { details: obj.errors.messages }))
+                                                obj.errors.messages))
           end
         rescue => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
