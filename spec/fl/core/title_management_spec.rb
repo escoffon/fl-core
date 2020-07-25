@@ -24,10 +24,10 @@ RSpec.describe Fl::Core::TitleManagement do
       c = 'this is contents that will be extracted into a title'
 
       t = th.x_title(c, 10)
-      expect(t).to eql(c[0, 10] + '...')
+      expect(t).to eql(c[0, 7] + '...')
 
       t = th.x_title(c, 10, ' [more]')
-      expect(t).to eql(c[0, 10] + ' [more]')
+      expect(t).to eql(c[0, 3] + ' [more]')
 
       c = 'this is short contents'
       t = th.x_title(c, 40)
@@ -38,10 +38,10 @@ RSpec.describe Fl::Core::TitleManagement do
       c = '<p>this is <b>contents</b> that <span style="font-weight: bold;">will be</span> extracted into a title</p>'
 
       t = th.x_title(c, 10)
-      expect(t).to eql('this is co...')
+      expect(t).to eql('this is...')
 
       t = th.x_title(c, 10, ' [more]')
-      expect(t).to eql('this is co [more]')
+      expect(t).to eql('thi [more]')
 
       t = th.x_title(c, 60, ' [more]')
       expect(t).to eql('this is contents that will be extracted into a title')

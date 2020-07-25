@@ -78,7 +78,8 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
                                              helper.to_hash_attachment_styles(a1.image, :all))
       expect(h).to be_a(Hash)
       expect(h.keys).to match_array([ :type, :name, :content_type, :original_filename,
-                                      :original_byte_size, :metadata, :variants, :created_at ])
+                                      :original_byte_size, :metadata, :variants, :created_at,
+                                      :blob_id, :fingerprint, :id, :record ])
       vk = h[:variants].map { |v| v[:style] }
       styles = Fl::Core::Attachment.config.defaults(:fl_image)[:styles]
       expect(vk).to match_array(styles.keys)
