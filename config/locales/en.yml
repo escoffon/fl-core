@@ -47,7 +47,7 @@ en:
       access:
         permission:
           duplicate_name: "duplicate permission name '%{name}'"
-          duplicate_bit: "duplicate bit value %{bit} in permission '%{name}'"
+          bit_overflow: "all permission bits have been assigned for permission '%{name}'"
           missing: "unknown permission: %{name}"
 
       service:

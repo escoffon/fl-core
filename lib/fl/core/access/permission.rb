@@ -7,12 +7,11 @@ module Fl::Core::Access
   # ```
   # class MyPermission < Fl::Core::Access::Permission
   #  NAME = :my_permission
-  #  BIT = 0x00000010
   #  GRANTS = [ ]
   #
   #  def initialize(ext)
   #    @ext = ext
-  #    super(NAME, BIT, GRANTS)
+  #    super(NAME, GRANTS)
   #  end
   #
   #  attr_reader :ext
@@ -20,11 +19,10 @@ module Fl::Core::Access
   #
   # class MyForwardingPermission < Fl::Core::Access::Permission
   #  NAME = :my_forwarding_permission
-  #  BIT = 0x00000000
   #  GRANTS = [ Fl::Core::Access::Permission::Read::NAME, Fl::Core::Access::Permission::Delete::NAME ]
   #
   #  def initialize()
-  #    super(NAME, BIT, GRANTS)
+  #    super(NAME, GRANTS)
   #  end
   # end
   # ```
@@ -73,33 +71,35 @@ module Fl::Core::Access
   # The `MyPermission.new('additional data').register` call registers `MyPermission` with the permission registry.
   # You can also use `MyPermission.new('additional data').register_with_report` to wrap the
   # registration call in a `begin`/`rescue` to print a message to `STDERR` before reraising any exceptions;
-  # this is useful to track down duplicate name or bit registrations.
+  # this is useful to track down duplicate name registrations.
   #
-  # A earlier version included automatic registration of permissions, but this was removed in favor of
-  # explicit registration (in an initializer) for two reasons:
+  # The registration process assigns bit values for simple permissions sequentially, in the order in which they
+  # were registered. Therefore, any new permissions must be registered **after** the others, to preserve the bit
+  # values. Also note that permissions have to be registered explicitly in order to be available to the system;
+  # this explicit registration has several advantages:
   #
   # 1. It gives you control over which permissions to register.
-  # 2. More importantly, the automatic registration does not play well with Rails caching features like
-  #    bootsnap: under some conditions, multiple rake tasks tend to step on each other's toes and trigger
-  #    duplicate registration exceptions.
+  # 2. It allocates bit values for simple permissions, so that new permission types won't clash with existing
+  #    ones.
   #
-  # However, now we have to make sure that the initializer code does not pull in autoloaded classes, since
+  # However, we have to make sure that the initializer code does not pull in autoloaded classes, since
   # that behavior is deprecated in Rails 6 and will likely become an error. (This applies to `MyPermission`,
   # assuming that `MyPermission` is somewhere in the `app` directory, and therefore autoloaded; classes from
   # a gem, like `Fl::Core::Access::Permission::Manage`, are explicitly loaded.)
-  # Wrap the registration with an `on_load` handler.
+  # Wrap the registration with an `on_load` handler as shown above.
   #
   # #### Standard permission classes
   #
   # The following permission classes are defined:
   #
   # - {Permission::Owner} grants ownership.
+  # - {Permission::Create} grants the ability to create assets.
+  # - {Permission::CreateContents} grants permission to create members of a collection object.
   # - {Permission::Read} grants read only access.
   # - {Permission::Write} grants write only access.
   # - {Permission::Delete} grants delete only access.
   # - {Permission::Index} grants index access (typically to a class object).
   # - {Permission::IndexContents} grants access to the list of members of a collection object.
-  # - {Permission::CreateContents} grants permission to create members of a collection object.
   # - {Permission::Edit} grants read and write access to assets.
   # - {Permission::Manage} grants read, write, and delete access to assets.
 
@@ -137,12 +137,12 @@ module Fl::Core::Access
       attr_reader :permission
     end
 
-    # Exception raised when a permission bit is doubly registered.
+    # Exception raised when all permission bits have been used.
 
-    class DuplicateBit < RuntimeError
+    class BitOverflow < RuntimeError
       # Initializer.
       #
-      # @param permission [Fl::Core::Access::Permission] The duplicate permission.
+      # @param permission [Fl::Core::Access::Permission] The permission that triggered the overflow.
       # @param msg [String] Message to pass to the superclass implementation.
       #  If `nil`, a standard message is created from the permission name.
 
@@ -154,11 +154,10 @@ module Fl::Core::Access
         
         msg = ''
         begin
-          msg = I18n.tx('fl.core.access.permission.duplicate_bit',
-                        name: permission.name, bit: sprintf("0x%x", permission.bit),
-                        class_name: permission.class.name) unless msg.is_a?(String)
+          msg = I18n.tx('fl.core.access.permission.bit_overflow',
+                        name: permission.name, class_name: permission.class.name) unless msg.is_a?(String)
         rescue I18n::MissingTranslationData => x
-          msg = sprintf("duplicate bit value %08x in permission '%s'", permission.bit, permission.name)
+          msg = sprintf("all permission bits have been assigned for permission '%s'", permission.name)
         end
           
         super(msg)
@@ -181,7 +180,14 @@ module Fl::Core::Access
 
       def initialize(name, msg = nil)
         @name = name.to_sym
-        msg = I18n.tx('fl.core.access.permission.missing', name: name) unless msg.is_a?(String)
+
+        msg = ''
+        begin
+          msg = I18n.tx('fl.core.access.permission.missing', name: name) unless msg.is_a?(String)
+        rescue I18n::MissingTranslationData => x
+          msg = sprintf("unknown permission: '%s'", permission.name)
+        end
+
         super(msg)
       end
 
@@ -195,7 +201,20 @@ module Fl::Core::Access
     @_permission_locations = {}
     @_permission_grants = nil
     @_permission_masks = nil
-    @_cumulative_mask = 0
+    @_current_bit = 0
+
+    # The maximum number of bits (and therefore permission subclasses) supported by the system.
+
+    MAX_PERMISSION_BIT = 31
+    
+    # Get the permission bit for this class.
+    #
+    # @return [Integer,nil] If the class is registered, the return value is 0 if it is a forwarding class, or
+    #  the bit that was assigned to the class at registration. If the class has not been registered, it is `nil`.
+
+    def self.bit()
+      @_permission_bit
+    end
     
     # Get the permission name for this class.
     # Each registered class must have a unique name.
@@ -214,20 +233,28 @@ module Fl::Core::Access
     # @return [Fl::Core::Access::Permission] Returns *permission*.
     #
     # @raise [Fl::Core::Access::Permission::DuplicateName] Raised if *permission.name* is already registered.
-    # @raise [Fl::Core::Access::Permission::DuplicateBit] Raised if *permission.bit* is already registered.
+    # @raise [Fl::Core::Access::Permission::BitOverflow] Raised if all permission bits have been allocated.
 
     def self.register(permission)
       k = permission.name.to_sym
       raise Fl::Core::Access::Permission::DuplicateName.new(permission) if @_permission_registry.has_key?(k)
 
-      b = permission.bit.to_i
-      if (@_cumulative_mask & b) != 0
-        raise Fl::Core::Access::Permission::DuplicateBit.new(permission)
-      end
+      # a permission bit is allocated only if :grants is nonempty
 
+      if permission.grants.count < 1
+        raise Fl::Core::Access::Permission::BitOverflow.new(permission) if @_current_bit >= MAX_PERMISSION_BIT
+
+        bitmask = 0x1 << @_current_bit
+        permission.instance_variable_set(:@bit, bitmask)
+        permission.class.instance_variable_set(:@_permission_bit, bitmask)
+        @_current_bit += 1
+      else
+        permission.instance_variable_set(:@bit, 0)
+        permission.class.instance_variable_set(:@_permission_bit, 0)
+      end
+      
       @_permission_registry[k] = permission
       @_permission_locations[k] = caller[1]
-      @_cumulative_mask |= b
       
       # A registration invalidates the permission grants registry
       _invalidate_permission_grants()
@@ -255,23 +282,6 @@ module Fl::Core::Access
       
     def self.location(name)
       @_permission_locations[name.to_sym]
-    end
-
-    # Remove a permission from the registry.
-    #
-    # @param name [Symbol,String,Permission] The permission name or object.
-
-    def self.unregister(name)
-      n = name.is_a?(Permission) ? name.name : name.to_sym
-      if @_permission_registry.has_key?(n)
-        @_permission_locations.delete(n)
-        p = @_permission_registry.delete(n)
-        b = p.bit.to_i
-        @_cumulative_mask &= ~b
-      end
-
-      # A deregistration invalidates the permission grants registry
-      _invalidate_permission_grants()
     end
 
     # Return the names of all permissions in the registry.
@@ -341,20 +351,20 @@ module Fl::Core::Access
     end
       
     # Initializer.
+    # Note that a bit is not assigned until the permission is registered, and then only if *grants* is an empty
+    # array.
     #
     # @param name [Symbol,String] The name of the permission; this value must be unique for all
     #  permission instances.
-    # @param bit [Integer] An integer whose value consists of all zeros except for a single bit that
-    #  identifies the permission; this value must be unique for all permission instances.
     # @param grants [Array<Symbol,String,Fl::Core::Access::Permission,Class>] An array containing
     #  the list of other permissions that are also granted by *name*. For example, a **:manage** permission
     #  may grant **:read**, **:write**, and **:delete**. This list is used to build the permission mask
     #  to use when checking access.
     #  The element values are as described in {Fl::Core::Access::Helper.permission_name}.
 
-    def initialize(name, bit, grants = [ ])
+    def initialize(name, grants = [ ])
       @name = name.to_sym
-      @bit = bit.to_i
+      @bit = nil
       @grants = (grants.is_a?(Array)) ? grants.map { |g| Fl::Core::Access::Helper.permission_name(g) } : [ ]
 
       rv = super()
@@ -554,15 +564,12 @@ module Fl::Core::Access
     # The permission name.
     NAME = :owner
 
-    # The permission bit.
-    BIT = 0x00000001
-
     # dependent permissions granted by **:owner**.
     GRANTS = [ ]
 
     # Initializer.
     def initialize()
-     super(NAME, BIT, GRANTS)
+     super(NAME, GRANTS)
     end
   end
 
@@ -573,118 +580,12 @@ module Fl::Core::Access
     # The permission name.
     NAME = :create
 
-    # The permission bit.
-    BIT = 0x00000002
-
     # dependent permissions granted by **:create**.
     GRANTS = [ ]
 
     # Initializer.
     def initialize()
-     super(NAME, BIT, GRANTS)
-    end
-  end
-
-  # The **:read** permission class.
-  # This permission grants read only access to assets.
-  
-  class Permission::Read < Permission
-    # The permission name.
-    NAME = :read
-
-    # The permission bit.
-    BIT = 0x00000004
-
-    # dependent permissions granted by **:read**.
-    GRANTS = [ ]
-
-    # Initializer.
-    def initialize()
-     super(NAME, BIT, GRANTS)
-    end
-  end
-
-  # The **:write** permission class.
-  # Note that this permission grants write only access to assets; for read and write access,
-  # use {#Permission::Edit}.
-  
-  class Permission::Write < Permission
-    # The permission name.
-    NAME = :write
-
-    # The permission bit.
-    BIT = 0x00000008
-
-    # dependent permissions granted by **:write**.
-    GRANTS = [ ]
-
-    # Initializer.
-    def initialize()
-     super(NAME, BIT, GRANTS)
-    end
-  end
-
-  # The **:delete** permission class.
-  # This permission grants delete only access to assets; for additional read and write access,
-  # use {#Permission::Manage}.
-  
-  class Permission::Delete < Permission
-    # The permission name.
-    NAME = :delete
-
-    # The permission bit.
-    BIT = 0x00000010
-
-    # dependent permissions granted by **:delete**.
-    GRANTS = [ ]
-
-    # Initializer.
-    def initialize()
-     super(NAME, BIT, GRANTS)
-    end
-  end
-
-  # The **:index** permission class.
-  # Typically, this permission is used to grant index only access to a class object, and therefore controls
-  # if an actor can list instances of a given class.
-  # The {Permission::IndexContents} permission is used to control if an actor can list the contents of a
-  # collection object.
-  
-  class Permission::Index < Permission
-    # The permission name.
-    NAME = :index
-
-    # The permission bit.
-    BIT = 0x00000020
-
-    # dependent permissions granted by **:index**.
-    GRANTS = [ ]
-
-    # Initializer.
-    def initialize()
-     super(NAME, BIT, GRANTS)
-    end
-  end
-
-  # The **:index_contents** permission class.
-  # This permission is used to grant index only access to the contents of a collection object; it is
-  # applied to instance objects, and controls if an actor can index the contents of an object that manages
-  # lists of other objects. For example, a user group object, which tracks a collection of user objects,
-  # may grant this permission to select actors to allow them to view the list of users.
-  
-  class Permission::IndexContents < Permission
-    # The permission name.
-    NAME = :index_contents
-
-    # The permission bit.
-    BIT = 0x00000040
-
-    # dependent permissions granted by **:index_contents**.
-    GRANTS = [ ]
-
-    # Initializer.
-    def initialize()
-     super(NAME, BIT, GRANTS)
+     super(NAME, GRANTS)
     end
   end
 
@@ -698,15 +599,100 @@ module Fl::Core::Access
     # The permission name.
     NAME = :create_contents
 
-    # The permission bit.
-    BIT = 0x00000080
-
     # dependent permissions granted by **:create_contents**.
     GRANTS = [ ]
 
     # Initializer.
     def initialize()
-     super(NAME, BIT, GRANTS)
+     super(NAME, GRANTS)
+    end
+  end
+
+  # The **:read** permission class.
+  # This permission grants read only access to assets.
+  
+  class Permission::Read < Permission
+    # The permission name.
+    NAME = :read
+
+    # dependent permissions granted by **:read**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, GRANTS)
+    end
+  end
+
+  # The **:write** permission class.
+  # Note that this permission grants write only access to assets; for read and write access,
+  # use {#Permission::Edit}.
+  
+  class Permission::Write < Permission
+    # The permission name.
+    NAME = :write
+
+    # dependent permissions granted by **:write**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, GRANTS)
+    end
+  end
+
+  # The **:delete** permission class.
+  # This permission grants delete only access to assets; for additional read and write access,
+  # use {#Permission::Manage}.
+  
+  class Permission::Delete < Permission
+    # The permission name.
+    NAME = :delete
+
+    # dependent permissions granted by **:delete**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, GRANTS)
+    end
+  end
+
+  # The **:index** permission class.
+  # Typically, this permission is used to grant index only access to a class object, and therefore controls
+  # if an actor can list instances of a given class.
+  # The {Permission::IndexContents} permission is used to control if an actor can list the contents of a
+  # collection object.
+  
+  class Permission::Index < Permission
+    # The permission name.
+    NAME = :index
+
+    # dependent permissions granted by **:index**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, GRANTS)
+    end
+  end
+
+  # The **:index_contents** permission class.
+  # This permission is used to grant index only access to the contents of a collection object; it is
+  # applied to instance objects, and controls if an actor can index the contents of an object that manages
+  # lists of other objects. For example, a user group object, which tracks a collection of user objects,
+  # may grant this permission to select actors to allow them to view the list of users.
+  
+  class Permission::IndexContents < Permission
+    # The permission name.
+    NAME = :index_contents
+
+    # dependent permissions granted by **:index_contents**.
+    GRANTS = [ ]
+
+    # Initializer.
+    def initialize()
+     super(NAME, GRANTS)
     end
   end
 
@@ -717,15 +703,12 @@ module Fl::Core::Access
     # The permission name.
     NAME = :edit
 
-    # The permission bit.
-    BIT = 0x00000000
-
     # dependent permissions granted by **:edit**.
     GRANTS = [ :read, :write ]
 
     # Initializer.
     def initialize()
-     super(NAME, BIT, GRANTS)
+     super(NAME, GRANTS)
     end
   end
 
@@ -736,15 +719,12 @@ module Fl::Core::Access
     # The permission name.
     NAME = :manage
 
-    # The permission bit.
-    BIT = 0x00000000
-
     # dependent permissions granted by **:manage**.
     GRANTS = [ :edit, :delete ]
 
     # Initializer.
     def initialize()
-     super(NAME, BIT, GRANTS)
+     super(NAME, GRANTS)
     end
   end
 end

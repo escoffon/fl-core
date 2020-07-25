@@ -5,16 +5,23 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::AccessHelpers
 end
 
-class P1Duplicate < Fl::Core::Access::Permission
-  NAME = :p1_duplicate
-
-  # Duplicate of the read permission bit
-  BIT = TestAccess::P1::BIT
+class PDuplicate < Fl::Core::Access::Permission
+  NAME = TestAccess::P1::NAME
 
   GRANTS = [ ]
 
   def initialize()
-    super(NAME, BIT, GRANTS)
+    super(NAME, GRANTS)
+  end
+end
+
+class POverflow < Fl::Core::Access::Permission
+  NAME = :p_overflow
+
+  GRANTS = [ ]
+
+  def initialize()
+    super(NAME, GRANTS)
   end
 end
 
@@ -25,8 +32,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
   
   before(:example) do
     cleanup_permission_registry([ TestAccess::P1::NAME, TestAccess::P2::NAME, TestAccess::P3::NAME,
-                                  TestAccess::P4::NAME, TestAccess::P5::NAME, TestAccess::P6::NAME,
-                                  P1Duplicate::NAME ])
+                                  TestAccess::P4::NAME, TestAccess::P5::NAME, TestAccess::P6::NAME ])
 
     @initial_count = Fl::Core::Access::Permission.instance_variable_get(:@_permission_registry).count
   end
@@ -44,6 +50,8 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                Fl::Core::Access::Permission::Index::NAME,
                Fl::Core::Access::Permission::IndexContents::NAME,
                Fl::Core::Access::Permission::CreateContents::NAME,
+               Fl::Core::Comment::Permission::IndexComments::NAME,
+               Fl::Core::Comment::Permission::CreateComments::NAME,
                Fl::Core::Actor::Permission::ManageMembers::NAME ]
         
         expect(Fl::Core::Access::Permission.registered).to match_array(xr)
@@ -61,6 +69,8 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                                          Fl::Core::Access::Permission::Index::NAME,
                                          Fl::Core::Access::Permission::IndexContents::NAME,
                                          Fl::Core::Access::Permission::CreateContents::NAME,
+                                         Fl::Core::Comment::Permission::IndexComments::NAME,
+                                         Fl::Core::Comment::Permission::CreateComments::NAME,
                                          Fl::Core::Actor::Permission::ManageMembers::NAME ])
         expect(pg[:read]).to match_array([ :edit, :manage ])
         expect(pg[:write]).to match_array([ :edit, :manage ])
@@ -96,6 +106,8 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
                Fl::Core::Access::Permission::Index::NAME,
                Fl::Core::Access::Permission::IndexContents::NAME,
                Fl::Core::Access::Permission::CreateContents::NAME,
+               Fl::Core::Comment::Permission::IndexComments::NAME,
+               Fl::Core::Comment::Permission::CreateComments::NAME,
                Fl::Core::Actor::Permission::ManageMembers::NAME,
                TestAccess::P1::NAME,
                TestAccess::P2::NAME ]
@@ -220,13 +232,13 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
       it "should expand correctly" do
         pc = Fl::Core::Access::Permission
         
-        expect(pc.permission_mask(pc::Owner::NAME)).to eql(pc::Owner::BIT)
-        expect(pc.permission_mask(pc::Create::NAME)).to eql(pc::Create::BIT)
-        expect(pc.permission_mask(pc::Read::NAME)).to eql(pc::Read::BIT)
-        expect(pc.permission_mask(pc::Write::NAME)).to eql(pc::Write::BIT)
-        expect(pc.permission_mask(pc::Delete::NAME)).to eql(pc::Delete::BIT)
-        expect(pc.permission_mask(pc::Edit::NAME)).to eql(pc::Read::BIT | pc::Write::BIT)
-        expect(pc.permission_mask(pc::Manage::NAME)).to eql(pc::Read::BIT | pc::Write::BIT | pc::Delete::BIT)
+        expect(pc.permission_mask(pc::Owner::NAME)).to eql(pc::Owner.bit)
+        expect(pc.permission_mask(pc::Create::NAME)).to eql(pc::Create.bit)
+        expect(pc.permission_mask(pc::Read::NAME)).to eql(pc::Read.bit)
+        expect(pc.permission_mask(pc::Write::NAME)).to eql(pc::Write.bit)
+        expect(pc.permission_mask(pc::Delete::NAME)).to eql(pc::Delete.bit)
+        expect(pc.permission_mask(pc::Edit::NAME)).to eql(pc::Read.bit | pc::Write.bit)
+        expect(pc.permission_mask(pc::Manage::NAME)).to eql(pc::Read.bit | pc::Write.bit | pc::Delete.bit)
 
         mp1 = TestAccess::P1.new.register
         mp2 = TestAccess::P2.new.register
@@ -241,36 +253,6 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
         expect(pc::permission_mask(mp4.name)).to eql(mp1.bit | mp2.bit)
         expect(pc::permission_mask(mp5.name)).to eql(mp1.bit | mp2.bit | mp3.bit)
         expect(pc::permission_mask(mp6.name)).to eql(mp1.bit | mp2.bit | mp3.bit)
-      end
-    end
-  
-    context ".unregister" do
-      it "should remove the permission from the registry" do
-        mp1 = TestAccess::P1.new.register
-
-        expect do
-          mp1_1 = TestAccess::P1.new.register
-        end.to raise_exception(Fl::Core::Access::Permission::DuplicateName)
-
-        Fl::Core::Access::Permission.unregister(mp1)
-        
-        expect do
-          mp1_1 = TestAccess::P1.new.register
-        end.not_to raise_exception
-      end
-
-      it "should remove the permission bit from the registry" do
-        mp1 = TestAccess::P1.new.register
-
-        expect do
-          rdup = P1Duplicate.new.register
-        end.to raise_exception(Fl::Core::Access::Permission::DuplicateBit)
-
-        Fl::Core::Access::Permission.unregister(mp1)
-        
-        expect do
-          rdup = P1Duplicate.new.register
-        end.not_to raise_exception
       end
     end
   end
@@ -289,7 +271,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
   end
   
   describe "#register" do
-    it "should raise on a duplicate permission" do
+    it "should raise on a duplicate registration" do
       r = Fl::Core::Access::Permission.instance_variable_get(:@_permission_registry)
       expect(r.count).to eql(@initial_count)
         
@@ -301,14 +283,31 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
       end.to raise_exception(Fl::Core::Access::Permission::DuplicateName)
     end
 
-    it "should raise on duplicate permission bits" do
+    it "should raise on a duplicate name" do
+      r = Fl::Core::Access::Permission.instance_variable_get(:@_permission_registry)
+      expect(r.count).to eql(@initial_count)
+        
+      mp1 = TestAccess::P1.new.register
+      expect(r.count).to eql(@initial_count + 1)
+
+      expect do
+        mp1_1 = PDuplicate.new.register
+      end.to raise_exception(Fl::Core::Access::Permission::DuplicateName)
+    end
+
+    it "should raise on running out of bits" do
+      # we cheat a bit and bump the bit count
+
+      Fl::Core::Access::Permission.instance_variable_set(:@_current_bit,
+                                                         Fl::Core::Access::Permission::MAX_PERMISSION_BIT - 1)
+
       expect do
         mp1 = TestAccess::P1.new.register
       end.not_to raise_exception
       
       expect do
-        rdup = P1Duplicate.new.register
-      end.to raise_exception(Fl::Core::Access::Permission::DuplicateBit)
+        povr = POverflow.new.register
+      end.to raise_exception(Fl::Core::Access::Permission::BitOverflow)
     end
   end
 
@@ -317,25 +316,25 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
       pc = Fl::Core::Access::Permission
       
       p = pc.lookup(pc::Owner::NAME)
-      expect(p.permission_mask).to eql(pc::Owner::BIT)
+      expect(p.permission_mask).to eql(pc::Owner.bit)
 
       p = pc.lookup(pc::Create::NAME)
-      expect(p.permission_mask).to eql(pc::Create::BIT)
+      expect(p.permission_mask).to eql(pc::Create.bit)
 
       p = pc.lookup(pc::Read::NAME)
-      expect(p.permission_mask).to eql(pc::Read::BIT)
+      expect(p.permission_mask).to eql(pc::Read.bit)
 
       p = pc.lookup(pc::Write::NAME)
-      expect(p.permission_mask).to eql(pc::Write::BIT)
+      expect(p.permission_mask).to eql(pc::Write.bit)
 
       p = pc.lookup(pc::Delete::NAME)
-      expect(p.permission_mask).to eql(pc::Delete::BIT)
+      expect(p.permission_mask).to eql(pc::Delete.bit)
 
       p = pc.lookup(pc::Edit::NAME)
-      expect(p.permission_mask).to eql(pc::Read::BIT | pc::Write::BIT)
+      expect(p.permission_mask).to eql(pc::Read.bit | pc::Write.bit)
 
       p = pc.lookup(pc::Manage::NAME)
-      expect(p.permission_mask).to eql(pc::Read::BIT | pc::Write::BIT | pc::Delete::BIT)
+      expect(p.permission_mask).to eql(pc::Read.bit | pc::Write.bit | pc::Delete.bit)
 
       mp1 = TestAccess::P1.new.register
       mp2 = TestAccess::P2.new.register

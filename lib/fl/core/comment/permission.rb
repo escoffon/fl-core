@@ -11,15 +11,12 @@ module Fl::Core::Comment
       # The permission name.
       NAME = :index_comments
 
-      # The permission bit.
-      BIT = 0x00000200
-
       # dependent permissions granted by **:index_comments**.
       GRANTS = [ ]
 
       # Initializer.
       def initialize()
-        super(NAME, BIT, GRANTS)
+        super(NAME, GRANTS)
       end
     end
 
@@ -30,15 +27,12 @@ module Fl::Core::Comment
       # The permission name.
       NAME = :create_comments
 
-      # The permission bit.
-      BIT = 0x00000400
-
       # dependent permissions granted by **:create_comments**.
       GRANTS = [ ]
 
       # Initializer.
       def initialize()
-        super(NAME, BIT, GRANTS)
+        super(NAME, GRANTS)
       end
     end
   end

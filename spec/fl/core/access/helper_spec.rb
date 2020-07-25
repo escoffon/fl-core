@@ -13,10 +13,9 @@ end
 
 class MyPermission < MyBase
   NAME = :my_permission
-  BIT = 0x00100000
   
   def initialize()
-    super(NAME, BIT, [ ])
+    super(NAME, [ ])
   end
 end
 
@@ -183,7 +182,7 @@ RSpec.describe Fl::Core::Access::Permission, type: :model do
       expect(_h.permission_mask(mp6.name)).to eql(mp1.bit | mp2.bit | mp3.bit)
     end
 
-    it "should supprt mixed arrays" do
+    it "should support mixed arrays" do
       mp1 = TestAccess::P1.new.register
       mp2 = TestAccess::P2.new.register
       mp3 = TestAccess::P3.new.register

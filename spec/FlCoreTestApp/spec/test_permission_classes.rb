@@ -3,11 +3,10 @@ module TestAccess
 
   class P1 < Fl::Core::Access::Permission
     NAME = :p1
-    BIT = 0x01000000
     GRANTS = [ ]
     
     def initialize()
-      super(NAME, BIT, GRANTS)
+      super(NAME, GRANTS)
     end
   end
 
@@ -15,11 +14,10 @@ module TestAccess
 
   class P2 < Fl::Core::Access::Permission
     NAME = :p2
-    BIT = 0x02000000
     GRANTS = [ ]
     
     def initialize()
-      super(NAME, BIT, GRANTS)
+      super(NAME, GRANTS)
     end
   end
 
@@ -27,11 +25,10 @@ module TestAccess
 
   class P3 < Fl::Core::Access::Permission
     NAME = :p3
-    BIT = 0x04000000
     GRANTS = [ ]
     
     def initialize()
-      super(NAME, BIT, GRANTS)
+      super(NAME, GRANTS)
     end
   end
 
@@ -39,11 +36,10 @@ module TestAccess
 
   class P4 < Fl::Core::Access::Permission
     NAME = :p4
-    BIT = 0x00000000
     GRANTS = [ P1::NAME, P2::NAME]
     
     def initialize()
-      super(NAME, BIT, GRANTS)
+      super(NAME, GRANTS)
     end
   end
 
@@ -51,11 +47,10 @@ module TestAccess
 
   class P5 < Fl::Core::Access::Permission
     NAME = :p5
-    BIT = 0x00000000
     GRANTS = [ P4::NAME, P3::NAME ]
     
     def initialize()
-      super(NAME, BIT, GRANTS)
+      super(NAME, GRANTS)
     end
   end
 
@@ -63,11 +58,10 @@ module TestAccess
 
   class P6 < Fl::Core::Access::Permission
     NAME = :p6
-    BIT = 0x00000000
     GRANTS = [ P5::NAME ]
     
     def initialize()
-      super(NAME, BIT, GRANTS)
+      super(NAME, GRANTS)
     end
   end
 end

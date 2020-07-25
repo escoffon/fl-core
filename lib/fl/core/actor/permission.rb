@@ -11,15 +11,12 @@ module Fl::Core::Actor
       # The permission name.
       NAME = :manage_actor_group_members
 
-      # The permission bit.
-      BIT = 0x00000100
-
       # dependent permissions granted by **:manage_actor_group_members**.
       GRANTS = [ ]
 
       # Initializer.
       def initialize()
-        super(NAME, BIT, GRANTS)
+        super(NAME, GRANTS)
       end
     end
   end
