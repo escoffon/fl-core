@@ -78,6 +78,7 @@ module Fl::Core::Comment::ActiveRecord
     def update_params(p = nil)
       # :commentable and :author may not be modified
       cp = strong_params(p).require(:fl_core_comment).permit(:title, :contents, :contents_delta)
+      cp.delete(:commentable)
       cp.delete(:author)
       cp
     end
@@ -93,6 +94,7 @@ module Fl::Core::Comment::ActiveRecord
     # - **create** returns `false` if {#actor} is `nil`.
     #   Otherwise, it checks if the **:commentable** from {#create_params} grants
     #   {Fl::Core::Comment::Permission::CreateComments} to {#actor}.
+    # - **update** returns `false` if {#actor} is `nil`, or if {#actor} is not the comment's author.
     #
     # @param action [String] The action for which to check for permission; the value has been normalized to a
     #  string by {#has_action_permission?}.
@@ -125,6 +127,9 @@ module Fl::Core::Comment::ActiveRecord
         return false if commentable.nil?
         return true unless commentable.respond_to?(:has_permission?)
         return commentable.has_permission?(Fl::Core::Comment::Permission::CreateComments::NAME, self.actor, opts)
+      when 'update'
+        return false if self.actor.nil? || (self.actor.fingerprint != obj.author.fingerprint)
+        return true        
       else
         return super(action, obj, opts)
       end

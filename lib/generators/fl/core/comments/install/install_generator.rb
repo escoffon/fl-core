@@ -6,7 +6,7 @@ module Fl::Core::Comments
     DB_MIGRATE = File.expand_path('../../../../../../../db/migrate', __FILE__)
     MIGRATION_FILE_NAMES = [ 'create_fl_core_comments' ]
 
-    RESOURCES = "resources :<resource_name>, only: [ :index, :create ]"
+    RESOURCES = "resources :<resource_name>, only: [ :index, :create, :update ]"
 
     APP_ROOT = File.join('app', 'javascript', 'fl', 'core')
     VENDOR_ROOT = File.join('vendor', 'javascript', 'fl', 'core')

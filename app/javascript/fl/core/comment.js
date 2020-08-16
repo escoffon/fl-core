@@ -69,9 +69,9 @@ let FlCoreComment = FlClassManager.make_class({
 		this.author = FlModelFactory.defaultFactory().create(data.author);
 	    }
 
-	    if (_.isString(data.comments_delta))
+	    if (_.isString(data.contents_delta))
 	    {
-		this.comments_delta = JSON.parse(data.comments_delta);
+		this.contents_delta = JSON.parse(data.contents_delta);
 	    }
 	}
     },

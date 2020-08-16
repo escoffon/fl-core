@@ -73,4 +73,26 @@ class <%=@controller_class%> < ApplicationController
       render_error_response_from_service('create_failure', @service, @service.status[:status])
     end
   end
+
+  # PATCH/PUT /fl/core/comments/1
+  # PATCH/PUT /fl/core/comments/1.json
+  def update
+    @service = service_class.new(current_user, params, self)
+    @comment = @service.update()
+    if @comment
+      respond_to do |format|
+        format.json do
+          if @service.success?
+            render_success_response('', :ok, {
+                                      comment: hash_one_object(@comment, @service.to_hash_params)
+                                    })
+          else
+            render_error_response_from_service('update_failure', @service, @service.status[:status])
+          end
+        end
+      end
+    else
+      render_error_response_from_service('update_failure', @service, @service.status[:status])
+    end
+  end
 end
