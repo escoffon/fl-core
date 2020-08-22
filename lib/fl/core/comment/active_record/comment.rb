@@ -21,7 +21,14 @@ module Fl::Core::Comment::ActiveRecord
   # - {#author} is the entity (typically a user) that created the comment.
   # - {#comments} is the list of comments associated with this comment (and therefore, the comment's
   #   subcomments that make up the conversation about the comment).
-
+  #
+  # #### Lifecycle hooks
+  #
+  # - The {#commentable}'s **:updated_at** timestamp is set to the current time when the comment is created,
+  #   updated, or destroyed.
+  # - The {#commentable}'s comment count field is increased or decreased when the comment is created or destroyed,
+  #   respectively.
+  
   class Comment < Fl::Core::ApplicationRecord
     include Fl::Core::ModelHash
     include Fl::Core::Access::Access
@@ -83,6 +90,8 @@ module Fl::Core::Comment::ActiveRecord
     
     after_create :_bump_comment_count_callback
     after_destroy :_drop_comment_count_callback
+    after_destroy :_update_commentable_timestamp
+    after_save :_update_commentable_timestamp
 
     # has_comments defines the :comments association
 
@@ -336,6 +345,11 @@ module Fl::Core::Comment::ActiveRecord
       if self.commentable.respond_to?('_drop_comment_count')
         self.commentable.send('_drop_comment_count')
       end
+    end
+
+    def _update_commentable_timestamp()
+      self.commentable.updated_at = Time.new
+      self.commentable.save
     end
   end
 end
