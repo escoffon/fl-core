@@ -502,8 +502,8 @@ module Fl::Core::Service
     #
     # @param opts [Hash] Options to the method. This section describes the common options; subclasses may
     #  define type-specific ones.
-    # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
-    #  initializer. If not present or `nil`, use the value returned by {#create_params}.
+    # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to {#create_params}
+    #  to generate the hash to pass to the object initializer. If not present or `nil`, use {#params}.
     # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
     #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
     #  (typically {Fl::Google::RECAPTCHA}, which implements
@@ -519,7 +519,7 @@ module Fl::Core::Service
     #  the instance is valid.
 
     def create(opts = {})
-      p = (opts[:params]) ? opts[:params].to_h : create_params(self.params).to_h
+      p = create_params((opts[:params]) ? opts[:params] : self.params).to_h
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
@@ -569,8 +569,8 @@ module Fl::Core::Service
     # @option opts [Symbol,String] :idname The name of the key in **:params** that contains the object
     #  identifier.
     #  Defaults to **:id**.
-    # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
-    #  initializer. If not present or `nil`, use the value returned by {#update_params}.
+    # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to {#update_params}
+    #  to generate the hash to pass to the object initializer. If not present or `nil`, use {#params}.
     # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
     #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
     #  (typically {Fl::Google::RECAPTCHA}, which implements
@@ -586,7 +586,7 @@ module Fl::Core::Service
     #  the instance is valid.
 
     def update(opts = {})
-      p = (opts[:params]) ? opts[:params].to_h : update_params(self.params).to_h
+      p = update_params((opts[:params]) ? opts[:params] : self.params).to_h
       ctx = if opts.has_key?(:context)
               (opts[:context] == :params) ? p : opts[:context]
             else
@@ -634,7 +634,7 @@ module Fl::Core::Service
     #  identifier.
     #  Defaults to **:id**.
     # @option opts [Hash,ActionController::Parameters] :params The parameters to pass to the object's
-    #  initializer. If not present or `nil`, use the value returned by {#update_params}.
+    #  initializer. If not present or `nil`, use the value returned by {#params}.
     # @option opts [Boolean,Hash] :captcha If this option is present and is either `true` or a hash,
     #  the method does a CAPTCHA validation using an appropriate CAPTCHA object
     #  (typically {Fl::Google::RECAPTCHA}, which implements
@@ -645,8 +645,9 @@ module Fl::Core::Service
     #  passed as the context.
     #  Defaults to `:params`.
     #
-    # @return [Boolean] Returns `true` if the object was destroyed, `false` otherwise. In the latter case,
-    #  {#status} contains additional information.
+    # @return [Array] Returns an array containing two elements. The first is a boolean value `true` if the object
+    #  was destroyed, `false` otherwise; in the latter case, {#status} contains additional information.
+    #  The second element is the object that was destroyed.
 
     def destroy(opts = {})
       p = (opts[:params]) ? opts[:params].to_h : self.params
@@ -664,7 +665,7 @@ module Fl::Core::Service
         begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            return true if obj.destroy
+            return [ true, obj ] if obj.destroy
 
             self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                             error_response_data('destroy_failure',
@@ -679,7 +680,7 @@ module Fl::Core::Service
         end
       end
 
-      return false
+      return [ false, obj ]
     end
 
     # Convert parameters to `ActionController::Parameters`.
