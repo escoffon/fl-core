@@ -193,6 +193,29 @@ let FlModelBase = FlClassManager.make_class({
 	    {
 		return value;
 	    }
+	},
+
+
+	/**
+	 * @ngdoc method
+	 * @name FlModelBase#_convert_JSON_value
+	 * @description
+	 *  Convert a JSON representation to a Javascript value.
+	 *  If *value* is a string: if it is the string `null`, convert to the `null` value; otherwise,
+	 *  convert to Javascript via a call to `JSON.parse`.
+	 *  If *value* is not a string, return it as is.
+	 * 
+	 * @param {any} value The value to convert.
+	 *
+	 * @return {any} Returns the converted value.
+	 */
+	
+	_convert_JSON_value: function(value) {
+	    if (_.isString(value)) {
+		return (value == 'null') ? null : JSON.parse(value);
+	    }
+
+	    return value;
 	}
     },
     class_methods: {
