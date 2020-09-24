@@ -16,6 +16,7 @@
 const _ = require('lodash');
 const jscache = require('js-cache');
 const { FlExtensions, FlClassManager } = require('./object_system');
+const moment = require('moment');
 
 /**
  * @ngdoc type
@@ -195,7 +196,6 @@ let FlModelBase = FlClassManager.make_class({
 	    }
 	},
 
-
 	/**
 	 * @ngdoc method
 	 * @name FlModelBase#_convert_JSON_value
@@ -213,6 +213,27 @@ let FlModelBase = FlClassManager.make_class({
 	_convert_JSON_value: function(value) {
 	    if (_.isString(value)) {
 		return (value == 'null') ? null : JSON.parse(value);
+	    }
+
+	    return value;
+	},
+
+	/**
+	 * @ngdoc method
+	 * @name FlModelBase#_convert_date_property
+	 * @description
+	 *  Convert a datetime representation to a Javascript Date object.
+	 *  If *value* is a string, use `moment` to convert it to a Date; otherwise, return as is.
+	 *  If *value* is not a string, return it as is.
+	 * 
+	 * @param {any} value The value to convert.
+	 *
+	 * @return {any} Returns the converted value.
+	 */
+	
+	_convert_date_value: function(value) {
+	    if (_.isString(value)) {
+		return moment.utc(value).toDate();
 	    }
 
 	    return value;
