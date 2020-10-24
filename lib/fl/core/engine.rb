@@ -1,5 +1,7 @@
 module Fl
   module Core
+    # Engine class for the `fl-core` gem.
+    
     class Engine < ::Rails::Engine
       isolate_namespace Fl::Core
 

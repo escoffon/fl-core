@@ -220,7 +220,7 @@ let FlModelBase = FlClassManager.make_class({
 
 	/**
 	 * @ngdoc method
-	 * @name FlModelBase#_convert_date_property
+	 * @name FlModelBase#_convert_date_value
 	 * @description
 	 *  Convert a datetime representation to a Javascript Date object.
 	 *  If *value* is a string, use `moment` to convert it to a Date; otherwise, return as is.

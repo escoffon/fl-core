@@ -8,10 +8,12 @@ module Fl::Core
     # @!visibility private
     
     class AdjustURLs < Loofah::Scrubber
-      def initialize
-        super
-      end
-
+      # Clean up URLs in links and image elements.
+      # This method replaces the `href` and `src` attribute of `a` and `img` elements with `#` if the URL
+      # is not a HTTP url.
+      #
+      # @param node [Nokogiri::XML::Node] The node to process.
+      
       def scrub(node)
         if (node.type == Nokogiri::XML::Node::ELEMENT_NODE) && (node.name == 'a')
           node['href'] = '#' unless (node['href'] =~ /^https?:/i) || (node['href'] =~ /^\//)
