@@ -290,6 +290,20 @@ module Fl::Core
 
       protected
 
+      # Converts a date value to a ISO8601 string.
+      # Datetime values should be placed in a hash using this method, so that generated representation use
+      # a known standard. For example, [Moment](https://momentjs.com/) has deprecated nonstandard string
+      # representations of dates, so using ISO8601 ensures that `to_hash` representation are robust when
+      # parsed in Javascript.
+      #
+      # @param ts [Datetime,Time,ActiveRecord::TimeWithZone] The date to convert.
+      #
+      # @return [String,nil] Returns the ISO8601 string for *ts*, or `nil` if *ts* does not respond to `iso8601`.
+
+      def to_hash_date(ts)
+        return (ts.respond_to?(:iso8601)) ? ts.iso8601 : nil
+      end          
+
       # @!group Subclass overrides
 
       #  The hash representation code uses the Template Method pattern, where a framework method like
@@ -572,9 +586,9 @@ module Fl::Core
               base[:fingerprint] = "#{self.class.name}/#{self.id}"
             end
           when :created_at
-            base[:created_at] = self.created_at if self.respond_to?(:created_at)
+            base[:created_at] = to_hash_date(self.created_at) if self.respond_to?(:created_at)
           when :updated_at
-            base[:updated_at] = self.updated_at if self.respond_to?(:updated_at)
+            base[:updated_at] = to_hash_date(self.updated_at) if self.respond_to?(:updated_at)
           when :permissions
             base[:permissions] = if opts.has_key?(:as_visible_to)
                                    to_hash_permission_list(opts[:as_visible_to], opts[:permissions])
