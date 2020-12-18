@@ -1,0 +1,24 @@
+# L10N files for testing the I18n code.
+
+en:
+  time:
+    formats:
+      year: 'EN year: %Y'
+      month: 'EN month: %b'
+      day: 'EN day: %d'
+
+  fl:
+    core:
+      service:
+        forbidden: "EN FORBIDDEN action :%{action}, object %{id}"
+
+  msg1: "EN message 1"
+  base:
+    msg1: "EN base.message 1"
+    msg2: "EN base.message 2"
+    sub:
+      msg2: "EN base.sub.message 2"
+      msg3: "EN base.sub.message 3"
+      subsub:
+        msg3: "EN base.sub.subsub.message 3"
+        msg4: "EN base.sub.subsub.message 4"

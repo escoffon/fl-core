@@ -130,18 +130,15 @@ module Fl::Core::Service
     #
     # @param key [String,Symbol] This is the class-independent component of the translation key; the method
     #  tries `localization_key(key)` and <code>fl.core.service.<i>key</i></code>.
-    # @param args [Hash] The rest of the call parameters contain a hash of key substitutions to pass to the
+    # @param options [Hash] The rest of the call parameters contain a hash of key substitutions to pass to the
     #  {I18n.translate_x} method.
     #
     # @return [String] Returns the localized message.
 
-    def localized_message(key, *args)
-      h = args[0]
-      begin
-        I18n.tx(localization_key(key), *args)
-      rescue I18n::MissingTranslationData => x
-        I18n.tx("fl.core.service.#{key}", *args)
-      end
+    def localized_message(key, **options)
+      h = options.dup
+      h[:default] = [ "fl.core.service.#{key}".to_sym, key.to_s.humanize ]
+      I18n.tx(localization_key(key), **h)
     end
 
     # @!attribute [r] model_class

@@ -68,12 +68,31 @@ RSpec.describe Fl::Core::Service::Base do
   describe '#localized_message' do
     it 'should use the backstop catalog' do
       s1 = TestDatumOneService.new(nil)
+      msg = s1.localized_message('parent_not_found', id: 'IDVALUE')
+      expect(msg).to start_with('Could not find parent')
+      expect(msg).to include('IDVALUE')
+    end
 
+    it 'should prefer a custom backstop catalog' do
+      s1 = TestDatumOneService.new(nil)
       msg = s1.localized_message('forbidden', id: 'IDVALUE', action: 'OPVALUE')
+      expect(msg).to start_with('EN FORBIDDEN')
       expect(msg).to include('IDVALUE')
       expect(msg).to include('OPVALUE')
     end
 
+    it 'should use a humanized action name if backstop is missing' do
+      s1 = TestDatumOneService.new(nil)
+
+      a = 'unknown action'
+      msg = s1.localized_message(a, id: 'IDVALUE', action: 'OPVALUE')
+      expect(msg).to eql(a.humanize)
+
+      a = 'unknown_action_here'
+      msg = s1.localized_message(a, id: 'IDVALUE', action: 'OPVALUE')
+      expect(msg).to eql(a.humanize)
+    end
+    
     it 'should use the class-specific catalog' do
       s1 = TestDatumOneService.new(nil)
       msg = s1.localized_message('not_found', id: 'IDVALUE')
