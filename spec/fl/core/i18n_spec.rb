@@ -36,10 +36,10 @@ RSpec.describe I18n do
     end
 
     it 'should raise an exception on a nil key' do
-        expect do
-          I18n.tx(nil, default: [ 'base.msg1'.to_sym, [ 'foo' ] ])
-        end.to raise_error(ArgumentError)
-      end
+      expect do
+        I18n.tx(nil, default: [ 'base.msg1'.to_sym, [ 'foo' ] ])
+      end.to raise_error(ArgumentError)
+    end
 
     it 'should translate arrays of keys' do
       expect(I18n.translate_x([ 'msg1', 'base.msg1' ])).to eql([ 'EN message 1', 'EN base.message 1' ])
@@ -111,24 +111,24 @@ RSpec.describe I18n do
       end
 
       it 'should process an array of arrays in :default' do
-       expect(I18n.tx([ 'not.a.key', 'no2' ],
-                      default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
-                                 [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'EN base.message 1',
-                                                                                  'EN base.message 2' ])
-       expect(I18n.tx([ 'not.a.key', 'msg1' ],
-                      default: [ [ 'backstop1', 'base.msg2'.to_sym ],
-                                 [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'EN base.message 2', 'EN message 1' ])
-       expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
-                      default: [ [ 'backstop1', 'base.msg2'.to_sym ],
-                                 [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'backstop1', 'IT message 1' ])
+        expect(I18n.tx([ 'not.a.key', 'no2' ],
+                       default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
+                                  [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'EN base.message 1',
+                                                                                   'EN base.message 2' ])
+        expect(I18n.tx([ 'not.a.key', 'msg1' ],
+                       default: [ [ 'backstop1', 'base.msg2'.to_sym ],
+                                  [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'EN base.message 2', 'EN message 1' ])
+        expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
+                       default: [ [ 'backstop1', 'base.msg2'.to_sym ],
+                                  [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'backstop1', 'IT message 1' ])
 
-       expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it', 'en' ],
-                      default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
-                                 [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'IT base.message 1',
-                                                                                  'EN base.message 2' ])
-       expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it', 'en' ],
-                      default: [ [ 'backstop1', 'base.msg1'.to_sym ],
-                                 [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'IT base.message 1',
+        expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it', 'en' ],
+                       default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
+                                  [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'IT base.message 1',
+                                                                                   'EN base.message 2' ])
+        expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it', 'en' ],
+                       default: [ [ 'backstop1', 'base.msg1'.to_sym ],
+                                  [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'IT base.message 1',
                                                                                   'IT message 1' ])
         expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it' ],
                        default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
@@ -194,6 +194,66 @@ RSpec.describe I18n do
     end
   end
 
+  describe '.translate' do
+    it 'should implement the translate_x functionality' do
+      expect(I18n.translate('msg1')).to eql('EN message 1')
+
+      expect(I18n.t([ 'msg1', 'base.msg1' ])).to eql([ 'EN message 1', 'EN base.message 1' ])
+
+      expect(I18n.translate('msg1', locale: [ :it, 'en' ])).to eql('IT message 1')
+      expect(I18n.t('base.msg2', locale: [ :it, 'en' ])).to eql('EN base.message 2')
+
+      expect(I18n.t([ 'msg1', 'base.msg2' ],
+                    locale: [ :it, 'en' ])).to eql([ 'IT message 1', 'EN base.message 2' ])
+    end
+    
+    it 'should raise an exception on a nil key' do
+      expect do
+        I18n.translate(nil, default: [ 'base.msg1'.to_sym, [ 'foo' ] ])
+      end.to raise_error(ArgumentError)
+    end
+
+    context 'with the :default option' do
+      it 'should implement the translate_x functionality' do
+        expect(I18n.t('not.a.key', default: 'default value')).to eql('default value')
+        expect(I18n.t([ 'not.a.key', 'msg1' ], default: 'default value')).to eql([ 'default value', 'EN message 1' ])
+
+        expect(I18n.t([ 'not.a.key', 'no2' ],
+                      default: 'base.msg1'.to_sym)).to eql([ 'EN base.message 1', 'EN base.message 1' ])
+
+        expect(I18n.t('not.a.key', default: [ 'bs1', 'base.msg1'.to_sym, 'bs2' ])).to eql('EN base.message 1')
+        expect(I18n.t('not.a.key', locale: [ 'it' ],
+                      default: [ 'bs1', 'base.msg2'.to_sym, 'bs2' ])).to eql('bs1')
+
+        expect(I18n.t([ 'not.a.key', 'no2' ],
+                      default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
+                                 [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'EN base.message 1',
+                                                                                  'EN base.message 2' ])
+        expect(I18n.t([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
+                      default: [ [ 'backstop1', 'base.msg2'.to_sym ],
+                                 [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'backstop1', 'IT message 1' ])
+      end
+    end
+    
+    context 'on a missing translation' do
+      it 'should implement the translate_x functionality' do
+        key = 'not.a.key'
+        expect(I18n.t(key)).to start_with("translation missing: [en].#{key}")
+
+        key = [ 'msg1', 'not.a.key', 'base.msg1' ]
+        expect(I18n.t(key)).to eql([ 'EN message 1', "translation missing: [en].#{key[1]}", 'EN base.message 1' ])
+
+        expect do
+          I18n.t(key, raise: true)
+        end.to raise_error(I18n::MissingTranslationData)
+
+        expect do
+          I18n.t(key, throw: true)
+        end.to throw_symbol(:exception)
+      end
+    end
+  end
+
   describe '.localize_x' do
     it 'should localize a known format' do
       expect(I18n.localize_x(dt1, format: :year)).to eql('EN year: 2020')
@@ -244,45 +304,131 @@ RSpec.describe I18n do
     end
   end
 
-  describe '.with_locale_array' do
-    it 'should load locales (1)' do
-      tx = I18n.translate_x('msg1')
-      expect(tx).to eql('EN message 1')
-
-      I18n.with_locale_array([ 'it', 'en' ]) do
-        tx = I18n.translate_x('msg1')
-      end
-      expect(tx).to eql('IT message 1')
-
-      I18n.with_locale_array([ 'en', 'it' ]) do
-        tx = I18n.translate_x('msg1')
-      end
-      expect(tx).to eql('EN message 1')
-
-      I18n.with_locale_array([ 'it', 'en' ]) do
-        tx = I18n.translate_x('base.msg2')
-      end
-      expect(tx).to eql('EN base.message 2')
+  describe '.localize' do
+    it 'should localize a known format' do
+      expect(I18n.localize(dt1, format: :year)).to eql('EN year: 2020')
     end
 
-    it 'should load locales (2)' do
-      loc = I18n.localize_x(dt1, format: :year)
-      expect(loc).to eql('EN year: 2020')
+    it 'should process the :locale option' do
+      expect(I18n.l(dt1, format: :year, locale: [ 'it', 'en' ])).to eql('IT year: 2020')
+    end
+
+    it 'should look up translations in all available locales' do
+      expect do
+        I18n.l(dt1, format: :day, locale: [ 'it' ])
+      end.to raise_exception(I18n::MissingTranslationData)
+      
+      expect(I18n.lx(dt1, format: :day, locale: [ 'it', 'en' ])).to eql('EN day: 10')
+    end
+    
+    it 'should raise on an unknown format' do
+      expect do
+        I18n.localize(dt1, format: :unknown)
+      end.to raise_exception(I18n::MissingTranslationData)
+
+      x = nil
+      begin
+        I18n.localize(dt1, format: :unknown)
+      rescue => xx
+        x = xx
+      end
+      expect(x.message).to start_with('translation missing: [en].time.formats.unknown')
+      expect(x.key).to eql('time.formats.unknown'.to_sym)
+
+      expect do
+        I18n.localize(dt1, format: :unknown, locale: [ 'it', 'en' ])
+      end.to raise_exception(I18n::MissingTranslationData)
+
+      x = nil
+      begin
+        I18n.localize(dt1, format: :unknown, locale: [ 'it', 'en' ])
+      rescue => xx
+        x = xx
+      end
+      expect(x.message).to start_with('translation missing: [it,en].time.formats.unknown')
+      expect(x.key).to eql('time.formats.unknown'.to_sym)
+    end
+  end
+
+  describe '.with_locale_array' do
+    it 'should set locales for .translate_x' do
+      expect(I18n.translate_x('msg1')).to eql('EN message 1')
 
       I18n.with_locale_array([ 'it', 'en' ]) do
-        loc = I18n.localize_x(dt1, format: :year)
+        expect(I18n.translate_x('msg1')).to eql('IT message 1')
       end
-      expect(loc).to eql('IT year: 2020')
 
       I18n.with_locale_array([ 'en', 'it' ]) do
-        loc = I18n.localize_x(dt1, format: :year)
+        expect(I18n.translate_x('msg1')).to eql('EN message 1')
       end
-      expect(loc).to eql('EN year: 2020')
 
       I18n.with_locale_array([ 'it', 'en' ]) do
-        loc = I18n.localize_x(dt1, format: :day)
+        expect(I18n.translate_x('base.msg2')).to eql('EN base.message 2')
       end
-      expect(loc).to eql('EN day: 10')
+    end
+    
+    it 'should set locales for .localize_x' do
+      expect(I18n.localize_x(dt1, format: :year)).to eql('EN year: 2020')
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.localize_x(dt1, format: :year)).to eql('IT year: 2020')
+      end
+
+      I18n.with_locale_array([ 'en', 'it' ]) do
+        expect(I18n.localize_x(dt1, format: :year)).to eql('EN year: 2020')
+      end
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.localize_x(dt1, format: :day)).to eql('EN day: 10')
+      end
+    end
+
+    it 'should set locales for .translate' do
+      expect(I18n.translate('msg1')).to eql('EN message 1')
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.translate('msg1')).to eql('IT message 1')
+      end
+
+      I18n.with_locale_array([ 'en', 'it' ]) do
+        expect(I18n.translate('msg1')).to eql('EN message 1')
+      end
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.translate('base.msg2')).to eql('EN base.message 2')
+      end
+    end
+    
+    it 'should set locales for .localize' do
+      expect(I18n.localize(dt1, format: :year)).to eql('EN year: 2020')
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.localize(dt1, format: :year)).to eql('IT year: 2020')
+      end
+
+      I18n.with_locale_array([ 'en', 'it' ]) do
+        expect(I18n.localize(dt1, format: :year)).to eql('EN year: 2020')
+      end
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.localize(dt1, format: :day)).to eql('EN day: 10')
+      end
+    end
+
+    it 'should be overridden by the :locale option' do
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        expect(I18n.translate_x('msg1', locale: [ 'en' ])).to eql('EN message 1')
+        expect(I18n.translate_x('msg1')).to eql('IT message 1')
+
+        expect(I18n.localize_x(dt1, format: :year, locale: [ 'en' ])).to eql('EN year: 2020')
+        expect(I18n.localize_x(dt1, format: :year)).to eql('IT year: 2020')
+
+        expect(I18n.translate('msg1', locale: [ 'en' ])).to eql('EN message 1')
+        expect(I18n.translate('msg1')).to eql('IT message 1')
+
+        expect(I18n.localize(dt1, format: :year, locale: [ 'en' ])).to eql('EN year: 2020')
+        expect(I18n.localize(dt1, format: :year)).to eql('IT year: 2020')
+      end
     end
   end
 end

@@ -9,7 +9,7 @@
 module I18n
   # Fl extensions to I18n.
   # This module packages the extension methods; it is added to I18n via a call to `extend Fl`.
-  
+
   module Fl
     # @!scope class
     # Gets the locale array.
@@ -175,7 +175,7 @@ module I18n
 
         batch = [ [ key, d1, d2 ] ]
       end
-      
+
       # OK, now we can get the translations for each key in the batch.
       # We iterate on keys first, so that the best individual translation per
       # key element is returned. For example, if *key* has 4 elements, and one does not have an :it translation, then
@@ -231,7 +231,7 @@ module I18n
       return (key.is_a?(Array)) ? tl : tl.first
     end
     alias :tx :translate_x
-
+    
     # @!scope class
     # This version of {.translate_x} sets the `:raise` option.
     #
@@ -325,6 +325,47 @@ module I18n
   end
 
   extend Fl
+
+  module Base
+    alias :_original_translate :translate
+    alias :_original_localize :localize
+
+    # @!scope class
+    # Override I18n's `translate` method to call {.translate_x}. With this override, all I18N calls now use
+    # the extended functionality.
+    #
+    # @overload translate(key, options)
+    #  @param key [String] The lookup key.
+    #  @param options [Hash] Options; see {.translate_x}. If the **:locale** option is not present, it defaults
+    #   to the value of {.locale_array}.
+    #
+    # @return Returns the same type and value as the original implementation of `translate`.
+
+    def translate(key = nil, *, throw: false, raise: false, locale: nil, **options) # TODO deprecate :raise
+      locale ||= config.locale_array
+      opts = options.merge(throw: throw, raise: raise, locale: locale)
+      translate_x(key, **opts)
+    end
+    alias :t :translate
+
+    # @!scope class
+    # Override I18n's `localize` method to call {.localize_x}. With this override, all I18N calls now use
+    # the extended functionality.
+    #
+    # @overload localize(object, options)
+    #  @param object The object to localize.
+    #  @param options [Hash] Options; see {.localize_x}. If the **:locale** option is not present, it defaults
+    #   to the value of {.locale_array}.
+    #
+    # @return Returns the same type and value as the original implementation of `localize`.
+
+    def localize(object, locale: nil, format: nil, **options)
+      locale ||= config.locale_array
+      opts = options.merge(locale: locale, format: format)
+      localize_x(object, **opts)
+    end
+    alias :l :localize
+  end
 end
 
 # Adds the `locale_array` pseudo-global property to the I18n Config object.
@@ -498,6 +539,14 @@ module ActionView
         I18n.localize_x(object, **options)
       end
       alias :lx :localize_x
+
+      alias :_original_translate :translate
+      alias :t :translate_x
+      alias :translate :translate_x
+
+      alias :_original_localize :localize
+      alias :t :localize_x
+      alias :localize :localize_x
     end
   end
 end
@@ -547,6 +596,14 @@ module AbstractController
       I18n.localize_x(object, **options)
     end
     alias :lx :localize_x
+
+    alias :_original_translate :translate
+    alias :t :translate_x
+    alias :translate :translate_x
+
+    alias :_original_localize :localize
+    alias :t :localize_x
+    alias :localize :localize_x
   end
 end
 
