@@ -124,8 +124,8 @@ module I18n
             key.each_with_index do |k, ik|
               case default[ik]
               when Array
-                d2, d1 = default[ik].partition { |e| e.is_a?(String) }
-              when String
+                d2, d1 = default[ik].partition { |e| (e.is_a?(String) || e.is_a?(Hash)) }
+              when String, Hash
                 d1 = nil
                 d2 = default[ik]
               when Symbol
@@ -138,14 +138,14 @@ module I18n
           else
             # an array value for default with no arrays means a constant default for all keys
 
-            d2, d1 = default.partition { |e| e.is_a?(String) }
+            d2, d1 = default.partition { |e| (e.is_a?(String) || e.is_a?(Hash)) }
             batch = key.map { |k| [ k, d1, d2 ] }
           end
         else
           # a scalar value for default means a constant default for all keys
 
           case default
-          when String
+          when String, Hash
             d1 = nil
             d2 = [ default ]
           when Symbol
@@ -164,8 +164,8 @@ module I18n
 
         case default
         when Array
-          d2, d1 = default.partition { |e| e.is_a?(String) }
-        when String
+          d2, d1 = default.partition { |e| (e.is_a?(String) || e.is_a?(Hash)) }
+        when String, Hash
           d1 = nil
           d2 = [ default ]
         when Symbol
@@ -200,7 +200,7 @@ module I18n
 
         ro
       end
-      
+
       # now we need to check that all keys were translated: convert any MissingTranslation to strings or raise
       # exceptions.
 
@@ -212,7 +212,7 @@ module I18n
           # one last check: if there is a backstop value, replace it here.
 
           d2 = batch[it][2]
-          if d2.is_a?(Array) && d2.first.is_a?(String)
+          if d2.is_a?(Array) && (d2.first.is_a?(String) || d2.first.is_a?(Hash))
             d2.first
           else
             # We need to create a new exception, since the one in `t` contains the error message for the

@@ -45,6 +45,26 @@ RSpec.describe I18n do
       expect(I18n.translate_x([ 'msg1', 'base.msg1' ])).to eql([ 'EN message 1', 'EN base.message 1' ])
     end
 
+    it 'should return hashes for non-leaf nodes' do
+      t = I18n.tx('base.sub')
+      expect(t).to eql({
+                         msg2: "EN base.sub.message 2",
+                         msg3: "EN base.sub.message 3",
+                         subsub: {
+                           msg3: "EN base.sub.subsub.message 3",
+                           msg4: "EN base.sub.subsub.message 4"
+                         }
+                       })
+
+      t = I18n.tx('base.sub', locale: 'it')
+      expect(t).to eql({
+                         msg2: "IT base.sub.message 2",
+                         subsub: {
+                           msg4: "IT base.sub.subsub.message 4"
+                         }
+                       })
+    end
+    
     it 'should accept a :locale option' do
       expect(I18n.translate_x('msg1', locale: [ :it, 'en' ])).to eql('IT message 1')
       expect(I18n.translate_x('base.msg2', locale: [ :it, 'en' ])).to eql('EN base.message 2')
@@ -61,6 +81,9 @@ RSpec.describe I18n do
     end
 
     context 'with the :default option' do
+      let(:h1) { { h1: 'h1' } }
+      let(:h2) { { h2: 'h2' } }
+
       it 'should accept a plain string' do
         expect(I18n.tx('not.a.key', default: 'default value')).to eql('default value')
         expect(I18n.tx([ 'not.a.key', 'no2' ], default: 'default value')).to eql([ 'default value', 'default value' ])
@@ -75,6 +98,12 @@ RSpec.describe I18n do
                        default: 'base.msg1'.to_sym)).to eql([ 'EN base.message 1', 'EN message 1' ])
       end
 
+      it 'should accept a hash' do
+        expect(I18n.tx('not.a.key', default: h1)).to eql(h1)
+        expect(I18n.tx([ 'not.a.key', 'no2' ], default: h1)).to eql([ h1, h1 ])
+        expect(I18n.tx([ 'not.a.key', 'msg1' ], default: h1)).to eql([ h1, 'EN message 1' ])
+      end
+      
       it 'should raise an exception on a scalar key and array :default with arrays' do
         expect do
           I18n.tx('not.a.key', default: [ 'base.msg1'.to_sym, [ 'foo' ] ])
@@ -108,6 +137,8 @@ RSpec.describe I18n do
                        default: [ 'backstop', 'base.msg1'.to_sym ])).to eql([ 'IT base.message 1', 'IT message 1' ])
         expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
                        default: [ 'backstop', 'base.msg2'.to_sym ])).to eql([ 'backstop', 'IT message 1' ])
+        expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
+                       default: [ h1, 'base.msg2'.to_sym ])).to eql([ h1, 'IT message 1' ])
       end
 
       it 'should process an array of arrays in :default' do
@@ -121,19 +152,30 @@ RSpec.describe I18n do
         expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
                        default: [ [ 'backstop1', 'base.msg2'.to_sym ],
                                   [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'backstop1', 'IT message 1' ])
+        expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it' ],
+                       default: [ [ h1, 'base.msg2'.to_sym ],
+                                  [ h2, 'base.msg2'.to_sym ] ])).to eql([ h1, 'IT message 1' ])
 
         expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it', 'en' ],
                        default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
                                   [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'IT base.message 1',
                                                                                    'EN base.message 2' ])
+        expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it', 'en' ],
+                       default: [ [ 'base.msg1'.to_sym, h1 ],
+                                  [ 'base.msg2'.to_sym, h2 ] ])).to eql([ 'IT base.message 1',
+                                                                          'EN base.message 2' ])
         expect(I18n.tx([ 'not.a.key', 'msg1' ], locale: [ 'it', 'en' ],
                        default: [ [ 'backstop1', 'base.msg1'.to_sym ],
                                   [ 'backstop2', 'base.msg2'.to_sym ] ])).to eql([ 'IT base.message 1',
-                                                                                  'IT message 1' ])
+                                                                                   'IT message 1' ])
         expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it' ],
                        default: [ [ 'base.msg1'.to_sym, 'backstop1' ],
                                   [ 'base.msg2'.to_sym, 'backstop2' ] ])).to eql([ 'IT base.message 1',
                                                                                    'backstop2' ])
+        expect(I18n.tx([ 'not.a.key', 'no2' ], locale: [ 'it' ],
+                       default: [ [ 'base.msg1'.to_sym, h1 ],
+                                  [ 'base.msg2'.to_sym, h2 ] ])).to eql([ 'IT base.message 1',
+                                                                          h2 ])
       end
     end
     
@@ -364,6 +406,16 @@ RSpec.describe I18n do
 
       I18n.with_locale_array([ 'it', 'en' ]) do
         expect(I18n.translate_x('base.msg2')).to eql('EN base.message 2')
+      end
+
+      I18n.with_locale_array([ 'it', 'en' ]) do
+        t = I18n.tx('base.sub')
+        expect(t).to eql({
+                           msg2: "IT base.sub.message 2",
+                           subsub: {
+                             msg4: "IT base.sub.subsub.message 4"
+                           }
+                         })
       end
     end
     
