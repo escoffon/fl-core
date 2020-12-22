@@ -117,7 +117,6 @@ module I18n
         self.locale_array = self.locale_array + [ I18n.default_locale ] unless self.locale_array.include?(I18n.default_locale)
         loc = self.locale_array.find { |l| I18n.locale_available?(l) }
         self.locale = loc unless loc.nil?
-        print("++++++++++ with_locales: #{self.locale} - #{self.locale_array}\n")
         begin
           yield
         ensure
