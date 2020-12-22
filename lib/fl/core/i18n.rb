@@ -27,14 +27,70 @@ module I18n
     # @!scope class
     # Sets the current locale array pseudo-globally, i.e. in the `Thread.current` hash.
     #
-    # @param locale_array [Array<Symbol, String>] An array of locale names; strings are converted to symbols.
+    # @param locale_array [Array<Symbol, String>] An array of locale names; the locale names are normalized.
     #
     # @return [Array<Symbol>] Returns the array of locales that was set.
 
     def locale_array=(locale_array)
-      config.locale_array = locale_array
+      config.locale_array = locale_array.map { |l| I18n.normalize_locale(l) }
     end
 
+    # @!scope class
+    # Normalize a locale name.
+    # Replaces underscores (`_`) with dashes (`-`), converts the language part to lowercase, and the region/variant
+    # part to uppercase. For example, `en_US` is converted to `en-US`, and `en-us` to `en-US`; the normalized
+    # format is consistent with common locale use, and specifically with how locales are defined in translation
+    # files.
+    #
+    # @param locale [String,Symbol] The locale name.
+    #
+    # @return [String] Returns the normalized name.
+
+    def normalize_locale(locale)
+      idx = -1
+      locale.to_s.gsub('_', '-').split('-').map do |l|
+        idx += 1
+        (idx == 0) ? l.downcase : l.upcase
+      end.join('-')
+    end
+
+    # @!scope class
+    # Inserts language-only locales in a list of locales.
+    # This method scans *locales* for locale names that contain both language and region; if no corresponding
+    # language-only locales are present, it inserts them in the list at appropriate location.
+    # For example, if *locales* is `[ 'en-US', 'it-CH', 'es' ]`, the method returns
+    # `[ 'en-US', 'en', 'it-CH', 'it', 'es' ]`.
+    # However, with `[ 'en', 'en-US', 'it-CH` ]`, the return value is `[ 'en', 'en-US', 'it-CH', 'it' ]`, since
+    # `'en'` is already in *locales*.
+    #
+    # This method is especially useful to handle requests from Safari on iOS, where the locale header typically
+    # contains a single locale with both language and region (*e.g* `'it-it'` or `en-us`).
+    #
+    # @param locales [Array<String,Symbol>] The locales array to process.
+    #
+    # @return [Array<String>] Returns the locales list, modified as described above.
+
+    def expand_locales(locales)
+      pos = { }
+      explicit = { }
+      locales.each_with_index do |loc, idx|
+        dloc = loc.to_s.downcase
+        lang = loc.to_s.split('-').first
+        pos[lang] = idx
+        explicit[dloc] = idx
+      end
+
+      idx = 0
+      locales.reduce([ ]) do |acc, loc|
+        dloc = loc.to_s.downcase
+        acc.push(loc)
+        lang = dloc.to_s.split('-').first
+        acc.push(lang) if (lang != dloc) && (pos[lang] == idx) && !acc.include?(lang) && !explicit.has_key?(lang)
+        idx += 1
+        acc
+      end
+    end
+    
     # @!scope class
     # Executes a block with a given locale array set.
     # This method sets the locale array, executes the block, and resets it to the original value.
@@ -50,10 +106,18 @@ module I18n
       if tmp_locale_array == nil
         yield
       else
+        # The call to I18n.expand_locales is done mainly to address the behavior of Safari (and potentially other
+        # browsers) on iOS. The list of locales is a single element containing both language and region (like it-it),
+        # but Rails typically defines just the language translation files (like my.it.yml).
+        # So we add the language-only locale so that Rails picks it up
+        
         current_locale_array = self.locale_array
         current_locale = self.locale
-        self.locale_array = tmp_locale_array
-        self.locale = tmp_locale_array.first
+        self.locale_array = I18n.expand_locales(tmp_locale_array)
+        self.locale_array = self.locale_array + [ I18n.default_locale ] unless self.locale_array.include?(I18n.default_locale)
+        loc = self.locale_array.find { |l| I18n.locale_available?(l) }
+        self.locale = loc unless loc.nil?
+        print("++++++++++ with_locales: #{self.locale} - #{self.locale_array}\n")
         begin
           yield
         ensure

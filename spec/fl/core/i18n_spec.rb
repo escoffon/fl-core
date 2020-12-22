@@ -6,6 +6,10 @@ RSpec.describe I18n do
   let(:dt1) { Time.new(2020, 2, 10, 10, 20, 30) }
   let(:dt2) { Time.new(2022, 4, 20, 12, 22, 32) }
 
+  def _sym(l)
+    l.map { |e| e.to_sym }
+  end
+  
   describe '.locale_array=' do
     it 'should set the array' do
       nl = [ :it, :en ]
@@ -18,8 +22,51 @@ RSpec.describe I18n do
       I18n.locale_array = nl
       expect(I18n.locale_array).to eql([ :it, :en ])
     end
+
+    it 'should normalize locale names' do
+      I18n.locale_array = [ 'EN', 'it_it', 'en-nz', 'EN-GB' ]
+      expect(I18n.locale_array).to eql([ 'en', 'it-IT', 'en-NZ', 'en-GB' ].map { |l| l.to_sym })
+    end
   end
 
+  describe '.normalize_locale' do
+    it 'should normalize a simple locale name' do
+      expect(I18n.normalize_locale('en')).to eql('en')
+      expect(I18n.normalize_locale('EN')).to eql('en')
+    end
+
+    it 'should normalize a complex locale name' do
+      expect(I18n.normalize_locale('en-US')).to eql('en-US')
+      expect(I18n.normalize_locale('EN-US')).to eql('en-US')
+      expect(I18n.normalize_locale('en-us')).to eql('en-US') 
+
+      expect(I18n.normalize_locale('en-US-SW')).to eql('en-US-SW')
+      expect(I18n.normalize_locale('EN-US-sw')).to eql('en-US-SW')
+      expect(I18n.normalize_locale('en-us-sw')).to eql('en-US-SW') 
+   end
+
+    it 'should convert underscores to dashes' do
+      expect(I18n.normalize_locale('en_US')).to eql('en-US')
+      expect(I18n.normalize_locale('en_us')).to eql('en-US')
+
+      expect(I18n.normalize_locale('en_US_sw')).to eql('en-US-SW')
+      expect(I18n.normalize_locale('en_us_sw')).to eql('en-US-SW')
+    end
+  end
+
+  describe '.expand_locales' do
+    it 'should insert a language-only locale if needed' do
+      expect(I18n.expand_locales([ 'en-US', 'en-NZ', 'it-IT' ])).to eql([ 'en-US', 'en-NZ', 'en', 'it-IT', 'it' ])
+    end
+
+    it 'should not insert a language-only locale if one is already present' do
+      expect(I18n.expand_locales([ 'en', 'en-US', 'en-NZ', 'it-IT' ])).to eql([ 'en', 'en-US', 'en-NZ', 'it-IT', 'it' ])
+      expect(I18n.expand_locales([ 'en-US', 'en', 'en-NZ', 'it-IT' ])).to eql([ 'en-US', 'en', 'en-NZ', 'it-IT', 'it' ])
+      expect(I18n.expand_locales([ 'en-US', 'en-NZ', 'en', 'it-IT' ])).to eql([ 'en-US', 'en-NZ', 'en', 'it-IT', 'it' ])
+      expect(I18n.expand_locales([ 'en-US', 'en-NZ', 'it-IT', 'en' ])).to eql([ 'en-US', 'en-NZ', 'it-IT', 'it', 'en' ])
+    end
+  end
+  
   describe '.translate_x' do
     it 'should accept defaults' do
       expect(I18n.translate_x('msg1')).to eql('EN message 1')
@@ -393,6 +440,46 @@ RSpec.describe I18n do
   end
 
   describe '.with_locale_array' do
+    it 'should normalize locale names' do
+      I18n.with_locale_array([ 'EN', 'it_it', 'en-nz', 'EN-GB' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'en', 'it-IT', 'en-NZ', 'en-GB' ]))
+      end
+    end
+
+    it 'should set .locale to the first valid one in the list' do
+      I18n.with_locale_array([ 'it-CH', 'it', 'en' ]) do
+        expect(I18n.locale).to eql(:it)
+      end
+    end
+
+    it 'should append the default locale if not already present' do
+      I18n.with_locale_array([ 'it', 'en-US' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'it', 'en-US', 'en' ]))
+      end
+    end
+
+    it 'should insert language-only locales as needed' do
+      I18n.with_locale_array([ 'en-US', 'en-NZ', 'it-IT' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'en-US', 'en-NZ', 'en', 'it-IT', 'it' ]))
+      end
+
+      I18n.with_locale_array([ 'en', 'en-US', 'en-NZ', 'it-IT' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'en', 'en-US', 'en-NZ', 'it-IT', 'it' ]))
+      end
+      
+      I18n.with_locale_array([ 'en-US', 'en', 'en-NZ', 'it-IT' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'en-US', 'en', 'en-NZ', 'it-IT', 'it' ]))
+      end
+      
+      I18n.with_locale_array([ 'en-US', 'en-NZ', 'en', 'it-IT' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'en-US', 'en-NZ', 'en', 'it-IT', 'it' ]))
+      end
+      
+      I18n.with_locale_array([ 'en-US', 'en-NZ', 'it-IT', 'en' ]) do
+        expect(I18n.locale_array).to eql(_sym([ 'en-US', 'en-NZ', 'it-IT', 'it', 'en' ]))
+      end
+    end
+    
     it 'should set locales for .translate_x' do
       expect(I18n.translate_x('msg1')).to eql('EN message 1')
 
