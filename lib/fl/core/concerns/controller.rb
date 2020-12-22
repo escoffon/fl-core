@@ -6,3 +6,4 @@ module Fl::Core::Concerns
 end
 
 require 'fl/core/concerns/controller/service_status'
+require 'fl/core/concerns/controller/locale_detection'
