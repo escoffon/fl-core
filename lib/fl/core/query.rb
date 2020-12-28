@@ -36,6 +36,8 @@ module Fl::Core
           true
         elsif f =~ /^n(o)?$/i
           false
+        else
+          false
         end
       when NilClass
         false
@@ -44,56 +46,136 @@ module Fl::Core
       end
     end
 
-    # @!visibility private
-    def _extract_fingerprint_from_string_reference(acc, r)
-      if r =~ /^gid:/i
-        # This is a GlobalID URI: the path contains the location of the object, which by an amazing
-        # turn of fate is the same as a fingerprint!
+    # Checks that a class name and object identifier are acceptable.
+    # This method runs the check as follows:
+    #
+    # 1. If *klass* is `nil`, returns *id* as an integer.
+    # 2. Convert *klass* and *cname* to class objects if needed, then check if *cname* is the same of *klass*,
+    #    or a subclass of *klass*. If so, returns *id* as an integer.
+    # 3. Otherwise, return `nil`.
+    #
+    # @param cname [String,Class] A class name, or a class object; this is the declared type of the object.
+    # @param id [Integer,String,nil] The declared object identifier.
+    # @param klass [String,Class] A class name, or a class object, for the target class.
+    #
+    # @return [Integer,nil] If the cheks succeed, returns *id* as an integer value; otherwise, returns `nil`.
+    
+    def check_object_class_and_id(cname, id, klass)
+      return nil if cname.nil? || id.nil?
+      return id.to_i if klass.nil?
 
-        uri = URI.parse(r)
-        fp = uri.path.slice(1, uri.path.length)
-        c, id = ActiveRecord::Base.split_fingerprint(fp)
-        acc << "#{c}/#{id}" unless id.nil?
-      else
-        c, id = ActiveRecord::Base.split_fingerprint(r)
-        acc << "#{c}/#{id}" unless id.nil?
+      begin
+        kc = (klass.is_a?(String)) ? Object.const_get(klass) : klass
+        c = (cname.is_a?(String)) ? Object.const_get(cname) : cname
+        return (c <= kc) ? id.to_i : nil
+      rescue => x
+        return nil
       end
     end
+    
+    # Extract an object identifier from a parameter.
+    # The method runs a number of checks until one succeeds:
+    #
+    # 1. If *r* responds to **:id**, call the method to get the identifier, then run the class check if *klass* is
+    #    non-nil.
+    # 2. If *r* is an integer, or a string containing only integers, it returns *r*, converted to an integer value;
+    #    no class checking is done, since there is no class information available.
+    # 3. If *r* is a SignedGlobalID or GlobalID, extract the identifier from its URI; if *klass* is non-nil, check
+    #    that the declared class in the URI is the same as *klass*.
+    # 4. If *r* is a string starting with `gid://`, then this is a string representation of a GlobalID: extract
+    #    the identifier and class name from it, then run the class check if *klass* is non-nil.
+    # 5. Split *r* as a fingerprint; if the `id` component is non-nil, run the class check if *klass* is non-nil.
+    # 6. Finally, if we made it here we check if *r* is the string representation of a SignedGlobalID:
+    #    call `GlobalID::Locator.locate_signed` to get the object and run the class chaeck if *klass* is non-nil.
+    #    If no object, return `nil`.
+    #
+    # @param r [Integer,String,GlobalID] The reference from which to extract the object identifier.
+    # @param klass [Class,String] A class object, or the name of a class object. When this parameter is present,
+    #  if class information is available in *r*, it is compared to *klass*.
+    #
+    # @return [Integer,nil] Returns the integer object identifier; if all checks fail, it returns `nil`.
+    
+    def extract_identifier_from_reference(r, klass = nil)
+      if r.respond_to?(:id)
+        return check_object_class_and_id(r.class, r.id, klass)
+      elsif r.is_a?(Integer) || (r.is_a?(String) && (r =~ /^[0-9]+$/))
+        return r.to_i
+      elsif r.is_a?(SignedGlobalID) || r.is_a?(GlobalID)
+        pre, cname, id = r.uri.path.split('/')
+        return check_object_class_and_id(cname, id, klass)
+      elsif r.is_a?(String)
+        if r =~ /^gid:\/\//
+          uri = URI.parse(r)
+          pre, cname, id = uri.path.split('/')
+          return check_object_class_and_id(cname, id, klass)
+        else
+          cname, id = ActiveRecord::Base.split_fingerprint(r)
+          if id.nil?
+            # Unfortunately here we have to get the object
+            
+            obj = GlobalID::Locator.locate_signed(r)
+            return (obj.nil?) ? nil : check_object_class_and_id(obj.class, obj.id, klass)
+          else
+            return check_object_class_and_id(cname, id, klass)
+          end
+        end
+      end
+    end
+    
+    # Extract a fingerprint from a parameter.
+    # The method runs a number of checks until one succeeds:
+    #
+    # 1. If *r* responds to **:fingerprint**, call that method and return its return value.
+    # 2. If *r* is a SignedGlobalID or GlobalID, extract the fingerprint from its URI.
+    # 3. If *r* is a string starting with `gid://`, then this is a string representation of a GlobalID: extract
+    #    the fingerprint from it.
+    # 4. Split *r* as a fingerprint; if both class name and id components are non-nil, this looks like a well formed
+    #    fingerprint and we return it.
+    # 5. Finally, if we made it here we check if *r* is the string representation of a SignedGlobalID:
+    #    call `GlobalID::Locator.locate_signed` to get the object and run the class chaeck if *klass* is non-nil.
+    #    If no object, return `nil`.
+    #
+    # @param r [Integer,String,GlobalID] The reference from which to extract the object identifier.
+    #
+    # @return [String,nil] Returns the fingerprint; if all checks fail, it returns `nil`.
+    
+    def extract_fingerprint_from_reference(r)
+      # On a GlobalID URI, the path contains the location of the object, which by an amazing
+      # turn of fate is the same as a fingerprint!
 
-    # @!visibility private
-    def _extract_identifier_from_string_reference(acc, r, klass)
-      if r =~ /^[0-9]+$/
-        acc << r.to_i
-      elsif r =~ /^gid:/i
-        # This is a GlobalID URI: the path contains the location of the object, which by an amazing
-        # turn of fate is the same as a fingerprint!
+      if r.respond_to?(:fingerprint)
+        return r.fingerprint
+      elsif r.is_a?(GlobalID) || r.is_a?(SignedGlobalID)
+        return r.uri.path.slice(1, r.uri.path.length)
+      elsif r.is_a?(String)
+        if r =~ /^gid:\/\//
+          uri = URI.parse(r)
+          return uri.path.slice(1, uri.path.length)
+        else
+          c, id = ActiveRecord::Base.split_fingerprint(r)
+          if !c.nil? && !id.nil?
+            # looks like a fingerprint
 
-        uri = URI.parse(r)
-        fp = uri.path.slice(1, uri.path.length)
-        c, id = ActiveRecord::Base.split_fingerprint(fp, klass)
-        acc << id.to_i unless id.nil?
-      else
-        c, id = ActiveRecord::Base.split_fingerprint(r, klass)
-        acc << id.to_i unless id.nil?
+            return r
+          else
+            # if we made it here, we need to check if this is a string representation of a shared global id, and
+            # unfortunately in this case we have to instantiate the object
+
+            obj = GlobalID::Locator.locate_signed(r)
+            return (!obj.nil? && obj.respond_to?(:fingerprint)) ? obj.fingerprint : nil
+          end
+        end
       end
     end
 
     # Converts a list of references to a list of object identifiers.
     # This method takes an array containing references to objects of a single class, and returns
     # an array of object identifiers for all the converted references.
-    # The elements of *rl* are one of the following.
+    # It reduces *rl*, calling {.extract_identifier_from_reference} for each element; if the return value is
+    # non-nil, the identifier is added to the return array.
     #
-    #   - An integer value is assumed to be an object identifier and is added to the return value as is.
-    #   - If the value is an instance of *klass*, the return from the value's `id` method is added to
-    #     the result.
-    #   - If the value is a `GlobalID`, convert it to a string and process it as described below.
-    #   - If the value is a String, check if it is an integer representation (it contains just numeric
-    #     characters); if so, convert it to an integer and add it to the result.
-    #     Otherwise, check if it is a `GlobalID` URI, and if so extract the class name and identifier.
-    #     Otherwise, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint}.
-    #     If the class name is the same as the name for *klass*, add the identifier.
-    #
-    # Note that elements that do not match any of these conditions are dropped from the return value.
+    # Note that elements that do not match any of these conditions in {.extract_identifier_from_reference}
+    # are dropped from the return value.
     #
     # @param rl [Array<Integer,String,ActiveRecord::Base>] The array of references to convert.
     # @param klass [Class] The ActiveRecord::Base subclass for the references.
@@ -105,16 +187,8 @@ module Fl::Core
       rl = [ rl ] unless rl.is_a?(Array)
       
       rl.reduce([ ]) do |acc, r|
-        if r.is_a?(Integer)
-          acc << r
-        elsif r.is_a?(klass)
-          acc << r.id
-        elsif r.is_a?(GlobalID)
-          _extract_identifier_from_string_reference(acc, r.to_s, klass)
-        elsif r.is_a?(String)
-          _extract_identifier_from_string_reference(acc, r, klass)
-        end
-
+        id = extract_identifier_from_reference(r, klass)
+        acc << id unless id.nil?
         acc
       end
     end
@@ -122,18 +196,11 @@ module Fl::Core
     # Converts a list of polymorphic references to a list of object fingerprints.
     # This method takes an array containing references to objects of potentially different classes, and
     # returns an array of object fingerprints for all the converted references.
-    # The elements of *rl* are one of the following.
+    # It reduces *rl*, calling {.extract_fingerprint_from_reference} for each element; if the return value is
+    # non-nil, the identifier is added to the return array.
     #
-    #   - If the value is an instance of a subclass of `ActiveRecord::Base`, the return from the value's
-    #    `fingerprint` method is added to the result.
-    #   - If the value is a `GlobalID`, convert it to a string and process it as described below.
-    #   - If the value is a String, check if it is an integer representation (it contains just numeric
-    #     characters); if so, convert it to an integer and add it to the result.
-    #     Otherwise, check if it is a `GlobalID` URI, and if so extract the class name and identifier.
-    #     Otherwise, treat it as a fingerprint: call {::ActiveRecord::Base.split_fingerprint}.
-    #     If the class name is the same as the name for *klass*, add the identifier.
-    #
-    # Note that elements that do not match any of these conditions are dropped from the return value.
+    # Note that elements that do not match any of these conditions in {.extract_fingerprint_from_reference}
+    # are dropped from the return value.
     #
     # @param rl [Array<Integer,String,ActiveRecord::Base>] The array of references to convert.
     #
@@ -144,14 +211,8 @@ module Fl::Core
       rl = [ rl ] unless rl.is_a?(Array)
       
       rl.reduce([ ]) do |acc, r|
-        if r.is_a?(ActiveRecord::Base)
-          acc << r.fingerprint if r.respond_to?(:fingerprint)
-        elsif r.is_a?(GlobalID)
-          _extract_fingerprint_from_string_reference(acc, r.to_s)
-        elsif r.is_a?(String)
-          _extract_fingerprint_from_string_reference(acc, r)
-        end
-
+        fp = extract_fingerprint_from_reference(r)
+        acc << fp unless fp.nil?
         acc
       end
     end
@@ -236,7 +297,8 @@ module Fl::Core
     #
     # @param opts [Hash] The query options.
     # @param suffix [String,Symbol] The suffix for the option names.
-    # @yield [list] The array containing the list to convert.
+    # @yield [list, type] The two arguments are the array containing the list to convert, and the value **:only**
+    #  or **:except** to indicate if this is the `only_` list or the `except_` one.
     #
     # @return [Hash] Returns a hash that contains up to two key/value pairs: the **only_** key is the
     #  list of object identifiers to accept, and **except_** the list to reject. If the value of the
@@ -253,7 +315,7 @@ module Fl::Core
           rv[only_name] = nil
         else
           only_l = (opts[only_name].is_a?(Array)) ? opts[only_name] : [ opts[only_name] ]
-          rv[only_name] = yield only_l
+          rv[only_name] = yield(only_l, :only)
         end
       end
 
@@ -262,7 +324,7 @@ module Fl::Core
           rv[except_name] = nil
         else
           x_l = (opts[except_name].is_a?(Array)) ? opts[except_name] : [ opts[except_name] ]
-          except_refs = yield x_l
+          except_refs = yield(x_l, :except)
 
           # if there is a `only_name`, then we need to remove the `except_name` members from it.
           # otherwise, we return `except_name`
