@@ -157,7 +157,9 @@ RSpec.describe ActiveRecord::Base, type: :model do
 
       o = Fl::Core::TestDatumTwo.find_by_fingerprint('Fl::Core::TestDatumOne/abcd')
       expect(o).to be_nil
+    end
 
+    it 'should support class-only fingerprints' do
       o = ActiveRecord::Base.find_by_fingerprint('Fl::Core::TestDatumOne')
       expect(o).to eql(Fl::Core::TestDatumOne)
 
@@ -166,6 +168,47 @@ RSpec.describe ActiveRecord::Base, type: :model do
 
       o = Fl::Core::TestDatumTwo.find_by_fingerprint('Fl::Core::TestDatumOne')
       expect(o).to eql(Fl::Core::TestDatumOne)
+
+      o = Fl::Core::TestDatumTwo.find_by_fingerprint('NotAClass')
+      expect(o).to be_nil
     end
+
+    it 'should support GlobalID values' do
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_global_id)
+      expect(o).to be_a(d10.class)
+      expect(o.id).to eql(d10.id)
+    end      
+
+    it 'should support GlobalID values as string representations' do
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_global_id.to_s)
+      expect(o).to be_a(d10.class)
+      expect(o.id).to eql(d10.id)
+    end      
+
+    it 'should support SignedGlobalID values' do
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_signed_global_id)
+      expect(o).to be_a(d10.class)
+      expect(o.id).to eql(d10.id)
+
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_signed_global_id(expires_in: 2.hours))
+      expect(o).to be_a(d10.class)
+      expect(o.id).to eql(d10.id)
+
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_signed_global_id(expires_in: -2.hours))
+      expect(o).to be_nil
+    end      
+
+    it 'should support SignedGlobalID values as string representations' do
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_signed_global_id.to_s)
+      expect(o).to be_a(d10.class)
+      expect(o.id).to eql(d10.id)
+
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_signed_global_id(expires_in: 2.hours).to_s)
+      expect(o).to be_a(d10.class)
+      expect(o.id).to eql(d10.id)
+
+      o = ActiveRecord::Base.find_by_fingerprint(d10.to_signed_global_id(expires_in: -2.hours).to_s)
+      expect(o).to be_nil
+    end      
   end
 end

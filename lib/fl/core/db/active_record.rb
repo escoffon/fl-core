@@ -85,28 +85,63 @@ class ActiveRecord::Base
     ActiveRecord::Base.fingerprint(self)
   end
 
-  # Find an object by fingerprint.
+  # Find an object by fingerprint or Global ID.
+  # This method (somewhat misnamed) attempts to find an object using either a fingerprint or a Global ID.
+  # (It's misnamed because the method name does not refer to Global ID support).
+  # In order to do so, it performs the following operations:
   #
-  # @param [String] fingerprint The object's fingerprint; see {#fingerprint}.
-  #  If *fingerprint* is a class fingerprint, a `Class` instance is returned.
+  # 1. If *fingerprint_or_global_id* is a SignedGlobalID, call `GlobalID::Locator.locate_signed` and return its
+  #    return value.
+  # 2. If *fingerprint_or_global_id* is a GlobalID, call `GlobalID::Locator.locate_signed` and return its
+  #    return value.
+  # 3. If *fingerprint_or_global_id* is a string starting with `gid://`, then this is a string representation of
+  #    a GlobalID: call `GlobalID::Locator.locate_signed` and return its return value.
+  # 4. Split *fingerprint_or_global_id*; if the `id` component is non-nil, this is a fingerprint for an instance
+  #    (`My::Class/1234`): use the `find` method to return the object, if any.
+  # 5. If the class name component is non-nil, this is a class name that was found in the system, and we return
+  #    the corresponding class.
+  # 6. Finally, if we made it here we assume that this is the string representation of a SignedGlobalID, and
+  #    we call `GlobalID::Locator.locate_signed` and return its return value.
+  #
+  # @param [String,GlobalID] fingerprint_or_global_id The object's fingerprint (see {#fingerprint}), or a GlobalID, or
+  #  a string containing a GlobalID representation.
+  #  If *fingerprint_or_global_id* is a class fingerprint, a `Class` instance is returned.
   #
   # @return [ActiveRecord::Base] Returns the object. If the class in the fingerprint does not exist,
   #  or if no object exists with the given identifier, returns nil.
 
-  def self.find_by_fingerprint(fingerprint)
+  def self.find_by_fingerprint(fingerprint_or_global_id)
     obj = nil
-    cname, id = split_fingerprint(fingerprint)
 
-    begin
-      if id.nil?
-        obj = Object.const_get(cname) unless cname.nil?
+    if fingerprint_or_global_id.is_a?(SignedGlobalID)
+      obj = GlobalID::Locator.locate_signed(fingerprint_or_global_id)
+    elsif fingerprint_or_global_id.is_a?(GlobalID)
+      obj = GlobalID::Locator.locate(fingerprint_or_global_id)
+    elsif fingerprint_or_global_id.is_a?(String)
+      if fingerprint_or_global_id =~ /^gid:\/\//
+        obj = GlobalID::Locator.locate(fingerprint_or_global_id)
       else
-        cl = Object.const_get(cname)
-        obj = cl.find(id)
+        cname, id = split_fingerprint(fingerprint_or_global_id)
+
+        if !id.nil?
+          # looks like an instance fingerprint
+
+          begin
+            obj = Object.const_get(cname).find(id)
+          rescue => exc
+          end
+        else
+          # If the class lookup returns a class, that's the hit. Otherwise, try the global id lookup
+        
+          begin
+            obj = Object.const_get(cname)
+          rescue => exc
+            obj = GlobalID::Locator.locate_signed(fingerprint_or_global_id)
+          end
+        end
       end
-    rescue => exc
     end
 
-    obj
+    return obj
   end
 end
