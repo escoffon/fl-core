@@ -15,6 +15,30 @@ end
 
 class TestDatumOneService < Fl::Core::Service::Base
   self.model_class = Fl::Core::TestDatumOne
+
+  protected
+
+  def _has_action_permission?(action, obj, opts = nil)
+    if action == 'custom1'
+      self.set_status(Fl::Core::Service::FORBIDDEN,
+                      error_response_data('custom1_failure',
+                                          'custom1 failure message',
+                                          { custom1: 'detail' }))
+      return false
+    elsif action == 'custom2'
+      self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                      error_response_data('unprocessable_custom2_failure',
+                                          'unprocessable custom2 failure message',
+                                          { custom2: 'unprocessable detail' }))
+      self.set_status(Fl::Core::Service::FORBIDDEN,
+                      error_response_data('custom2_failure',
+                                          'custom2 failure message',
+                                          { custom2: 'detail' }), false)
+      return false
+    else
+      super(action, obj, opts)
+    end
+  end
 end
 
 module MyModule
@@ -286,6 +310,67 @@ RSpec.describe Fl::Core::Service::Base do
         expect(obj).to be_nil
         _expect_no_permission(s3.status)
       end
+    end
+  end
+
+  describe '#has_action_permission?' do
+    it 'should generate a standard error status by default' do
+      d10.access_checker.grants = g1
+      
+      params = { id: d10.id }
+
+      s1 = TestDatumOneService.new(a1, params)
+      expect(s1.success?).to eql(true)
+
+      # :destroy uses Fl::Core::Access::Permission::Delete::NAME
+      ok = s1.has_action_permission?('destroy', d10)
+      expect(ok).to eql(false)
+      expect(s1.success?).to eql(false)
+      expect(s1.status[:status]).to eql(Fl::Core::Service::FORBIDDEN)
+      expect(s1.status[:response_data]).to include(Fl::Core::Service::FORBIDDEN)
+      expect(s1.status[:response_data][Fl::Core::Service::FORBIDDEN]).to include(:_error)
+      expect(s1.status[:response_data][Fl::Core::Service::FORBIDDEN][:_error]).to include(:type, :message)
+      expect(s1.status[:response_data][Fl::Core::Service::FORBIDDEN][:_error][:type]).to eql('no_permission')
+    end
+
+    it 'should use the error status from _has_action_permission?' do
+      d10.access_checker.grants = g1
+      
+      params = { id: d10.id }
+
+      s1 = TestDatumOneService.new(a1, params)
+      expect(s1.success?).to eql(true)
+
+      ok = s1.has_action_permission?('custom1', d10)
+      expect(ok).to eql(false)
+      expect(s1.success?).to eql(false)
+      expect(s1.status[:status]).to eql(Fl::Core::Service::FORBIDDEN)
+      expect(s1.status[:response_data]).to include(Fl::Core::Service::FORBIDDEN)
+      s = s1.status[:response_data][Fl::Core::Service::FORBIDDEN]
+      expect(s).to include(:_error)
+      e = s[:_error]
+      expect(e).to include(:type, :message, :details)
+      expect(e[:type]).to eql('custom1_failure')
+      expect(e[:message]).to eql('custom1 failure message')
+      d = e[:details]
+      expect(d).to include(:custom1)
+      expect(d[:custom1]).to eql('detail')
+
+      ok = s1.has_action_permission?('custom2', d10)
+      expect(ok).to eql(false)
+      expect(s1.success?).to eql(false)
+      expect(s1.status[:status]).to eql(Fl::Core::Service::FORBIDDEN)
+      expect(s1.status[:response_data]).to include(Fl::Core::Service::FORBIDDEN,
+                                                  Fl::Core::Service::UNPROCESSABLE_ENTITY)
+      s = s1.status[:response_data][Fl::Core::Service::UNPROCESSABLE_ENTITY]
+      expect(s).to include(:_error)
+      e = s[:_error]
+      expect(e).to include(:type, :message, :details)
+      expect(e[:type]).to eql('unprocessable_custom2_failure')
+      expect(e[:message]).to eql('unprocessable custom2 failure message')
+      d = e[:details]
+      expect(d).to include(:custom2)
+      expect(d[:custom2]).to eql('unprocessable detail')
     end
   end
 end

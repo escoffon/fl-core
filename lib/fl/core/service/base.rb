@@ -15,7 +15,9 @@ module Fl::Core::Service
   # - CAPTCHA checks using a standardized workflow based on the `fl-google` gem.
   #   CAPTCHA checking can be turned off
   #   by setting the configuration parameter **disable_captcha** to `true`.
-  # - The class includes {Fl::Core::Concerns::Controller::ApiResponse} so that subclasses can set standard
+  # - The class includes {Fl::Core::Concerns::Service::Params} so that subclasses can use standard parameter
+  #   management functionality.
+  # - The class includes {Fl::Core::Concerns::Service::ApiResponse} so that subclasses can set standard
   #   {#status} values.
   #
   # {Fl::Core::Service::Base} is the base class that implements the common framework for request processing;
@@ -165,15 +167,17 @@ module Fl::Core::Service
     #    response data from multiple status vales may be present, but this is a rare occurrence.
     #
     # The values of keys in **:response_data** should be consistent with those returned by
-    # {Fl::Core::Concerns::Controller::ApiResponse#error_response_data} or
-    # {Fl::Core::Concerns::Controller::ApiResponse#success_response_data}.
+    # {Fl::Core::Concerns::Service::ApiResponse#error_response_data} or
+    # {Fl::Core::Concerns::Service::ApiResponse#success_response_data}.
     # For example, a successful response status may look like this:
     #
     # ```
     # {
     #   status: :ok,
     #   response_data: {
-    #     ok: { message: 'The operation was successful' }
+    #     ok: {
+    #       _status: { message: 'The operation was successful' }
+    #     }
     #   }
     # }
     # ```
@@ -185,15 +189,17 @@ module Fl::Core::Service
     #   status: :unprocessable_entity,
     #   response_data: {
     #     unprocessable_entity: {
-    #       type: 'missing_parameter',
-    #       message: 'missing parameter :my_parameter'
+    #       _error: {
+    #         type: 'missing_parameter',
+    #         message: 'missing parameter :my_parameter'
+    #       }
     #     }
     #   }
     # }
     # ```
     #
-    # Note that {Fl::Core::Concerns::Controller::ApiResponse#error_response_data} and
-    # {Fl::Core::Concerns::Controller::ApiResponse#success_response_data} are available as instance methods.
+    # Note that {Fl::Core::Concerns::Service::ApiResponse#error_response_data} and
+    # {Fl::Core::Concerns::Service::ApiResponse#success_response_data} are available as instance methods.
 
     def status()
       @status.dup
@@ -203,13 +209,13 @@ module Fl::Core::Service
     # This method returns the response data corresponding to *status*.
     #
     # @param s [Symbol] The status value (for example, {Fl::Core::Service::FORBIDDEN}).
-    #  If `nil`, get usee the current status value.
+    #  If `nil`, use the current status value.
     #
     # @return [Hash,nil] Returns the response data, `nil` if not found.
 
     def status_response_data(s = nil)
       s = self.status[:status] if s.nil?
-      @status[:response_data][s]
+      @status[:response_data][s.to_sym]
     end
     
     # Clear the status.
@@ -221,9 +227,38 @@ module Fl::Core::Service
     end
 
     # Set the status.
+    # Note that *response_data* is added to the {#status} under a key corresponding to the value of *status*;
+    # for example, a call to
+    #
+    # ```
+    # self.set_status(Fl::Core::Service::FORBIDDEN, {
+    #   type: 'custom_failure',
+    #   message: 'custom failure message',
+    #   details: { more: 'more details here' }
+    # })
+    # ```
+    #
+    # generates this value of {#status}:
+    #
+    # ```
+    # {
+    #   status: :forbidden,
+    #   response_data: {
+    #     forbidden: { 
+    #       type: 'custom_failure',
+    #       message: 'custom failure message',
+    #       details: { more: 'more details here' }
+    #     }
+    #   }
+    # }
+    # ```
+    #
+    # {Fl::Core::Concerns::Service::ApiResponse#error_response_data} is often used to simplify status data
+    # generation.
     #
     # @param status [Symbol] The status value (for example, {Fl::Core::Service::FORBIDDEN}).
-    # @param response_data [Hash] The response data; see {#status}.
+    # @param response_data [Hash] The response data; this value is added to the {#status} response data under the
+    #  key corresponding to *status*.
     # @param clear [Boolean] Clear any other entries in the response data. If `false`, *response_data* is
     #  added to {#status}'s **:response_data** key under *status*; if `true`, all other keys in **:response_data**
     #  are removed. The default is `true`, so that typically only one response is present, but under some
@@ -252,13 +287,17 @@ module Fl::Core::Service
     end
 
     # Check if the actor has permission to execute an action.
-    # This method first normalizes *action*: if `nil`, get {#params}[:action]; if a string, leave it as is;
+    # This method first normalizes *action*: if `nil`, if #{controller} responds to **:action_name**, use that value,
+    # and otherwise use {#params}[:action]; if a string, leave it as is;
     # if a symbol, convert to a string; and otherwise, return `false`.
-    # Then, it calls {#do_access_checks?}, passing it the normalized *action*, *obj*, and *opts*; if the return
+    # Then, it clears the status, and calls {#do_access_checks?}, passing it the normalized *action*, *obj*,
+    # and *opts*; if the return
     # value is `false`, access checks are not enabled for this operation, and therefore it returns `true`.
     # Otherwise, it calls {#_has_action_permission?}, which implements the actual access check process.
-    # If the return value is `true`, it clear the state and returns `true` to indicate that the action is
-    # allowed. If it is `false`, it sets the error state and returns `false`.
+    # If the return value is `true`, it returns `true` to indicate that the action is
+    # allowed. If it is `false`, it checks if {#_has_action_permission?} has set the error state, and if not
+    # it sets it with a default value.
+    # Finally, it returns `false`.
     #
     # @param action [String,Symbol,nil] The action for which to check for permission.
     #  If `nil`, use the value of **:action** from the {#params} attribute.
@@ -270,8 +309,8 @@ module Fl::Core::Service
     # @return [Boolean] Returns `false` if the permission is not granted.
 
     def has_action_permission?(action = nil, obj = nil, opts = nil)
-        a = if action.nil?
-            params[:action]
+      a = if action.nil?
+            (@controller && @controller.respond_to?(:action_name)) ? @controller.action_name : params[:action]
           elsif action.is_a?(String)
             action
           elsif action.is_a?(Symbol)
@@ -281,13 +320,13 @@ module Fl::Core::Service
           end
       return false if a.nil?
 
-      if !do_access_checks?(a, obj, opts)
-        self.clear_status
-        return true
-      elsif _has_action_permission?(a, obj, opts)
-        self.clear_status
-        return true
-      else
+      self.clear_status
+      return true if !do_access_checks?(a, obj, opts)
+      return true if _has_action_permission?(a, obj, opts)
+
+      if self.success?
+        # since _has_action_permission? has not changed the status, create a standard one here
+
         id = if obj.is_a?(Class)
                obj.name
              elsif obj.respond_to?(:fingerprint)
@@ -302,8 +341,9 @@ module Fl::Core::Service
         self.set_status(Fl::Core::Service::FORBIDDEN,
                         error_response_data('no_permission',
                                             localized_message('forbidden', id: id, action: action)))
-        return false
       end
+
+      return false
     end
 
     protected
@@ -357,6 +397,10 @@ module Fl::Core::Service
     #   end
     # end
     # ```
+    #
+    # The base implementation does not set the status, so that a default (and somewhat uninformative) error is
+    # reported. Subclasses can set specialized status error values (see {#set_status}), which will be used
+    # by {#has_action_permission?}. However, the *status* parameter for {#set_status} should be set to {FORBIDDEN}.
     #
     # @param action [String] The action for which to check for permission; the value has been normalized to a
     #  string by {#has_action_permission?}.
