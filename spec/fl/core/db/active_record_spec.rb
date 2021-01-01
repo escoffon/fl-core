@@ -108,6 +108,83 @@ RSpec.describe ActiveRecord::Base, type: :model do
     end
   end
 
+  describe '.extract_fingerprint' do
+    it 'should return the fingerpring of an ActiveRecord object' do
+      fp = ActiveRecord::Base.extract_fingerprint(d10)
+      expect(fp).to eql(d10.fingerprint)
+    end
+    
+    it 'should extract a valid fingerprint' do
+      o = ActiveRecord::Base.extract_fingerprint(d10.fingerprint)
+      expect(o).to eql(d10.fingerprint)
+
+      o = Fl::Core::TestDatumOne.extract_fingerprint(d10.fingerprint)
+      expect(o).to eql(d10.fingerprint)
+
+      o = Fl::Core::TestDatumTwo.extract_fingerprint(d10.fingerprint)
+      expect(o).to eql(d10.fingerprint)
+    end
+
+    it 'should support class-only fingerprints' do
+      o = ActiveRecord::Base.extract_fingerprint('Fl::Core::TestDatumOne')
+      expect(o).to eql(Fl::Core::TestDatumOne.name)
+
+      o = Fl::Core::TestDatumOne.extract_fingerprint('Fl::Core::TestDatumOne')
+      expect(o).to eql(Fl::Core::TestDatumOne.name)
+
+      o = Fl::Core::TestDatumTwo.extract_fingerprint('Fl::Core::TestDatumOne')
+      expect(o).to eql(Fl::Core::TestDatumOne.name)
+    end
+
+    it 'should return nil with a well formed fingerprint to an unknown class' do
+      o = ActiveRecord::Base.extract_fingerprint('MyDatumOne')
+      expect(o).to be_nil
+    end
+
+    it 'should return nil with a malformed fingerprint' do
+      o = ActiveRecord::Base.extract_fingerprint('Fl::Core::TestDatumOne/abcd')
+      expect(o).to be_nil
+
+      o = Fl::Core::TestDatumOne.extract_fingerprint('Fl::Core::TestDatumOne/abcd')
+      expect(o).to be_nil
+
+      o = Fl::Core::TestDatumTwo.extract_fingerprint('Fl::Core::TestDatumOne/abcd')
+      expect(o).to be_nil
+    end
+
+    it 'should support GlobalID values' do
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_global_id)
+      expect(o).to eql(d10.fingerprint)
+    end      
+
+    it 'should support GlobalID values as string representations' do
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_global_id.to_s)
+      expect(o).to eql(d10.fingerprint)
+    end      
+
+    it 'should support SignedGlobalID values' do
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id)
+      expect(o).to eql(d10.fingerprint)
+
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id(expires_in: 2.hours))
+      expect(o).to eql(d10.fingerprint)
+
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id(expires_in: -2.hours))
+      expect(o).to eql(d10.fingerprint)
+    end      
+
+    it 'should support SignedGlobalID values as string representations' do
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id.to_s)
+      expect(o).to eql(d10.fingerprint)
+
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id(expires_in: 2.hours).to_s)
+      expect(o).to eql(d10.fingerprint)
+
+      o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id(expires_in: -2.hours).to_s)
+      expect(o).to eql(d10.fingerprint)
+    end
+  end
+
   describe '.find_by_fingerprint' do
     it 'should find with a valid fingerprint' do
       o = ActiveRecord::Base.find_by_fingerprint(d10.fingerprint)

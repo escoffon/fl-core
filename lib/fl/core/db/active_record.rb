@@ -85,6 +85,73 @@ class ActiveRecord::Base
     ActiveRecord::Base.fingerprint(self)
   end
 
+  # Extract a fingerprint from various types.
+  # This method attempts to extract a fingerprint from a number of different input types:
+  #
+  # 1. If *value* is an instance of `ActiveRecord::Base`, and it responds to `fingerprint`, returns
+  #    `value.fingerprint`; if it does not respond to `fingerprint`, return `nil`.
+  # 2. If *value* is a SignedGlobalID or GlobalID, extract the fingerprint from the URI's path component
+  #    (which, by an amazing twist of fate, has the same format as the fingerprint), and return it.
+  # 3. If *value* is a string starting with `gid://`, then this is a string representation of
+  #    a GlobalID: extract the fingerprint from the URI's path, and return it.
+  # 4. Split *value*; if the `id` component is non-nil, this is a fingerprint for an instance
+  #    (`My::Class/1234`): return *value*.
+  # 5. If the class name component is non-nil, this is a class name that was found in the system, and we return
+  #    *value*.
+  # 6. Finally, if we made it here we check if this is the string representation of a SignedGlobalID, and
+  #    if so return the fingerprint from its URI's path component.
+  # 7. And really finally, return `nil` because every check failed.
+  #
+  # @param value [ActiveRecord::Base,String,GlobalID] The value from which to extract the fingerprint.
+  #
+  # @return [String,nil] Returns the fingerprint if one could be extracted; otherwise, returns `nil`.
+
+  def self.extract_fingerprint(value)
+    if value.is_a?(ActiveRecord::Base)
+      return (value.respond_to?(:fingerprint)) ? value.fingerprint : nil
+    elsif value.is_a?(GlobalID)
+      # SignedGlobalID is a subclass of GlobalID
+
+      return value.uri.path.slice(1, value.uri.path.length)
+    elsif value.is_a?(String)
+      if value =~ /^gid:\/\//
+        uri = URI.parse(value)
+        return uri.path.slice(1, uri.path.length)
+      else
+        cname, id = split_fingerprint(value)
+
+        if !id.nil?
+          # looks like an instance fingerprint
+
+          return value
+        else
+          # If the class lookup returns a class, that's a hit.
+        
+          begin
+            obj = Object.const_get(cname)
+            return value
+          rescue => exc
+          end
+
+          # if we made it here, we check if this is a string representation of a SignedGlobalID
+          # if we use the verifier directly, we can extract from expired signed global IDs.
+          # Not sure this makes sense; to return `nil` on an expired sgid, use:
+          #   sgid = SignedGlobalID.parse(value)
+          #   return (sgid.nil?) ? nil : sgid.uri.path.slice(1, sgid.uri.path.length)
+
+          uri = begin
+                  h = SignedGlobalID.pick_verifier({ }).verify(value)
+                  URI.parse(h['gid'])
+                rescue => x
+                  nil
+                end
+          
+          return (uri.nil?) ? nil : uri.path.slice(1, uri.path.length)
+        end
+      end
+    end
+  end
+
   # Find an object by fingerprint or Global ID.
   # This method (somewhat misnamed) attempts to find an object using either a fingerprint or a Global ID.
   # (It's misnamed because the method name does not refer to Global ID support).
@@ -103,7 +170,7 @@ class ActiveRecord::Base
   # 6. Finally, if we made it here we assume that this is the string representation of a SignedGlobalID, and
   #    we call `GlobalID::Locator.locate_signed` and return its return value.
   #
-  # @param [String,GlobalID] fingerprint_or_global_id The object's fingerprint (see {#fingerprint}), or a GlobalID, or
+  # @param fingerprint_or_global_id [String,GlobalID] The object's fingerprint (see {#fingerprint}), or a GlobalID, or
   #  a string containing a GlobalID representation.
   #  If *fingerprint_or_global_id* is a class fingerprint, a `Class` instance is returned.
   #
