@@ -302,7 +302,7 @@ module Fl::Core
 
       def to_hash_date(ts)
         return (ts.respond_to?(:iso8601)) ? ts.iso8601 : nil
-      end          
+      end
 
       # @!group Subclass overrides
 

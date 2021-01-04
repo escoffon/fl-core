@@ -907,7 +907,7 @@ module Fl::Core::Service
 
         _q = query_params() if _q.nil?
         _pg = pagination_params if _pg.nil?
-        
+
         qo = init_query_opts(query_opts, _q, _pg)
         q = index_query(qo)
         if q
