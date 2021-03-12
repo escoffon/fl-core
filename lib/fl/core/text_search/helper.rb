@@ -56,16 +56,19 @@ module Fl::Core::TextSearch::Helper
   #
   #   1. Operators; these are special values that indicate an operation:
   #
-  #      - The string 'OR' (we allow for 'or' to be a bit lenient).
-  #        We also allow the string '|' to stand for 'OR', so that the Postgres-style operator name is
-  #        also supported.
-  #      - The string 'AND' (we allow for 'and' to be a bit lenient). This operator is not really needed,
-  #        because any words not connected by an operator are connected by '&'.
-  #      - The string 'AROUND(n)' (we allow for 'around(n)' to be a bit lenient).
-  #        Here `n` is an integer to indicate the distance between the two operands.
-  #      - The string '-'. Note that '-' not preceded by whitespace is not considered an operator, but
-  #        rather part of the preceding token; therefore, `my-tag` is parsed as the single token `my-tag`,
-  #        whereas `my -tag` is parsed as the three tokens 'my', '-', qnd 'tag'.
+  #       - The string 'OR' (we allow for 'or' to be a bit lenient).
+  #          We also allow the string '|' to stand for 'OR', so that the Postgres-style operator name is
+  #          also supported.
+  #       - The string 'AND' (we allow for 'and' to be a bit lenient).
+  #         We also allow the string '&' to stand for 'AND', so that the Postgres-style operator name is
+  #         also supported.
+  #         This operator is not really needed, because any words not connected by an operator are connected by '&'.
+  #       - The string 'AROUND(n)' (we allow for 'around(n)' to be a bit lenient).
+  #         Here `n` is an integer to indicate the distance between the two operands.
+  #       - The string '-'. Note that '-' not preceded by whitespace is not considered an operator, but
+  #         rather part of the preceding token; therefore, `my-tag` is parsed as the single token `my-tag`,
+  #         whereas `my -tag` is parsed as the three tokens 'my', '-', and 'tag'.
+  #
   #   2. Words; these are collections of characters that drive the matches.
   #   3. Quoted strings; collections of words to be matched as a unit.
   #   4. Grouping: the strings '(' and ')' to control operator precedence.
