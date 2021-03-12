@@ -1707,7 +1707,10 @@ let FlAPIService = FlClassManager.make_class({
 		let rd = response.data;
 		if (_.isObject(rd) && _.isObject(rd._error))
 		{
-		    err = rd._error;
+		    // we must create a copy of the error object, to avoid circularities later on when we
+		    // assign err.response. The circular structure triggers JSON errors.
+		    
+		    err = _.merge({ }, rd._error);
 		}
 
 		if (_.isUndefined(err.type)) err.type = (_.isUndefined(response.status)) ? 'error' : response.status;
@@ -1725,6 +1728,8 @@ let FlAPIService = FlClassManager.make_class({
 			};
 		    }
 		}
+
+		err.response = response;
 	    }
 	    else if (_.isError(e))
 	    {
