@@ -9,12 +9,63 @@
 #
 # The base service object {Fl::Core::Service::Base} includes this concern, so that there is no need to do so
 # in its subclasses.
+#
+# ### Overview of the API
+#
+# Each API call returns a hash containing information about the call (this hash is typically converted to a
+# JSON object in the controller code).
+#
+# If the call succeeds, the hash contains two keys, **:_status** and **:payload**. The value for **:_status** is
+# a hash that contains the optional key **:message**, a string with a message about the call resolution.
+# The value for **:payload** is call dependent, but typically it is a hash containing additional information;
+# for example, a login call may return a representation of the logged in user.
+#
+# On error, the hash contains the key **:_error**, which is a hash of error information containing the keys
+# **:type**, **:message**, and **:details**. **:type** is required and its value is a string containing a call
+# dependent error name; **:message** is an optional (but typically present) key whose value is a message string;
+# and the optional **:details** key contain call dependent additional information.
+# A very common value for **:details** is a hash containing the two keys **:messages** and **:full_messages**.
+# These are the equivalent of the return value from the `errors.messages` and `errors.full_messages` methods
+# in an ActiveRecord object (and therefore are, respectively, a hash of error messages per attribute, and an
+# array of error messages).
+#
+# The methods defined by this concern implement support for generating the API responses.
+# At the top level are {#render_success_response} and {#render_error_response}, which can be called from controller
+# code to render API response objects.
+# One level below are {#success_response_data}, {#error_response_data}, and {#exception_response_data},
+# which package the API response hash
+# as described above; they are used by {#render_success_response} and {#render_error_response}.
+# Then there is a set of methods to generate fragments of the response data: {#error_messages} generates the
+# **:messages**/**:full_messages** error detail hash from an ActiveRecord object;
+# {#hash_one_object} and {#hash_objects} generate hash representations of objects that respond to
+# {Fl::Core::ModelHash#to_hash}.
+# Finally, a few utility methods for detecting request properties: {#response_format}, {#html_format?},
+# and {#json_request?}.
 
 module Fl::Core::Concerns::Service::ApiResponse
   extend ActiveSupport::Concern
 
   protected
 
+  # Generate an error message hash from an ActiveRecord instance.
+  # This method returns a hash containing two keys: **:messages** is the value of `obj.errors.messages`, and
+  # **:full_messages** is the value of `obj.errors.full_messages`.
+  #
+  # @param obj [ActiveRecord::Base,ActiveModel::Errors] The object whose errors to extract. If it is an instance
+  #  of ActiveRecord::Base, use the value returned by `obj.errors`; otherwise, use it as is.
+  #
+  # @return [Hash] Returns a hash as described above.
+
+  def error_messages(obj)
+    if obj.is_a?(ActiveRecord::Base)
+      return { messages: obj.errors.messages, full_messages: obj.errors.full_messages }
+    elsif obj.is_a?(ActiveModel::Errors)
+      return { messages: obj.messages, full_messages: obj.full_messages }
+    else
+      return { }
+    end
+  end
+  
   # Generate success response data.
   # The success response consists of a hash containing the keys `:_status` (which identifies the response as being
   # successful), and **:payload**.
@@ -50,7 +101,10 @@ module Fl::Core::Concerns::Service::ApiResponse
   # @param type [String,Symbol] A string or symbol that tags the type of error; for example: `'not_found'` or
   #  `:authentication_failure`.
   # @param message [String] A string containing the error message.
-  # @param details [Hash] A hash containing additional information; the contents are response-dependent.
+  # @param details [Hash,ActiveModel::Errors] A hash containing additional information; the contents are
+  #  response-dependent. The special (and common) case where *details* is an instance of ActiveModel::Errors
+  #  generates a **details** key as a hash containing one key, **:errors**; this is a hash containing the two
+  #  keys **:messages** and **:full_messages**, as generated from the equivalent methods in ActiveModel::Errors.
   #
   # @return [Hash] Returns a hash as described above.
   
@@ -60,11 +114,23 @@ module Fl::Core::Concerns::Service::ApiResponse
     }
     _error[:message] = message if message.is_a?(String) && (message.length > 0)
 
-    if details.is_a?(Hash)
-      # We need to save a copy just in case the caller has passed something like obj.errors.messages,
-      # which is reset when the object is reset
+    if details.is_a?(ActiveModel::Errors) || details.is_a?(ActiveRecord::Base)
+      _error[:details] = error_messages(details)
+    else
+      # Rails 6.1 seems to have changed the class of errors.messages to ActiveModel::DeprecationHandlingMessageHash,
+      # so let's instead check if details responds to :each, and if so copy it by iteration
+    
+      if details.respond_to?(:each)
+        # We need to save a copy just in case the caller has passed something like obj.errors.messages,
+        # which is reset when the object is reset.
 
-      _error[:details] = details.dup
+        d = { }
+        details.each do |kvp|
+          k, v = kvp
+          d[k] = v
+        end
+        _error[:details] = d
+      end
     end
     
     { _error: _error }
