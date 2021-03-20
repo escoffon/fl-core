@@ -62,6 +62,33 @@ module Fl::Core::Service
     attr_reader :parent
 
     public
+
+    # Check if the actor has permission to execute an action.
+    # This method overrides the superclass to adjust *obj* for a potential nested use (`/res/:res_id/subs`)
+    # with the **index** and **create** actions.
+    # If {#params} contain the {#parent_id_name}, find the corresponding parent object from the database
+    # and use that; otherwise, use the original value of *obj*.
+    # Call the superclass implementation with the adjustd value for *obj*.
+    #
+    # @param action [String,Symbol,nil] The action for which to check for permission.
+    #  If `nil`, use the value of **:action** from the {#params} attribute.
+    # @param obj [Object,Class] The object to use to check the permission.
+    #  For collection-level actions like `index` and `create`, this is typically {#model_class};
+    #  for member-level actions like `update`, it is typically an instance of {#model_class}.
+    # @param opts [Hash] A hash of options to pass to the access check methods.
+    #
+    # @return [Boolean] Returns `false` if the permission is not granted.
+
+    def has_action_permission?(action = nil, obj = nil, opts = nil)
+      a = normalize_action(action)
+      if (action == 'index') || (action == 'create')
+        if params.has_key?(parent_id_name)
+          obj = get_parent(parent_id_name)
+        end
+      end
+      
+      return super(action, obj, opts)
+    end
     
     # Look up a parent in the database.
     # This method uses the parent id entry in {#params} to look up the object in the database
@@ -217,22 +244,6 @@ module Fl::Core::Service
     end
 
     protected
-
-    # Check that access checks are enabled and supported.
-    # Overrides the base implementation to ignore *obj* and use the {#parent} instead.
-    #
-    # @param action [String,Symbol,nil] The action for which to check for permission.
-    # @param obj [Object, Class, nil] The object that makes the `has_permission?` call; if `nil`, the
-    #  {#model_class} is used.
-    # @param opts [Hash] A hash of options to pass to the access check methods.
-    #
-    # @return [Boolean] Returns `true` if access checks are enabled, and *obj* responds to `has_permission?`;
-    #  otherwise, it returns `false`.
-
-    def do_access_checks?(action, obj = nil, opts = nil)
-      obj = get_parent if !obj.is_a?(parent_class)
-      (_disable_access_checks || !obj.respond_to?(:has_permission?)) ? false : true
-    end
 
     # Perform the permission check for an action.
     # Overrides the base implementation for the following actions:

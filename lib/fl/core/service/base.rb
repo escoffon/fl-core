@@ -309,15 +309,7 @@ module Fl::Core::Service
     # @return [Boolean] Returns `false` if the permission is not granted.
 
     def has_action_permission?(action = nil, obj = nil, opts = nil)
-      a = if action.nil?
-            (@controller && @controller.respond_to?(:action_name)) ? @controller.action_name : params[:action]
-          elsif action.is_a?(String)
-            action
-          elsif action.is_a?(Symbol)
-            action.to_s
-          else
-            nil
-          end
+      a = normalize_action(action)
       return false if a.nil?
 
       self.clear_status
@@ -1046,6 +1038,28 @@ module Fl::Core::Service
 
     protected
 
+    # Get and normalize an action value.
+    # If *action* is `nil`, get it from the `action_name` attribute of {#controller} or from {#params}, then
+    # return the string representation of the action value.
+    #
+    # @param action [String,Symbol,nil] The action to normalize
+    #  If `nil`, use the value of **:action** from the {#controller} or {#params} attributes.
+    #
+    # @return [String,nil] Returns the action name, converted to a string.
+    
+    def normalize_action(action)
+      a = if action.nil?
+            (@controller && @controller.respond_to?(:action_name)) ? @controller.action_name : params[:action]
+          elsif action.is_a?(String)
+            action
+          elsif action.is_a?(Symbol)
+            action.to_s
+          else
+            nil
+          end
+      return a
+    end
+    
     # Create a copy of a hash where all keys have been converted to symbols.
     # The operation is applied recursively to all values that are also hashes.
     # Additionally, the **:id** key (if present) and any key that ends with `_id` are copied to a key with the
