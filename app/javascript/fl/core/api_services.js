@@ -834,7 +834,7 @@ let FlAPIService = FlClassManager.make_class({
 		    return Promise.resolve(self.modelFactory.create(self.response_data(r)));
 		})
 		.catch(function(e) {
-		    return Promise.reject(e);
+		    return Promise.reject(self.response_error(e));
 		});
 	},
 	
@@ -926,7 +926,7 @@ let FlAPIService = FlClassManager.make_class({
 		    return Promise.resolve(model);
 		})
 		.catch(function(e) {
-		    return Promise.reject(e);
+		    return Promise.reject(self.response_error(e));
 		});
 	},
 
@@ -1050,7 +1050,7 @@ let FlAPIService = FlClassManager.make_class({
 		    return Promise.resolve(self.modelFactory.create(self.response_data(r)));
 		})
 		.catch(function(e) {
-		    return Promise.reject(e);
+		    return Promise.reject(self.response_error(e));
 		});
 	},
 
@@ -1082,7 +1082,7 @@ let FlAPIService = FlClassManager.make_class({
 		    return Promise.resolve(self._create_or_refresh_from_id(id, self.response_data(r)));
 		})
 		.catch(function(e) {
-		    return Promise.reject(e);
+		    return Promise.reject(self.response_error(e));
 		});
 	},
 
@@ -1112,7 +1112,7 @@ let FlAPIService = FlClassManager.make_class({
 		    return Promise.resolve(self.response_status(r));
 		})
 		.catch(function(e) {
-		    return Promise.reject(e);
+		    return Promise.reject(self.response_error(e));
 		});
 	},
 
