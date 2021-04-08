@@ -47,6 +47,22 @@ RSpec.describe Fl::Core::Query::Filter do
       }
     }
   end
+
+  describe '.acceptable_body?' do
+    it 'should accept a Hash' do
+      expect(Fl::Core::Query::Filter.acceptable_body?({ })).to eql(true)
+    end
+    
+    it 'should accept an ActionController::Parameters' do
+      expect(Fl::Core::Query::Filter.acceptable_body?(ActionController::Parameters.new({ }))).to eql(true)
+    end
+    
+    it 'should not accept other types' do
+      expect(Fl::Core::Query::Filter.acceptable_body?(1234)).to eql(false)
+      expect(Fl::Core::Query::Filter.acceptable_body?(' ')).to eql(false)
+      expect(Fl::Core::Query::Filter.acceptable_body?([ ])).to eql(false)
+    end
+  end
   
   describe '#generate' do
     context 'with a single root filter' do

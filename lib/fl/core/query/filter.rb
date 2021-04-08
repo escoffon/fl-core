@@ -487,11 +487,22 @@ module Fl::Core::Query
         return body
       end
     end
+
+    # Check if a filter body is acceptable.
+    # An acceptable filter body is a `Hash` or an `ActionController::Parameters`.
+    #
+    # @param body [any] The object to check.
+    #
+    # @return [Boolean] Returns `true` if *body* is acceptable to the filter, `false` otherwise.
+    
+    def self.acceptable_body?(body)
+      return body.is_a?(Hash) || body.is_a?(ActionController::Parameters)
+    end
     
     private
 
     def hash_body(body)
-      unless body.is_a?(Hash) || body.is_a?(ActionController::Parameters)
+      unless Fl::Core::Query::Filter.acceptable_body?(body)
         raise Exception.new("the filter body is not a hash or hash-like: #{body}")
       end
 
