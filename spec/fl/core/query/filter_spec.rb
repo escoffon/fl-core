@@ -293,6 +293,30 @@ RSpec.describe Fl::Core::Query::Filter do
                                      p4: [ 6, 10 ])
       end
     end
+
+    context 'using ActionController::Parameters' do
+      it 'should accept ActionController::Parameters' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        pars = ActionController::Parameters.new({
+                                                  any: {
+                                                    ones: { only: [ 'Fl::Core::TestDatumOne/1',
+                                                                    'Fl::Core::TestDatumOne/2' ] },
+                                                    all: {
+                                                      polys: { except: 'Fl::Core::TestDatum/1' },
+                                                      blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                                                    }
+                                                  }
+                                                })
+        p = pars.permit({ any: { } })
+        
+        clause = g1.generate(p)
+        expect(clause).to eql('((c_one IN (:p1)) OR ((c_poly NOT IN (:p2)) AND (c_blocked IN (:p3))))')
+        expect(g1.params).to include(p1: [ 1, 2 ],
+                                     p2: [ 'Fl::Core::TestDatum/1' ],
+                                     p3: [ 20 ])
+      end
+    end
   end
 
   describe '#adjust' do

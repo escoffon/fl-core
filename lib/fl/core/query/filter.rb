@@ -423,11 +423,11 @@ module Fl::Core::Query
     #
     # @raise [Exception] Raises an exception if *body* is not a hash, if it contains filters that were not
     #  registered with {#config}, or if a filter type is not supported.
-    
-    def generate(body, join = :all)
-      raise Exception.new("the filter body is not a hash: #{body}") unless body.is_a?(Hash)
 
-      clauses = body.reduce([ ]) do |acc, kvp|
+    def generate(body, join = :all)
+      hbody = hash_body(body)
+
+      clauses = hbody.reduce([ ]) do |acc, kvp|
         k, v = kvp
         sk = k.to_sym
 
@@ -435,7 +435,7 @@ module Fl::Core::Query
         when :all, :any
           acc << generate(v, sk)
         else
-          acc << generate_simple_clause(k, v)
+          acc << generate_simple_clause(sk, v)
         end
       end
 
@@ -463,7 +463,13 @@ module Fl::Core::Query
     #  and the value of the filter. The block value replaces the filter value in the specification.
 
     def adjust(body, &b)
-      if body.is_a?(Hash)
+      hbody = begin
+                hash_body(body)
+              rescue => x
+                body
+              end
+      
+      if hbody.is_a?(Hash)
         return body.reduce({ }) do |acc, kvp|
           k, v = kvp
           sk = k.to_sym
@@ -483,6 +489,14 @@ module Fl::Core::Query
     end
     
     private
+
+    def hash_body(body)
+      unless body.is_a?(Hash) || body.is_a?(ActionController::Parameters)
+        raise Exception.new("the filter body is not a hash or hash-like: #{body}")
+      end
+
+      return (body.is_a?(ActionController::Parameters)) ? body.to_h : body
+    end
 
     def generate_simple_clause(name, value)
       # this should be a known filter name from the configuration
