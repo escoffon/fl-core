@@ -614,6 +614,10 @@ module Fl::Core
     # {Fl::Core::Icalendar::Datetime} and stored in that format.
     #
     # @param opts [Hash] A Hash containing configuration options for the query.
+    # @param prefix [String] A prefix to use with the rule and attribute names; for example, to add rules
+    #  for **:t_updated_after**, **:t_created_after**, **:t_updated_before**, and **:t_created_before**, use the
+    #  value `'t_'` for *prefix*.
+    #
     # @option opts [Integer, Time, String] :updated_after to select comments updated after a given time.
     # @option opts [Integer, Time, String] :created_after to select comments created after a given time.
     # @option opts [Integer, Time, String] :updated_before to select comments updated before a given time.
@@ -627,12 +631,12 @@ module Fl::Core
     #  - **:u_after_ts** from **:updated_after**.
     #  - **:u_before_ts** from **:updated_before**.
 
-    def _date_filter_timestamps(opts)
+    def _date_filter_timestamps(opts, prefix = '')
       rv = {}
 
       if opts.has_key?(:created_after)
         begin
-          dt = Fl::Core::Icalendar::Datetime.new(opts[:created_after])
+          dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}created_after".to_sym])
           rv[:c_after_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
@@ -640,7 +644,7 @@ module Fl::Core
 
       if opts.has_key?(:updated_after)
         begin
-          dt = Fl::Core::Icalendar::Datetime.new(opts[:updated_after])
+          dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}updated_after".to_sym])
           rv[:u_after_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
@@ -648,7 +652,7 @@ module Fl::Core
 
       if opts.has_key?(:created_before)
         begin
-          dt = Fl::Core::Icalendar::Datetime.new(opts[:created_before])
+          dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}created_before".to_sym])
           rv[:c_before_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
@@ -656,7 +660,7 @@ module Fl::Core
 
       if opts.has_key?(:updated_before)
         begin
-          dt = Fl::Core::Icalendar::Datetime.new(opts[:updated_before])
+          dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}updated_before".to_sym])
           rv[:u_before_ts] = dt.to_time if dt.valid?
         rescue => exc
         end
@@ -674,7 +678,13 @@ module Fl::Core
     # a UNIX timestamp; a Time object; a string containing a representation of the time (this string
     # is converted to a {Fl::Core::Icalendar::Datetime} internally).
     #
+    # @param q [Relation] The relation to modify.
     # @param opts [Hash] A Hash containing configuration options for the query.
+    # @param prefix [String] A prefix to use with the rule and attribute names; for example, to add rules
+    #  for **:t_updated_after**, **:t_created_after**, **:t_updated_before**, and **:t_created_before**, use the
+    #  value `'t_'` for *prefix*. The two timestamps **:t_created_at** and **:t_updated_at** will be used
+    #  instead of **:created_at** and **:updated_at**.
+    #
     # @option opts [Integer, Time, String] :updated_after to select objects updated after a given time.
     # @option opts [Integer, Time, String] :created_after to select objects created after a given time.
     # @option opts [Integer, Time, String] :updated_before to select objects updated before a given time.
@@ -683,28 +693,28 @@ module Fl::Core
     # @return [ActiveRecord::Relation] Return a relation that may include WHERE clauses for timestamp filters.
     #  If no such WHERE clauses are present, it returns *q*.
 
-    def _add_date_filter_clauses(q, opts)
+    def _add_date_filter_clauses(q, opts, prefix = '')
       # We need to convert the timestamps to UTC, or the WHERE clauses (at least on Postgres) are off by
       # the timezone offset
       
-      ts = _date_filter_timestamps(opts)
+      ts = _date_filter_timestamps(opts, prefix)
       wt = []
       wta = {}
       if ts[:c_after_ts]
-        wt << '(created_at > :c_after_ts)'
+        wt << "(#{prefix}created_at > :c_after_ts)"
         wta[:c_after_ts] = ts[:c_after_ts]
       end
       if ts[:u_after_ts]
-        wt << '(updated_at > :u_after_ts)'
+        wt << "#{prefix}updated_at > :u_after_ts)"
 #        wta[:u_after_ts] = Time.parse(ts[:u_after_ts].to_rfc3339).utc.rfc3339
         wta[:u_after_ts] = ts[:u_after_ts]
       end
       if ts[:c_before_ts]
-        wt << '(created_at < :c_before_ts)'
+        wt << "#{prefix}created_at < :c_before_ts)"
         wta[:c_before_ts] = ts[:c_before_ts]
       end
       if ts[:u_before_ts]
-        wt << '(updated_at < :u_before_ts)'
+        wt << "#{prefix}updated_at < :u_before_ts)"
         wta[:u_before_ts] = ts[:u_before_ts]
       end
 
@@ -764,7 +774,7 @@ module Fl::Core
     #  If no order clauses are present, it returns *q*.
 
     def _add_order_clause(q, opts, df = nil)
-      order_clauses = _parse_order_option(opts)
+      order_clauses = _parse_order_option(opts, df)
       (order_clauses.is_a?(Array)) ? q.order(order_clauses) : q
     end
     
