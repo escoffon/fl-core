@@ -98,13 +98,26 @@ module Fl::Core::Concerns::Service::ApiResponse
   # - **:message** is the value of *message*, if non-nil.
   # - If *details* is provided, a duplicate of its value is placed into the **details** key.
   #
+  # The contents of the **details** key depend on the type of *details*:
+  #
+  #     - If *details* is an instance of ActiveModel::Errors, the generated **details** key is a hash containing
+  #       the two keys **:messages** and **:full_messages**, as generated from the equivalent methods in
+  #       ActiveModel::Errors.
+  #     - If *details* is an instance of ActiveRecord::Base, the generated **details** key is created as above,
+  #       using the value returned by *details.errors*.
+  #     - If *details* is an exception, **details** is a hash containing **:messages** and **:full_messages**.
+  #       In this case, the **:messages** key is a hash containing one key (**:exception**) whose value is
+  #       *details.message*, and **:full_messages** is an array containing a single message (also from
+  #       *details.message*).
+  #       Additionally, in a Rails development or test environment an additional key **:backtrace** is generated
+  #       that contains the exception trace.
+  #     - Finally, if *details* responds to `each`, the contents of *details* are duplicated in the **:details** key.
+  #
   # @param type [String,Symbol] A string or symbol that tags the type of error; for example: `'not_found'` or
   #  `:authentication_failure`.
   # @param message [String] A string containing the error message.
-  # @param details [Hash,ActiveModel::Errors] A hash containing additional information; the contents are
-  #  response-dependent. The special (and common) case where *details* is an instance of ActiveModel::Errors
-  #  generates a **details** key as a hash containing one key, **:errors**; this is a hash containing the two
-  #  keys **:messages** and **:full_messages**, as generated from the equivalent methods in ActiveModel::Errors.
+  # @param details [Hash,ActiveModel::Errors,ActiveRecord::Base,Exception] An object containing additional
+  #  information; the contents are response-dependent. See above for a description of how the details are extracted.
   #
   # @return [Hash] Returns a hash as described above.
   
@@ -116,6 +129,9 @@ module Fl::Core::Concerns::Service::ApiResponse
 
     if details.is_a?(ActiveModel::Errors) || details.is_a?(ActiveRecord::Base)
       _error[:details] = error_messages(details)
+    elsif details.is_a?(Exception)
+      _error[:details] = { messages: { exception: details.message }, full_messages: [ details.message ] }
+      _error[:details][:backtrace] = JSON.generate(details.backtrace) if Rails.env.development? || Rails.env.test?
     else
       # Rails 6.1 seems to have changed the class of errors.messages to ActiveModel::DeprecationHandlingMessageHash,
       # so let's instead check if details responds to :each, and if so copy it by iteration
@@ -137,35 +153,18 @@ module Fl::Core::Concerns::Service::ApiResponse
   end
 
   # Generate error response data from an exception.
-  # The error response consists of a hash containing the key `:_error` (which identifies the response as an error).
-  # The value of `:_error` is a hash containing the following key/value pairs:
-  #
-  # - **:type** is the value of *type* (converted to a string), and it "tags" the error; this is typically used
-  #   by client software to error-dependent actions.
-  # - **:message** is the value of *message*, if non-nil.
-  # - **:details** is populated with the exception message and, on development and test Rails environments, the
-  #   exception backtrace.
+  # Because of recent changes to {#error_response_data} to support exception details, this method is just
+  # a wrapper around {#error_response_data} for backward compatibility with existing client code.
   #
   # @param type [String,Symbol] A string or symbol that tags the type of error; for example: `'not_found'` or
   #  `:authentication_failure`.
   # @param message [String] A string containing the error message.
   # @param exc [Exception] The exception object.
   #
-  # @return [Hash] Returns a hash as described above.
+  # @return [Hash] Returns a hash as described in {#error_response_data}.
   
   def exception_response_data(type, message = nil, exc = nil)
-    _error = {
-      type: type
-    }
-    _error[:message] = message if message.is_a?(String) && (message.length > 0)
-
-    if exc.is_a?(Exception)
-      d = { message: exc.message }
-      d[:backtrace] = JSON.generate(exc.backtrace) if Rails.env.development? || Rails.env.test?
-      _error[:details] = d
-    end
-    
-    { _error: _error }
+    return error_response_data(type, message, exc)
   end
 
   # Render success response data.

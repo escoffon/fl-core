@@ -228,15 +228,15 @@ module Fl::Core::Service
                                                     localized_message('nested_creation_failure',
                                                                       parent: parent.fingerprint,
                                                                       class: self.model_class.name),
-                                                    (obj) ? obj.errors.messages : nil))
+                                                    obj))
               end
             end
           end
         rescue => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                          error_response_data('creation_failure',
-                                              localized_message('creation_failure', class: self.model_class.name),
-                                              { message: exc.message }))
+                          exception_response_data('creation_failure',
+                                                  localized_message('creation_failure', class: self.model_class.name),
+                                                  exc))
         end
       end
 
