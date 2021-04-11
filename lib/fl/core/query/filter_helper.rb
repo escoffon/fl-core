@@ -5,7 +5,7 @@ module Fl::Core::Query
 
   module FilterHelper
     # Normalize a boolean query flag.
-    # This method accepts a flag value in multiple formats, and converts it to `true` or `false`.
+    # This method accepts a flag value in multiple formats, and converts it to `true`, `false`, or `nil`.
     #
     # @param f [Boolean,Numeric,String,nil] The flag value. If a boolean, it is returned as is.
     #  If a numeric value, it returns `true` if f != 0, and `false` otherwise; therefore, a numeric
@@ -14,9 +14,10 @@ module Fl::Core::Query
     #  integer and processed as for numeric values.
     #  Otherwise, the strings `true`, `t`, `yes`, and `y` are converted to `true`, and `false`, `f`,
     #  `no`, and `n` are converted to `false`. A `nil` value is converted to `false`.
-    #  Any other value is also converted to `false`.
+    #  Any other value is also converted to `nil` to indicate that this was not a valid boolean flag.
     #
-    # @return [Boolean] Returns a boolean value as outlined above.
+    # @return [Boolean, nil] Returns a boolean value as outlined above. A `nil` return value indicates that the
+    #  flag *f* is not in one of the accepted formats.
     
     def self.boolean_query_flag(f)
       case f
@@ -36,12 +37,12 @@ module Fl::Core::Query
         elsif f =~ /^n(o)?$/i
           false
         else
-          false
+          nil
         end
       when NilClass
         false
       else
-        false
+        nil
       end
     end
 
@@ -168,14 +169,17 @@ module Fl::Core::Query
     # value from `partition_lists_of_references(opts, MyGroup)` is
     # `{ except: [ 2, 4 ] }`.
     #
-    # @param opts [Hash] The query options.
+    # @param opts [Hash,ActionController::Parameters] The query options.
     # @param klass [Class,String] The class or class name to pass to {#convert_list_of_references}.
     #
     # @return [Hash] Returns a hash that contains up to two key/value pairs: the **:only** key is the
     #  list of object identifiers to accept, and **:except** the list to reject. If the value of a
     #  key is `nil`, or if the key is missing, the value should be ignored.
+    #  Note that, if *opts* is not a hash, `nil` is returned.
     
     def self.partition_lists_of_references(opts, klass)
+      return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
+      
       rv = { }
 
       if opts.has_key?(:only)
@@ -290,13 +294,16 @@ module Fl::Core::Query
     #  3. If both reference array are present, remove the contents of the **:except** array from the
     #     **:only** array, and return the **:only** array and `nil` for the **:except** array.
     #
-    # @param opts [Hash] The query options.
+    # @param opts [Hash,ActionController::Parameters] The query options.
     #
     # @return [Hash] Returns a hash that contains up to two key/value pairs: the **only_** key is the
     #  list of object identifiers to accept, and **:except** the list to reject. If the value of the
     #  key is `nil`, or if the key is missing, the value should be ignored.
+    #  Note that, if *opts* is not a hash, `nil` is returned.
     
     def self.partition_lists_of_polymorphic_references(opts)
+      return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
+    
       rv = { }
 
       if opts.has_key?(:only)
@@ -339,17 +346,22 @@ module Fl::Core::Query
     #  3. If both arrays are present, remove the contents of the **:except** array from the
     #     **:only** array, and return the **:only** array and `nil` for the **:except** array.
     #
-    # @param opts [Hash] The query options.
+    # @param filter [Fl::Core::Query::Filter] The filter object making the call. This value is passed to the block *b*.
+    # @param opts [Hash,ActionController::Parameters] The query options.
     # @param b [Proc] The block to call; see below.
     #
-    # @yield [list, type] The two arguments are the array containing the list to convert, and the value **:only**
-    #  or **:except** to indicate if this is the `:only` list or the `:except` one.
+    # @yield [filter, list, type] The three arguments are the filter object making the call, the array containing the
+    #  list to convert, and the value **:only** or **:except** to indicate if this is the `:only` list or the
+    #  `:except` one.
     #
     # @return [Hash] Returns a hash that contains up to two key/value pairs: the **:only** key is the
     #  list of object identifiers to accept, and **:except** the list to reject. If the value of a
     #  key is `nil`, or if the key is missing, the value should be ignored.
+    #  Note that, if *opts* is not a hash (or ActionController::Parameters), `nil` is returned.
     
-    def self.partition_filter_lists(opts, &b)
+    def self.partition_filter_lists(filter, opts, &b)
+      return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
+    
       rv = { }
 
       if opts.has_key?(:only)
@@ -357,7 +369,7 @@ module Fl::Core::Query
           rv[:only] = nil
         else
           only_l = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
-          rv[:only] = b.call(only_l, :only)
+          rv[:only] = b.call(filter, only_l, :only)
         end
       end
 
@@ -366,7 +378,7 @@ module Fl::Core::Query
           rv[:except] = nil
         else
           x_l = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
-          except_refs = b.call(x_l, :except)
+          except_refs = b.call(filter, x_l, :except)
 
           # if there is a `:only`, then we need to remove the `:except` members from it.
           # otherwise, we return `:except`

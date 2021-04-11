@@ -52,8 +52,8 @@ module Fl::Core::Query
   #
   # This type behaves similarly to **:references** and **:polymorphic_references**, except that the **:only**
   # and **:except** lists are converted using a custom block from the **:convert** configuration option.
-  # This block takes two arguments: *list* is the array to convert, and *type* is either **:only** or
-  # **:except**.
+  # This block takes three arguments: *filter* is the {Filter} instance running the {#generate} method,
+  # *list* is the array to convert, and *type* is either **:only** or **:except**.
   #
   # The filter generates a WHERE clause just as for **:references** and **:polymorphic_references**, using the
   # `IN`/`NOT IN` operator.
@@ -85,17 +85,19 @@ module Fl::Core::Query
   # 3. *d* is the filter descriptor.
   # 4. *v* is the filter value.
   #
-  # The contents of the filter value (*v*) are arbitrary.
+  # The contents of the filter value (*v*) are arbitrary. If the block returns `nil`, no clause is generated.
   #
   # ## The filter specification
   #
   # The filter specification lists the filters to apply to generate a WHERE clause.
   # In addition to the names listed in the **:filters** option of the associated configuration hash,
   # the {#generate} filter processes two special keys that combine filters: **:all** and **:any**.
-  # The value for **:all* is a hash containing a list of filters (including **:all** and **:any**); it
+  # It also processes the special key **:not** to invert the value of a clause.
+  # The value for **:all** is a hash containing a list of filters (including **:all** and **:any**); it
   # generates a WHERE clause that joins the filters with the `AND` operator.
   # The value for **:any* is a hash containing a list of filters (including **:all** and **:any**); it
   # generates a WHERE clause that joins the filters with the `OR` operator.
+  # The value for **:not** is a filter expression that generates the clause to invert.
   # Note that, since **:all** and **:any** accept **:all** and **:any** keys, you can build a nested structure
   # of filters and associated WHERE clauses.
   #
@@ -127,13 +129,13 @@ module Fl::Core::Query
   #     blocked: {
   #       type: :block_list,
   #       field: 'c_blocked',
-  #       convert: Proc.new { |list, type| list.map { |e| e * 10 } }
+  #       convert: Proc.new { |filter, list, type| list.map { |e| e * 10 } }
   #     },
   #
   #     block2: {
   #       type: :block_list,
   #       field: 'c_block2',
-  #       convert: Proc.new { |list, type| list.map { |e| e * 2 } }
+  #       convert: Proc.new { |filter, list, type| list.map { |e| e * 2 } }
   #     },
   #
   #     ts1: {
@@ -171,7 +173,7 @@ module Fl::Core::Query
   # ### Using the filter
   #
   # Here are some example of filter specifications and the WHERE clauses they generate.
-  # They all use the filter configuration show above.
+  # They all use the filter configuration shown above.
   #
   # ```
   # {
@@ -425,6 +427,8 @@ module Fl::Core::Query
     #  registered with {#config}, or if a filter type is not supported.
 
     def generate(body, join = :all)
+      return nil if body.nil?
+      
       hbody = hash_body(body)
 
       clauses = hbody.reduce([ ]) do |acc, kvp|
@@ -433,10 +437,17 @@ module Fl::Core::Query
 
         case sk
         when :all, :any
-          acc << generate(v, sk)
+          c = generate(v, sk)
+          acc << c unless c.nil?
+        when :not
+          c = generate(v, sk)
+          acc << "(NOT #{c})" unless c.nil?
         else
-          acc << generate_simple_clause(sk, v)
+          c = generate_simple_clause(sk, v)
+          acc << c unless c.nil?
         end
+
+        acc
       end
 
       if clauses.length < 2
@@ -456,7 +467,7 @@ module Fl::Core::Query
     # Walks the filter descriptor and adjusts it based on a provided block.
     # If *body* contains nested filters, the method calls itself recursively to adjust them.
     #
-    # @param body [Hash] The filter body.
+    # @param body [Hash,ActionController::Parameters] The filter body.
     # @param b [Proc] The block to call; see below.
     #
     # @yield [generator, type, value] The three arguments are: the filter generator (`self`); the name of the filter;
@@ -475,7 +486,7 @@ module Fl::Core::Query
           sk = k.to_sym
 
           case sk
-          when :all, :any
+          when :all, :any, :not
             acc[sk] = adjust(v) { |g, fk, fv| b.call(g, fk, fv) }
           else
             acc[sk] = b.call(self, sk, v)
@@ -518,16 +529,34 @@ module Fl::Core::Query
       type = desc[:type]
       case type
       when :references
-        return generate_partitioned_clause(name, desc,
-                                           Fl::Core::Query::FilterHelper.partition_lists_of_references(value, desc[:class_name]))
+        ph = Fl::Core::Query::FilterHelper.partition_lists_of_references(value, desc[:class_name])
+        if desc[:generator]
+          return desc[:generator].call(self, name, desc, ph)
+        else
+          return generate_partitioned_clause(name, desc, ph)
+        end
       when :polymorphic_references
-        return generate_partitioned_clause(name, desc,
-                                           Fl::Core::Query::FilterHelper.partition_lists_of_polymorphic_references(value))
+        ph = Fl::Core::Query::FilterHelper.partition_lists_of_polymorphic_references(value)
+        if desc[:generator]
+          return desc[:generator].call(self, name, desc, ph)
+        else
+          return generate_partitioned_clause(name, desc, ph)
+        end
       when :block_list
-        return generate_partitioned_clause(name, desc,
-                                           Fl::Core::Query::FilterHelper.partition_filter_lists(value) { |l, e| desc[:convert].call(l, e) })
+        ph = Fl::Core::Query::FilterHelper.partition_filter_lists(self, value) do |f, l, e|
+          desc[:convert].call(f, l, e)
+        end
+        if desc[:generator]
+          return desc[:generator].call(self, name, desc, ph)
+        else
+          return generate_partitioned_clause(name, desc, ph)
+        end
       when :timestamp
-        return generate_timestamp_clause(name, desc, value)
+        if desc[:generator]
+          return desc[:generator].call(self, name, desc, value)
+        else
+          return generate_timestamp_clause(name, desc, value)
+        end
       when :custom
         return generate_custom_clause(name, desc, value)
       else
@@ -535,7 +564,31 @@ module Fl::Core::Query
       end
     end
 
+    public
+
+    # Generates a "partitioned" clause.
+    # This method generates a clause from a hash that contains one of two keys: **:only** and **:except**.
+    # These two keys were generated from a **:references**, **:polymorphic_references**, or **:block_list**
+    # filter type, as described in the class documentation.
+    #
+    # If **:only** is present, the method generates a WHERE clause for elements `IN` the value of **:only**;
+    # If **:except** is present, the method generates a WHERE clause for elements `NOT IN` the value of **:except**;
+    # and if neither is present, it returns `nil`.
+    #
+    # This is the default method called to generate the WHERE clause for one of the three "list" filters; you
+    # can override it by providing a **:generator** property in the filter descriptor *desc*, as described in the
+    # class documentation.
+    #
+    # @param name [Symbol] The filter name.
+    # @param desc [Hash] The corresponding filter descriptor.
+    # @param h [Hash] The value hash; contains the two keys **:only** and **:except**.
+    #
+    # @return [String, nil] Returns the generated WHERE clause, or `nil` if neither key is present.
+    #  Note that, as a side effect, the method allocates a parameter if it generates a clause.
+    
     def generate_partitioned_clause(name, desc, h)
+      return nil if h.nil?
+      
       if h[:only]
         # If we have :only, the :except have already been eliminated, so all we need is the :only
 
@@ -548,10 +601,17 @@ module Fl::Core::Query
         param = allocate_parameter
         @params[param] = h[:except]
         return "(#{desc[:field]} NOT IN (:#{param}))"
+      else
+        return nil
       end
     end
 
+    # The supported **:timestamp** filter keywords.
+    
     TIMESTAMP_CONDITIONS = [ :at, :not_at, :after, :at_or_after, :before, :at_or_before, :between, :not_between ]
+
+    # The SQL operators corresponding to the **:timestamp** filter keywords.
+    
     TIMESTAMP_OPERATORS = {
       at: '=',
       not_at: '!=',
@@ -562,8 +622,30 @@ module Fl::Core::Query
       between: 'BETWEEN',
       not_between: 'NOT BETWEEN'
     }
-    
+
+    # Generates a timestamp clause.
+    # This method generates a clause from a hash that contains one of the keys in {TIMESTAMP_CONDITIONS}; the
+    # value for most should be a `Time` or Time equivalent corresponding to the time to compare; for
+    # **:between** and **:not_between**, it *must* be a two-element array containing the start and end times for
+    # the interval.
+    #
+    # The method tries keys in the order listed in {TIMESTAMP_CONDITIONS}, and returns at the first hit.
+    # If no hits, it returns `nil`.
+    #
+    # This is the default method called to generate the WHERE clause for the **:timestamp** filter; you
+    # can override it by providing a **:generator** property in the filter descriptor *desc*, as described in the
+    # class documentation.
+    #
+    # @param name [Symbol] The filter name.
+    # @param desc [Hash] The corresponding filter descriptor.
+    # @param h [Hash] The value hash; contains at least one of the keys in {TIMESTAMP_CONDITIONS}.
+    #
+    # @return [String, nil] Returns the generated WHERE clause, or `nil` if no supported key is present.
+    #  Note that, as a side effect, the method allocates a parameter if it generates a clause.
+
     def generate_timestamp_clause(name, desc, value)
+      return nil if value.nil?
+      
       # The value should contain just one key that describes the condition to match; we check in the given
       # order, so if multiple keys are present, this is the priority in which they are accepted.
 
@@ -574,7 +656,7 @@ module Fl::Core::Query
       TIMESTAMP_CONDITIONS.each do |c|
         t = value[c]
         if t
-          if (c == :between) && !t.is_a?(Array) && (t.count < 2)
+          if ((c == :between) || (c == :not_between)) && (!t.is_a?(Array) || (t.count < 2))
             raise Exception.new("the :between timestamp comparison must have start and end times")
           end
           cmp = c
@@ -583,7 +665,7 @@ module Fl::Core::Query
         end
       end
 
-      raise Exception.new("missing timestamp comparison in #{value}") if op.nil?
+      return nil if op.nil?
       
       if (cmp == :between) || (cmp == :not_between)
         start_p = allocate_parameter
@@ -603,9 +685,12 @@ module Fl::Core::Query
       end
     end
 
+    private
+    
     def generate_custom_clause(name, desc, value)
       raise Exception.new("missing :generator property for descriptor in :#{name}") if desc[:generator].nil?
 
+      return nil if value.nil?
       return desc[:generator].call(self, name, desc, value)
     end
   end

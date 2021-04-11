@@ -18,13 +18,13 @@ RSpec.describe Fl::Core::Query::Filter do
         blocked: {
           type: :block_list,
           field: 'c_blocked',
-          convert: Proc.new { |list, type| list.map { |e| e * 10 } }
+          convert: Proc.new { |filter, list, type| list.map { |e| e * 10 } }
         },
 
         block2: {
           type: :block_list,
           field: 'c_block2',
-          convert: Proc.new { |list, type| list.map { |e| e * 2 } }
+          convert: Proc.new { |filter, list, type| list.map { |e| e * 2 } }
         },
 
         ts1: {
@@ -42,6 +42,117 @@ RSpec.describe Fl::Core::Query::Filter do
 
             p = g.allocate_parameter(v[:foo].downcase)
             "(LOWER(#{d[:field]}) = :#{p})"
+          end
+        },
+
+        nil_custom: {
+          type: :custom,
+          field: 'c_nil',
+          convert: :custom,
+          generator: Proc.new do |g, n, d, v|
+            nil
+          end
+        }
+      }
+    }
+  end
+
+  let(:cfg_2) do
+    {
+      filters: {
+        ones: {
+          type: :references,
+          field: 'c_one',
+          class_name: 'Fl::Core::TestDatumOne',
+          convert: :id,
+          generator: Proc.new do |g, n, d, v|
+            if v[:only]
+              if v[:only].count == 1
+                p = g.allocate_parameter(v[:only].first)
+                "(c_one = :#{p})"
+              else
+                p = g.allocate_parameter(v[:only])
+                "(c_one IN (:#{p}))"
+              end
+            elsif v[:except]
+              if v[:except].count == 1
+                p = g.allocate_parameter(v[:except].first)
+                "(#{d[:field]} != :#{p})"
+              else
+                p = g.allocate_parameter(v[:except])
+                "(c_one NOT IN (:#{p}))"
+              end
+            else
+              nil
+            end
+          end          
+        },
+
+        polys: {
+          type: :polymorphic_references,
+          field: 'c_poly',
+          convert: :fingerprint,
+          generator: Proc.new do |g, n, d, v|
+            if v[:only]
+              if v[:only].count == 1
+                p = g.allocate_parameter(v[:only].first)
+                "(#{d[:field]} LIKE :#{p})"
+              else
+                p = g.allocate_parameter(v[:only])
+                "(c_poly IN (:#{p}))"
+              end
+            elsif v[:except]
+              if v[:except].count == 1
+                p = g.allocate_parameter(v[:except].first)
+                "(c_poly NOT LIKE :#{p})"
+              else
+                p = g.allocate_parameter(v[:except])
+                "(c_poly NOT IN (:#{p}))"
+              end
+            else
+              nil
+            end
+          end          
+        },
+
+        blocked: {
+          type: :block_list,
+          field: 'c_blocked',
+          convert: Proc.new { |filter, list, type| list.map { |e| e * 10 } },
+          generator: Proc.new do |g, n, d, v|
+            if v[:only]
+              if v[:only].count == 1
+                p = g.allocate_parameter(v[:only].first)
+                "(#{d[:field]} = :#{p})"
+              else
+                p = g.allocate_parameter(v[:only])
+                "(c_blocked IN (:#{p}))"
+              end
+            elsif v[:except]
+              if v[:except].count == 1
+                p = g.allocate_parameter(v[:except].first)
+                "(c_blocked != :#{p})"
+              else
+                p = g.allocate_parameter(v[:except])
+                "(c_blocked NOT IN (:#{p}))"
+              end
+            else
+              nil
+            end
+          end
+        },
+
+        ts1: {
+          type: :timestamp,
+          field: 'c_ts1',
+          convert: :timestamp,
+          generator: Proc.new do |g, n, d, v|
+            if v[:special]
+              p = g.allocate_parameter(v[:special].to_s)
+              "(#{d[:field]} LIKE :#{p})"
+            else
+              g.generate_timestamp_clause(n, d, v)
+            end
           end
         }
       }
@@ -65,6 +176,26 @@ RSpec.describe Fl::Core::Query::Filter do
   end
   
   describe '#generate' do
+    context 'with empty filters' do
+      it 'should return nil' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({ })
+        expect(clause).to be_nil
+        expect(g1.params).to eql({ })
+      end
+    end
+
+    context 'with nil filters' do
+      it 'should return nil' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate(nil)
+        expect(clause).to be_nil
+        expect(g1.params).to eql({ })
+      end
+    end
+
     context 'with a single root filter' do
       it 'should generate a simple clause of ID references' do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
@@ -203,7 +334,7 @@ RSpec.describe Fl::Core::Query::Filter do
                                      p3: [ 20 ])
       end
 
-      it 'should generate an ORed complex clause if the joi param is :any' do
+      it 'should generate an ORed complex clause if the join param is :any' do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
         clause = g1.generate({
@@ -333,6 +464,121 @@ RSpec.describe Fl::Core::Query::Filter do
                                      p3: [ 20 ])
       end
     end
+
+    context 'with :not components' do
+      it 'should invert a simple clause' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({ not: { ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] } } })
+        expect(clause).to eql('(NOT (c_one IN (:p1)))')
+        expect(g1.params).to include(p1: [ 1, 2 ])
+
+        g1.reset
+        clause = g1.generate({
+                               not: {
+                                 ones: {
+                                   except: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ]
+                                 }
+                               }
+                             })
+        expect(clause).to eql('(NOT (c_one NOT IN (:p1)))')
+        expect(g1.params).to include(p1: [ 1, 2 ])
+
+        
+        g1.reset
+        clause = g1.generate({
+                               not: {
+                                 blocked: {
+                                   except: [ 2, 4, 6, 8 ]
+                                 }
+                               }
+                             })
+        expect(clause).to eql('(NOT (c_blocked NOT IN (:p1)))')
+        expect(g1.params).to include(p1: [ 20, 40, 60, 80 ])
+      end
+
+      it 'should invert a complex clause' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               not: {
+                                 all: {
+                                   ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+                                   polys: { except: 'Fl::Core::TestDatum/1' },
+                                   blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                                 }
+                               }
+                             })
+        expect(clause).to eql('(NOT ((c_one IN (:p1)) AND (c_poly NOT IN (:p2)) AND (c_blocked IN (:p3))))')
+        expect(g1.params).to include(p1: [ 1, 2 ],
+                                     p2: [ 'Fl::Core::TestDatum/1' ],
+                                     p3: [ 20 ])
+
+        g1.reset
+        clause = g1.generate({
+                               not: {
+                                 any: {
+                                   ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+                                   polys: { except: 'Fl::Core::TestDatum/1' },
+                                   blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                                 }
+                               }
+                             })
+        expect(clause).to eql('(NOT ((c_one IN (:p1)) OR (c_poly NOT IN (:p2)) OR (c_blocked IN (:p3))))')
+        expect(g1.params).to include(p1: [ 1, 2 ],
+                                     p2: [ 'Fl::Core::TestDatum/1' ],
+                                     p3: [ 20 ])
+      end
+
+      it 'should invert when part of a multi filter root' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+                               not: { polys: { except: 'Fl::Core::TestDatum/1' } },
+                               blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                             }, :all)
+        expect(clause).to eql('((c_one IN (:p1)) AND (NOT (c_poly NOT IN (:p2))) AND (c_blocked IN (:p3)))')
+        expect(g1.params).to include(p1: [ 1, 2 ],
+                                     p2: [ 'Fl::Core::TestDatum/1' ],
+                                     p3: [ 20 ])
+      end
+
+      it 'should invert when nested inside a clause' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               any: {
+                                 ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+                                 all: {
+                                   polys: { except: 'Fl::Core::TestDatum/1' },
+                                   not: { blocked: { only: [ 1, 2 ], except: [ 1 ] } }
+                                 }
+                               }
+                             })
+        expect(clause).to eql('((c_one IN (:p1)) OR ((c_poly NOT IN (:p2)) AND (NOT (c_blocked IN (:p3)))))')
+        expect(g1.params).to include(p1: [ 1, 2 ],
+                                     p2: [ 'Fl::Core::TestDatum/1' ],
+                                     p3: [ 20 ])
+
+        g1.reset
+        clause = g1.generate({
+                               any: {
+                                 ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+                                 not: {
+                                   all: {
+                                     polys: { except: 'Fl::Core::TestDatum/1' },
+                                     not: { blocked: { only: [ 1, 2 ], except: [ 1 ] } }
+                                   }
+                                 }
+                               }
+                             })
+        expect(clause).to eql('((c_one IN (:p1)) OR (NOT ((c_poly NOT IN (:p2)) AND (NOT (c_blocked IN (:p3))))))')
+        expect(g1.params).to include(p1: [ 1, 2 ],
+                                     p2: [ 'Fl::Core::TestDatum/1' ],
+                                     p3: [ 20 ])
+      end
+    end
   end
 
   describe '#adjust' do
@@ -345,6 +591,22 @@ RSpec.describe Fl::Core::Query::Filter do
         }
         nf = g1.adjust(of) { |g, fk, fv| fv }
         expect(nf).to eql(of)
+      end
+
+      it 'should return a nil filter with a nil block' do
+        # note that this will remove the clauses when the generate method is called
+        
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] }
+        }
+        nf = g1.adjust(of) { |g, fk, fv| nil }
+        expect(nf).to eql({ ones: nil })
+
+        g1.reset
+        clause = g1.generate(nf)
+        expect(clause).to eql(nil)
       end
 
       it 'should adjust the filter under control of the block' do
@@ -459,6 +721,264 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(nf).to eql(xf)
       end
     end
+
+    context 'with a :any component' do
+      it 'should navigate to descendants from a single top level' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          any: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+            blocked: { only: [ 1, 2 ] }
+          }
+        }
+        xf = {
+          any: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+            blocked: { only: [ 1 ] }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv| fv
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          when :blocked
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = ev.reduce([ ]) do|acc2, ee|
+                acc2 << ee if (ee % 2) != 0
+                acc2
+              end
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+      end
+
+      it 'should navigate to descendants from a nested level' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          any: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+            blocked: { only: [ 1, 2 ] },
+            any: {
+              blocked: { only: [ 10, 11, 12, 13 ] },
+            }
+          }
+        }
+        xf = {
+          any: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+            blocked: { only: [ 1 ] },
+            any: {
+              blocked: { only: [ 11, 13 ] },
+            }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv| fv
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          when :blocked
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = ev.reduce([ ]) do|acc2, ee|
+                acc2 << ee if (ee % 2) != 0
+                acc2
+              end
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+      end
+    end
+
+    context 'with a :all component' do
+      it 'should navigate to descendants from a single top level' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          all: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+            blocked: { only: [ 1, 2 ] }
+          }
+        }
+        xf = {
+          all: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+            blocked: { only: [ 1 ] }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv| fv
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          when :blocked
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = ev.reduce([ ]) do|acc2, ee|
+                acc2 << ee if (ee % 2) != 0
+                acc2
+              end
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+      end
+
+      it 'should navigate to descendants from a nested level' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          all: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+            blocked: { only: [ 1, 2 ] },
+            all: {
+              blocked: { only: [ 10, 11, 12, 13 ] },
+            }
+          }
+        }
+        xf = {
+          all: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+            blocked: { only: [ 1 ] },
+            all: {
+              blocked: { only: [ 11, 13 ] },
+            }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv| fv
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          when :blocked
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = ev.reduce([ ]) do|acc2, ee|
+                acc2 << ee if (ee % 2) != 0
+                acc2
+              end
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+      end
+    end
+
+    context 'with a :not component' do
+      it 'should navigate to descendants from a single top level' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          not: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+            blocked: { only: [ 1, 2 ] }
+          }
+        }
+        xf = {
+          not: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+            blocked: { only: [ 1 ] }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv| fv
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          when :blocked
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = ev.reduce([ ]) do|acc2, ee|
+                acc2 << ee if (ee % 2) != 0
+                acc2
+              end
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+      end
+
+      it 'should navigate to descendants from a nested level' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          not: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+            blocked: { only: [ 1, 2 ] },
+            not: {
+              blocked: { only: [ 10, 11, 12, 13 ] },
+            }
+          }
+        }
+        xf = {
+          not: {
+            ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+            blocked: { only: [ 1 ] },
+            not: {
+              blocked: { only: [ 11, 13 ] },
+            }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv| fv
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          when :blocked
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = ev.reduce([ ]) do|acc2, ee|
+                acc2 << ee if (ee % 2) != 0
+                acc2
+              end
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+      end
+    end
   end
 
   describe 'filter types' do
@@ -496,6 +1016,55 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(clause).to eql('(c_one IN (:p1))')
         expect(g1.params).to include(p1: [ 1 ])
       end
+
+      it 'should use the custom generator if provided' do
+        g1 = Fl::Core::Query::Filter.new(cfg_2)
+
+        clause = g1.generate({
+                               ones: {
+                                 only: [ 1, 'Fl::Core::TestDatumTwo/2', 'gid://flcore/Fl::Core::TestDatumTwo/3' ]
+                               }
+                             })
+        expect(clause).to eql('(c_one = :p1)')
+        expect(g1.params).to include(p1: 1)
+
+        g1.reset
+        clause = g1.generate({
+                               ones: {
+                                 only: [ 2, 4 ]
+                               }
+                             })
+        expect(clause).to eql('(c_one IN (:p1))')
+        expect(g1.params).to include(p1: [ 2, 4 ])
+
+        g1.reset
+        clause = g1.generate({
+                               ones: {
+                                 except: [ 2 ]
+                               }
+                             })
+        expect(clause).to eql('(c_one != :p1)')
+        expect(g1.params).to include(p1: 2)
+
+        g1.reset
+        clause = g1.generate({
+                               ones: {
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to eql('(c_one NOT IN (:p1))')
+        expect(g1.params).to include(p1: [ ])
+
+        g1.reset
+        clause = g1.generate({
+                               ones: {
+                                 only: [ 2, 4 ],
+                                 except: [ 2, 6 ]
+                               }
+                             })
+        expect(clause).to eql('(c_one = :p1)')
+        expect(g1.params).to include(p1: 4)
+      end
     end
 
     context ':polymorphic_references' do
@@ -521,6 +1090,56 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(clause).to eql('(c_poly IN (:p1))')
         expect(g1.params).to include(p1: [ 'Fl::Core::TestDatumOne/4', 'Fl::Core::TestDatumTwo/5' ])
       end
+
+      it 'should use the custom generator if provided' do
+        g1 = Fl::Core::Query::Filter.new(cfg_2)
+
+        clause = g1.generate({
+                               polys: {
+                                 only: [ 'gid://flcore/Fl::Core::TestDatumTwo/3' ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly LIKE :p1)')
+        expect(g1.params).to include(p1: 'Fl::Core::TestDatumTwo/3')
+
+        g1.reset
+        clause = g1.generate({
+                               polys: {
+                                 only: [ 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumTwo/3' ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly IN (:p1))')
+        expect(g1.params).to include(p1: [ 'Fl::Core::TestDatumOne/2', 'Fl::Core::TestDatumTwo/3' ])
+
+        g1.reset
+        clause = g1.generate({
+                               polys: {
+                                 except: [ 'Fl::Core::TestDatumOne/2' ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly NOT LIKE :p1)')
+        expect(g1.params).to include(p1: 'Fl::Core::TestDatumOne/2')
+
+        g1.reset
+        clause = g1.generate({
+                               polys: {
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly NOT IN (:p1))')
+        expect(g1.params).to include(p1: [ ])
+
+        g1.reset
+        clause = g1.generate({
+                               polys: {
+                                 only: [ 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumTwo/3',
+                                         'gid://flcore/Fl::Core::TestDatumOne/4' ],
+                                 except: [ 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumTwo/3' ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly LIKE :p1)')
+        expect(g1.params).to include(p1: 'Fl::Core::TestDatumOne/4')
+      end
     end
 
     context ':blocked' do
@@ -544,6 +1163,55 @@ RSpec.describe Fl::Core::Query::Filter do
                              })
         expect(clause).to eql('(c_blocked IN (:p1))')
         expect(g1.params).to include(p1: [ 40, 50 ])
+      end
+
+      it 'should use the custom generator if provided' do
+        g1 = Fl::Core::Query::Filter.new(cfg_2)
+
+        clause = g1.generate({
+                               blocked: {
+                                 only: [ 2 ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked = :p1)')
+        expect(g1.params).to include(p1: 20)
+
+        g1.reset
+        clause = g1.generate({
+                               blocked: {
+                                 only: [ 2, 3 ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked IN (:p1))')
+        expect(g1.params).to include(p1: [ 20, 30 ])
+
+        g1.reset
+        clause = g1.generate({
+                               blocked: {
+                                 except: [ 3 ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked != :p1)')
+        expect(g1.params).to include(p1: 30)
+
+        g1.reset
+        clause = g1.generate({
+                               blocked: {
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked NOT IN (:p1))')
+        expect(g1.params).to include(p1: [ ])
+
+        g1.reset
+        clause = g1.generate({
+                               blocked: {
+                                 only: [ 2, 3, 4, 5 ],
+                                 except: [ 2, 3, 4, 6 ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked = :p1)')
+        expect(g1.params).to include(p1: 50)
       end
     end
 
@@ -619,16 +1287,38 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(g1.params).to include(p2: ts_2)
       end
 
-      it 'should raise on an unknown comparison' do
+      it 'should return nil on an unknown comparison' do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
         t1 = "2021-04-07 13:44:59 -0700"
         ts = Time.parse(t1)
-        expect do
-          clause = g1.generate({ ts1: { unknown: t1 } })
-        end.to raise_exception(Fl::Core::Query::Filter::Exception)
+        clause = g1.generate({ ts1: { unknown: t1 } })
+        expect(clause).to be_nil
       end
 
+      it 'should raise with :between and :not_between if the value is not a two-element array' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        t1 = "2021-04-07 13:44:59 -0700"
+        ts = Time.parse(t1)
+
+        expect do
+          clause = g1.generate({ ts1: { between: t1 } })
+        end.to raise_exception(Fl::Core::Query::Filter::Exception)
+
+        expect do
+          clause = g1.generate({ ts1: { between: [ t1 ] } })
+        end.to raise_exception(Fl::Core::Query::Filter::Exception)
+
+        expect do
+          clause = g1.generate({ ts1: { not_between: t1 } })
+        end.to raise_exception(Fl::Core::Query::Filter::Exception)
+
+        expect do
+          clause = g1.generate({ ts1: { not_between: [ t1 ] } })
+        end.to raise_exception(Fl::Core::Query::Filter::Exception)
+      end
+      
       it 'should handle all supported comparisons' do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
@@ -678,6 +1368,26 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(g1.params).to include(p1: ts_1)
         expect(g1.params).to include(p2: ts_2)
       end
+
+      it 'should use the custom generator if provided' do
+        g1 = Fl::Core::Query::Filter.new(cfg_2)
+
+        t_1 = "2021-04-07 13:44:59 -0700"
+        ts_1 = Time.parse(t_1)
+
+        clause = g1.generate({
+                               ts1: { special: t_1 }
+                             })
+        expect(clause).to eql('(c_ts1 LIKE :p1)')
+        expect(g1.params).to include(p1: ts_1.to_s)
+
+        g1.reset
+        clause = g1.generate({
+                               ts1: { at: t_1 }
+                             })
+        expect(clause).to eql('(c_ts1 = :p1)')
+        expect(g1.params).to include(p1: ts_1)
+      end
     end
 
     context ':custom' do
@@ -695,6 +1405,54 @@ RSpec.describe Fl::Core::Query::Filter do
         expect do
           clause = g1.generate({ cstm: { bar: 'Abcd' } })
         end.to raise_exception(Fl::Core::Query::Filter::Exception)
+      end
+
+      it 'should return an empty value if the custom bloc resolves to nil' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({ nil_custom: { bar: 'Abcd' } })
+        expect(clause).to be_nil
+      end
+
+      it 'should not be pushed to the clause array if the custom bloc resolves to nil' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        t_1 = "2021-04-07 13:44:59 -0700"
+        ts_1 = Time.parse(t_1)
+
+        clause = g1.generate({
+                               all: {
+                                 ts1: { at: t_1 },
+                                 nil_custom: { bar: 'Abcd' },
+                                 ones: {
+                                   only: [ 1, 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumOne/3' ]
+                                 }
+                               }
+                             })
+        expect(clause).to eql('((c_ts1 = :p1) AND (c_one IN (:p2)))')
+        expect(g1.params).to include(p1: ts_1, p2: [ 1, 2, 3 ])
+
+        g1.reset
+        clause = g1.generate({
+                               all: {
+                                 nil_custom: { bar: 'Abcd' },
+                                 ones: {
+                                   only: [ 1, 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumOne/3' ]
+                                 }
+                               }
+                             })
+        expect(clause).to eql('(c_one IN (:p1))')
+        expect(g1.params).to include(p1: [ 1, 2, 3 ])
+
+        g1.reset
+        clause = g1.generate({
+                               all: {
+                                 ts1: { at: t_1 },
+                                 nil_custom: { bar: 'Abcd' }
+                               }
+                             })
+        expect(clause).to eql('(c_ts1 = :p1)')
+        expect(g1.params).to include(p1: ts_1)
       end
     end
   end

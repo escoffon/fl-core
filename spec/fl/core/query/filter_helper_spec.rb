@@ -63,10 +63,10 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       expect(fh.boolean_query_flag(nil)).to eql(false)
     end
 
-    it 'should return false on any other types' do
-      expect(fh.boolean_query_flag('not a value')).to eql(false)
-      expect(fh.boolean_query_flag([ ])).to eql(false)
-      expect(fh.boolean_query_flag({ })).to eql(false)
+    it 'should return nil on any other types' do
+      expect(fh.boolean_query_flag('not a value')).to be_nil
+      expect(fh.boolean_query_flag([ ])).to be_nil
+      expect(fh.boolean_query_flag({ })).to be_nil
     end
   end
 
@@ -400,7 +400,7 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       xl = [ 10, td1_1.id, td1_3.id, td1_5.id ]
 
       did_see = [ ]
-      h = fh.partition_filter_lists({ only: rl }) do |l, type|
+      h = fh.partition_filter_lists(nil, { only: rl }) do |f, l, type|
         did_see.push(type)
         rv = [ ]
         fh.convert_list_of_references(l, nil).each_with_index { |e, idx| rv.push(e) if (idx % 2) == 0 }
@@ -412,7 +412,7 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       expect(did_see).to eql([ :only ])
 
       did_see = [ ]
-      h = fh.partition_filter_lists({ except: rl }) do |l, type|
+      h = fh.partition_filter_lists(nil, { except: rl }) do |f, l, type|
         did_see.push(type)
         rv = [ ]
         fh.convert_list_of_references(l, nil).each_with_index { |e, idx| rv.push(e) if (idx % 2) == 0 }
@@ -431,7 +431,7 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       xl = [ td1_1.id, td1_3.id ]
 
       did_see = [ ]
-      h = fh.partition_filter_lists({ only: ol, except: el }) do |l, type|
+      h = fh.partition_filter_lists(nil, { only: ol, except: el }) do |f, l, type|
         did_see.push(type)
 
         if type == :only
