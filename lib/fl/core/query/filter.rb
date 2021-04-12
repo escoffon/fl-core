@@ -39,6 +39,8 @@ module Fl::Core::Query
   #    proceeds as for step 2.
   # 4. If only **:except** is present, it generates a WHERE clause where the column name in the
   #    **:field** configuration option is `NOT IN` the **:except** list.
+  #    Note, however, that if the **:except** list is empty, then no clause is generated: if we except no values,
+  #    then all records should be returned.
   #
   # So **:references** applies to columns that contain a single class reference to other objects.
   #
@@ -596,11 +598,17 @@ module Fl::Core::Query
         @params[param] = h[:only]
         return "(#{desc[:field]} IN (:#{param}))"
       elsif h[:except]
-        # since only is not present, we need to add the except_authors
+        # since :only is not present, we need to add the :except.
+        # And, if :except is empty or nil, then we don't generate a clause, since filtering by an empty list to
+        # except should return all records
 
-        param = allocate_parameter
-        @params[param] = h[:except]
-        return "(#{desc[:field]} NOT IN (:#{param}))"
+        if h[:except].count > 0
+          param = allocate_parameter
+          @params[param] = h[:except]
+          return "(#{desc[:field]} NOT IN (:#{param}))"
+        else
+          return nil
+        end
       else
         return nil
       end

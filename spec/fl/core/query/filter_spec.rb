@@ -1017,6 +1017,40 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(g1.params).to include(p1: [ 1 ])
       end
 
+      it 'should process :only and :except' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               ones: {
+                                 only: [ 1, 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumTwo/3' ],
+                                 except: [ 2 ]
+                               }
+                             })
+        expect(clause).to eql('(c_one IN (:p1))')
+        expect(g1.params).to include(p1: [ 1 ])
+
+        g1.reset
+        clause = g1.generate({
+                               ones: {
+                                 only: [ 1, 'Fl::Core::TestDatumOne/2', 'gid://flcore/Fl::Core::TestDatumTwo/3' ],
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to eql('(c_one IN (:p1))')
+        expect(g1.params).to include(p1: [ 1, 2 ])
+      end
+
+      it 'should not generate a clause with a single empty :except' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               ones: {
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to be_nil
+      end
+
       it 'should use the custom generator if provided' do
         g1 = Fl::Core::Query::Filter.new(cfg_2)
 
@@ -1091,6 +1125,43 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(g1.params).to include(p1: [ 'Fl::Core::TestDatumOne/4', 'Fl::Core::TestDatumTwo/5' ])
       end
 
+      it 'should process :only and :except' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               polys: {
+                                 only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2',
+                                         'gid://flcore/Fl::Core::TestDatumTwo/3' ],
+                                 except: [ 'Fl::Core::TestDatumOne/2' ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly IN (:p1))')
+        expect(g1.params).to include(p1: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumTwo/3' ])
+
+        g1.reset
+        clause = g1.generate({
+                               polys: {
+                                 only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2',
+                                         'gid://flcore/Fl::Core::TestDatumTwo/3' ],
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to eql('(c_poly IN (:p1))')
+        expect(g1.params).to include(p1: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2',
+                                           'Fl::Core::TestDatumTwo/3' ])
+      end
+
+      it 'should not generate a clause with a single empty :except' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               polys: {
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to be_nil
+      end
+
       it 'should use the custom generator if provided' do
         g1 = Fl::Core::Query::Filter.new(cfg_2)
 
@@ -1163,6 +1234,40 @@ RSpec.describe Fl::Core::Query::Filter do
                              })
         expect(clause).to eql('(c_blocked IN (:p1))')
         expect(g1.params).to include(p1: [ 40, 50 ])
+      end
+
+      it 'should process :only and :except' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               blocked: {
+                                 only: [ 1, 2, 3, 4 ],
+                                 except: [ 1, 3 ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked IN (:p1))')
+        expect(g1.params).to include(p1: [ 20, 40 ])
+
+        g1.reset
+        clause = g1.generate({
+                               blocked: {
+                                 only: [ 2, 4 ],
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to eql('(c_blocked IN (:p1))')
+        expect(g1.params).to include(p1: [ 20, 40 ])
+      end
+
+      it 'should not generate a clause with a single empty :except' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        clause = g1.generate({
+                               blocked: {
+                                 except: [ ]
+                               }
+                             })
+        expect(clause).to be_nil
       end
 
       it 'should use the custom generator if provided' do
