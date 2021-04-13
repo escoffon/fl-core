@@ -1,6 +1,14 @@
+require 'fl/core/query/filter_generator/references'
+require 'fl/core/query/filter_generator/polymorphic_references'
+require 'fl/core/query/filter_generator/block_list'
+require 'fl/core/query/filter_generator/timestamp'
+require 'fl/core/query/filter_generator/custom'
+
 module Fl::Core::Query
   # A class to manage query filters.
-  # The class defines two query management methods: {#generate} and {#adjust}. {#generate} traverses a filter
+  # The class defines two query management methods: {#generate} and {#adjust}.
+  #
+  # {#generate} traverses a filter
   # specification hash, using the configuration passed to the initializer to process the hash to generate a
   # WHERE clause and corresponding set of bind parameters.
   #
@@ -24,7 +32,8 @@ module Fl::Core::Query
   #
   # ### Filter details
   #
-  # A number of filter types are supported.
+  # A number of filter types are supported and are described here. It is also possible to register additional
+  # filter types, as described later.
   #
   # #### **:references**
   #
@@ -162,7 +171,7 @@ module Fl::Core::Query
   # ```
   #
   # It contains a **:references** filter associated with the `c_one` column, **:polymorphic_references** associated
-  # with `c_poly`, two **:block_list** filters associated with **c_blocked` and `c_block2`, a **:timestamp** filter
+  # with `c_poly`, two **:block_list** filters associated with `c_blocked` and `c_block2`, a **:timestamp** filter
   # associated with `c_ts1`, and a **:custom** filter associated with `c_custom`.
   #
   # The **:blocked** filter converts input data values by multiplying them by 10; **:block2** multiplies them
@@ -326,21 +335,107 @@ module Fl::Core::Query
   #   }
   # }
   # ```
+  #
+  # ## Register additional filter types
+  #
+  # You can register additional filter types as follows. First, create a subclass of
+  # {Fl::Core::Query::FilterGenerator::Base} that implements the new clause generator.
+  # Then, add it to the **:generators** option in the {#initialize} *cfg* argument. The filter object registers
+  # the new generators automatically.
+  #
+  # Here is an example from the test cases. The class `Betweener` generates a `BETWEEN` WHERE clause:
+  #
+  # ```
+  # class Betweener < Fl::Core::Query::FilterGenerator::Base
+  #   def generate_simple_clause(name, desc, value)
+  #     if !value.is_a?(Array) || (value.count < 2)
+  #       raise Exception.new("must have two elements in the array value #{value}")
+  #     end
+  #     
+  #     if desc[:generator]
+  #       return desc[:generator].call(filter, name, desc, value)
+  #     else
+  #       p0 = filter.allocate_parameter(value[0])
+  #       p1 = filter.allocate_parameter(value[1])
+  #       return "(#{desc[:field]} BETWEEN :#{p0} AND :#{p1})"
+  #     end
+  #   end
+  # end
+  # ```
+  #
+  # Then, create a filter object with the additional custom generator (the standard ones are registered automatically):
+  #
+  # ```
+  # filter = Fl::Core::Query::Filter.new({
+  #                                        generators: {
+  #                                          betweener: {
+  #                                            class: 'Betweener'
+  #                                          }
+  #                                        },
+  #     
+  #                                        filters: {
+  #                                          ones: {
+  #                                            type: :betweener,
+  #                                            field: 'c_one'
+  #                                          }
+  #                                        }
+  #                                      })
+  # ```
+  #
+  # Call the {#generate} method as ususal:
+  #
+  # ```
+  # clause = filter.generate(ones: [ 10, 20 ])
+  # ```
+  #
+  # This generates a clause that looks like `(c_one BETWEEN :p1 AND :p2)`, where the parameters `p1` and `p2`
+  # have values 10 and 20, respectively.
   
   class Filter
     # The exception raised by the filter generator.
 
     class Exception < RuntimeError
     end
+
+    # The built-in filter types.
+
+    STANDARD_FILTERS = {
+      references: {
+        class: 'Fl::Core::Query::FilterGenerator::References'
+      },
+      
+      polymorphic_references: {
+        class: 'Fl::Core::Query::FilterGenerator::PolymorphicReferences'
+      },
+      
+      block_list: {
+        class: 'Fl::Core::Query::FilterGenerator::BlockList'
+      },
+
+      timestamp: {
+        class: 'Fl::Core::Query::FilterGenerator::Timestamp'
+      },
+
+      custom: {
+        class: 'Fl::Core::Query::FilterGenerator::Custom'
+      }
+    }
     
     # Initializer.
     #
     # @param cfg [Hash] Configuration for the filter.
     #
-    # @option cfg [Hash] :clauses A hash of clause descriptions. See the class introduction for details.
-
+    # @option cfg [Hash] :filters A hash of filter descriptions. See the class introduction for details.
+    # @option cfg [Hash] :generators A hash listing additional generators. The keys are filter type names,
+    #  and the values hashes containing the descriptor for the new type. Currently, the only key in the
+    #  descriptor is **:class**, which contains the class object of the custom generator, or a string with the
+    #  class name.
+    
     def initialize(cfg = { })
       @config = cfg
+      @generators = { }
+      register_generators(STANDARD_FILTERS)
+      register_generators(cfg[:generators]) if cfg[:generators].is_a?(Hash)
       reset()
     end
 
@@ -357,7 +452,7 @@ module Fl::Core::Query
     attr_reader :counter
 
     # @!attribute clause [r]
-    # The WHERE clause generated by a call to {#generte}.
+    # The WHERE clause generated by a call to {#generate}.
     
     # @!attribute params [r]
     # The parameters for the generated WHERE clause. This is a hash whose values were generated during
@@ -366,6 +461,18 @@ module Fl::Core::Query
     # @return [Hash] Returns a hash containing the bind parameters.
 
     attr_reader :params
+
+    # Find a filter type.
+    # Looks up *type* in the list of registered generators, returns the corresponding descriptor.
+    #
+    # @param type [Symbol,String] The name of a registered filter type.
+    #
+    # @return [Hash, nil] Returns the generator descriptor for *type*, or `nil` if no generator is registered
+    #  under *type*.
+
+    def find_type(type)
+      return @generators[type.to_sym]
+    end
     
     # Reset the filter state.
     # This methods sets {#counter} to 0, {#params} to an empty hash, and {#clause} to an empty string.
@@ -514,6 +621,23 @@ module Fl::Core::Query
     
     private
 
+    def register_generators(types)
+      types.each do |tk, tv|
+        stk = tk.to_sym
+        if tv[:class].is_a?(Class)
+          @generators[stk] = { class: tv[:class] }
+        elsif tv[:class].is_a?(String)
+          begin
+            @generators[stk] = { class: tv[:class].constantize }
+          rescue NameError => x
+            raise Exception.new("unknown class '#{tv[:class]}' for generator #{stk}")
+          end            
+        else
+          raise Exception.new("bad or missing class name for generator #{stk}: #{tv}")
+        end
+      end
+    end
+
     def hash_body(body)
       unless Fl::Core::Query::Filter.acceptable_body?(body)
         raise Exception.new("the filter body is not a hash or hash-like: #{body}")
@@ -528,42 +652,11 @@ module Fl::Core::Query
       raise Exception.new("unknown filter attribute #{name}") unless @config[:filters].has_key?(name)
 
       desc = @config[:filters][name]
-      type = desc[:type]
-      case type
-      when :references
-        ph = Fl::Core::Query::FilterHelper.partition_lists_of_references(value, desc[:class_name])
-        if desc[:generator]
-          return desc[:generator].call(self, name, desc, ph)
-        else
-          return generate_partitioned_clause(name, desc, ph)
-        end
-      when :polymorphic_references
-        ph = Fl::Core::Query::FilterHelper.partition_lists_of_polymorphic_references(value)
-        if desc[:generator]
-          return desc[:generator].call(self, name, desc, ph)
-        else
-          return generate_partitioned_clause(name, desc, ph)
-        end
-      when :block_list
-        ph = Fl::Core::Query::FilterHelper.partition_filter_lists(self, value) do |f, l, e|
-          desc[:convert].call(f, l, e)
-        end
-        if desc[:generator]
-          return desc[:generator].call(self, name, desc, ph)
-        else
-          return generate_partitioned_clause(name, desc, ph)
-        end
-      when :timestamp
-        if desc[:generator]
-          return desc[:generator].call(self, name, desc, value)
-        else
-          return generate_timestamp_clause(name, desc, value)
-        end
-      when :custom
-        return generate_custom_clause(name, desc, value)
-      else
-        raise Exception.new("unknown filter type :#{type} for :#{name}")
-      end
+      type = find_type(desc[:type])
+      raise Exception.new("unknown filter type #{desc[:type]} for #{name}") unless type.is_a?(Hash)
+
+      generator = type[:class].new(self)
+      return generator.generate_simple_clause(name, desc, value)
     end
 
     public
@@ -646,7 +739,7 @@ module Fl::Core::Query
     #
     # @param name [Symbol] The filter name.
     # @param desc [Hash] The corresponding filter descriptor.
-    # @param h [Hash] The value hash; contains at least one of the keys in {TIMESTAMP_CONDITIONS}.
+    # @param value [Hash] The value hash; contains at least one of the keys in {TIMESTAMP_CONDITIONS}.
     #
     # @return [String, nil] Returns the generated WHERE clause, or `nil` if no supported key is present.
     #  Note that, as a side effect, the method allocates a parameter if it generates a clause.
@@ -693,8 +786,16 @@ module Fl::Core::Query
       end
     end
 
-    private
-    
+    # Generates a custom clause.
+    # This method is a simple wrapper to call the Proc defined in the **:generator** property of a
+    # **:custom** filter type.
+    #
+    # @param name [Symbol] The filter name.
+    # @param desc [Hash] The corresponding filter descriptor.
+    # @param value [any] The value; if `nil`, no clause is generated.
+    #
+    # @return [String, nil] Returns the WHERE clause as generated by the custom generator Proc.
+
     def generate_custom_clause(name, desc, value)
       raise Exception.new("missing :generator property for descriptor in :#{name}") if desc[:generator].nil?
 

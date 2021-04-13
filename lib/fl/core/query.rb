@@ -817,3 +817,4 @@ end
 require 'fl/core/query/filter_helper'
 require 'fl/core/query/query_helper'
 require 'fl/core/query/filter'
+require 'fl/core/query/filter_generator'

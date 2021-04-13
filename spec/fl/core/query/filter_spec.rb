@@ -1,3 +1,37 @@
+require 'fl/core/query/filter_generator'
+
+class Betweener < Fl::Core::Query::FilterGenerator::Base
+  def generate_simple_clause(name, desc, value)
+    if !value.is_a?(Array) || (value.count < 2)
+      raise Exception.new("must have two elements in the array value #{value}")
+    end
+      
+    if desc[:generator]
+      return desc[:generator].call(filter, name, desc, value)
+    else
+      p0 = filter.allocate_parameter(value[0])
+      p1 = filter.allocate_parameter(value[1])
+      return "(#{desc[:field]} BETWEEN :#{p0} AND :#{p1})"
+    end
+  end
+end
+
+class B2 < Fl::Core::Query::FilterGenerator::Base
+  def generate_simple_clause(name, desc, value)
+    if !value.is_a?(Array) || (value.count < 2)
+      raise Exception.new("must have two elements in the array value #{value}")
+    end
+      
+    if desc[:generator]
+      return desc[:generator].call(filter, name, desc, value)
+    else
+      p0 = filter.allocate_parameter(value[0])
+      p1 = filter.allocate_parameter(value[1])
+      return "(#{desc[:field]} NOT BETWEEN :#{p0} AND :#{p1})"
+    end
+  end
+end
+
 RSpec.describe Fl::Core::Query::Filter do
   let(:cfg_1) do
     {
@@ -159,6 +193,32 @@ RSpec.describe Fl::Core::Query::Filter do
     }
   end
 
+  let(:cfg_3) do
+    {
+      generators: {
+        betweener: {
+          class: 'Betweener'
+        },
+
+        b2: {
+          class: B2
+        }
+      },
+      
+      filters: {
+        ones: {
+          type: :betweener,
+          field: 'c_one'
+        },
+        
+        twos: {
+          type: :b2,
+          field: 'c_two'
+        }
+      }
+    }
+  end
+  
   describe '.acceptable_body?' do
     it 'should accept a Hash' do
       expect(Fl::Core::Query::Filter.acceptable_body?({ })).to eql(true)
@@ -1559,6 +1619,52 @@ RSpec.describe Fl::Core::Query::Filter do
         expect(clause).to eql('(c_ts1 = :p1)')
         expect(g1.params).to include(p1: ts_1)
       end
+    end
+  end
+
+  describe 'custom generators' do
+    it 'should register custom generators' do
+      g1 = Fl::Core::Query::Filter.new(cfg_3)
+      
+      clause = g1.generate({
+                             any: {
+                               ones: [ 10, 20 ],
+                               twos: [ 40, 60 ]
+                             }
+                           })
+      expect(clause).to eql('((c_one BETWEEN :p1 AND :p2) OR (c_two NOT BETWEEN :p3 AND :p4))')
+      expect(g1.params).to include(p1: 10, p2: 20, p3: 40, p4: 60)
+    end
+
+    it 'should raise on an unknown generator type' do
+      g1 = Fl::Core::Query::Filter.new({
+                                         generators: {
+                                           b2: {
+                                             class: B2
+                                           }
+                                         },
+      
+                                         filters: {
+                                           ones: {
+                                             type: :betweener,
+                                             field: 'c_one'
+                                           },
+                                           
+                                           twos: {
+                                             type: :b2,
+                                             field: 'c_two'
+                                           }
+                                         }
+                                       })
+
+      expect do
+        clause = g1.generate({
+                               any: {
+                                 ones: [ 10, 20 ],
+                                 twos: [ 40, 60 ]
+                               }
+                             })
+      end.to raise_exception(Fl::Core::Query::Filter::Exception)
     end
   end
 end
