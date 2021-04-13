@@ -106,13 +106,13 @@ module Fl::Core::TextSearch::Helper
   #    processed query strings.
 
   # @!method pg_query_string(qs)
-  # @!scope class
+  #   @!scope class
   #   Convert a query text to a format suitable for use as a Postgres `tsquery`.
-  #    If *qs* starts with the sequence 'pg:', it is assumed to be already in `tsquery` format
-  #    and is returned as is (except that the 'pg:' prefix is stripped).
-  #    Otherwise, the method calls 
-  #    {.tokenize_query_string} and {.generate_query_text} to convert it to a query string
-  #    for the `to_tsquery` Postgres function.
+  #   If *qs* starts with the sequence 'pg:', it is assumed to be already in `tsquery` format
+  #   and is returned as is (except that the 'pg:' prefix is stripped).
+  #   Otherwise, the method calls 
+  #   {.tokenize_query_string} and {.pg_query_text} to convert it to a query string
+  #   for the `to_tsquery` Postgres function.
   #
   #   @param qs [String] A string containing characters and operators.
   #
