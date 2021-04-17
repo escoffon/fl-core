@@ -644,7 +644,7 @@ module Fl::Core
             dt << Fl::Core::Icalendar::Datetime.format_tzoffset(@hash[:TZOFFSET])
           elsif @hash.has_key?(:TZID)
             if (@hash[:TZID] == 'UTC') || (@hash[:TZID] == 'GMT')
-              dt << '+00:00'
+              dt << 'Z'
             else
               tz = ActiveSupport::TimeZone.new(@hash[:TZID])
               dt << tz.formatted_offset if tz
@@ -761,26 +761,56 @@ module Fl::Core
       # This method parses an offset in the form `+/-HH:MM` or `+/-HHMM` and returns a number containing
       # the offset in minutes.
       #
-      # @param [String] tzoff The timezone offset.
+      # @param [String] tzoff The timezone offset. The method accepts
+      #  the offset value `Z` to indicate that the time is in UTC.
       #
       # @return Returns the offset in minutes, +nil+ if _tzoff_ is not a valid offset format.
 
       def self.parse_tzoffset(tzoff)
         return nil unless tzoff.is_a?(String)
 
-        off = tzoff.strip
+        tzoff = tzoff.strip
 
-        if off.strip =~ /^([-+])([0-9]{2}):([0-9]{2})$/
+        if tzoff.upcase == 'Z'
+          return 0
+        elsif tzoff =~ /^([-+])([0-9]{2}):([0-9]{2})$/
           m = Regexp.last_match
           plus_min = (m[1] == '-') ? -1 : 1
-          plus_min * ((m[2].to_i * 60) + m[3].to_i)
-        elsif off.strip =~ /^([-+])([0-9]{2})([0-9]{2})$/
+          return plus_min * ((m[2].to_i * 60) + m[3].to_i)
+        elsif tzoff =~ /^([-+])([0-9]{2})([0-9]{2})$/
           m = Regexp.last_match
           plus_min = (m[1] == '-') ? -1 : 1
-          plus_min * ((m[2].to_i * 60) + m[3].to_i)
+          return plus_min * ((m[2].to_i * 60) + m[3].to_i)
         else
-          nil
+          return nil
         end
+      end
+
+      # Parse an optional milliseconds component and timezone offset, and convert to numeric values.
+      # This method checks if *tzoff* starts with a dot followed by digits. If so, it converts that to an integer
+      # value after stripping the dot; the rest is passed to {.parse_tzoffset}.
+      #
+      # Otherwise, *tzoff* is passed to {.parse_tzoffset} directly.
+      #
+      # @param [String] tzoff The timezone offset, which may include a millisecond section.
+      #
+      # @return [Array] Returns a 2-element array containing the milliseconds component and the offset in minutes.
+      #  If no millisecond component, `nil` is placed in the first element.
+      # If *tzoff* does not contain a valid offset format, `nil` is placed in the second element.
+
+      def self.parse_tzoffset_and_milliseconds(tzoff)
+        return nil unless tzoff.is_a?(String)
+
+        msec = nil
+        tzoff = tzoff.strip
+
+        if tzoff =~ /\.([0-9]+)(.*)/
+          m = Regexp.last_match
+          msec = m[1].to_i
+          tzoff = m[2].strip
+        end
+
+        return [ msec, parse_tzoffset(tzoff) ]
       end
 
       # Format a timezone offset from a numeric value.
@@ -823,29 +853,42 @@ module Fl::Core
       def self.parse(datetime)
         hash = {}
         dt, tz = Fl::Core::Icalendar.split_datetime(datetime)
-
         hash[:TZID] = tz if tz
 
         if dt[4] == '-'
-          # this is expected to be in RFC 3339 format
+          # this is expected to be in RFC 3339 format, or 'YYY-MM-DD hh:mm:ss.xxx offset'
+          # For RFC 3339, we pick up the milliseconds if present
 
           if dt =~ /^([-0-9]{10})T([:0-9]{5,8})(.*)/
             m = Regexp.last_match
             hash[:DATE] = m[1].gsub('-', '')
             hash[:TIME] = m[2].gsub(':', '')
-            tzoff = parse_tzoffset(m[3])
-            hash[:TZOFFSET] = tzoff unless tzoff.nil?
-            hash.delete(:TZID)
+            msec, tzoff = parse_tzoffset_and_milliseconds(m[3])
+            hash[:MSEC] = msec unless msec.nil?
+            unless tzoff.nil?
+              hash[:TZOFFSET] = tzoff
+              hash.delete(:TZID)
+            end
+          elsif dt =~ /^([-0-9]{10}) ([:0-9]{5,8})(.*)/
+            m = Regexp.last_match
+            hash[:DATE] = m[1].gsub('-', '')
+            hash[:TIME] = m[2].gsub(':', '')
+            msec, tzoff = parse_tzoffset_and_milliseconds(m[3])
+            hash[:MSEC] = msec unless msec.nil?
+            unless tzoff.nil?
+              hash[:TZOFFSET] = tzoff
+              hash.delete(:TZID)
+            end
           elsif dt =~ /^([-0-9]{10})(.*)/
             m = Regexp.last_match
             hash[:DATE] = m[1].gsub('-', '')
             tzoff = parse_tzoffset(m[2])
-            hash[:TZOFFSET] = tzoff unless tzoff.nil?
-            hash.delete(:TZID)
+            unless tzoff.nil?
+              hash[:TZOFFSET] = tzoff
+              hash.delete(:TZID)
+            end
           elsif dt =~ /^[:0-9]{6,8}$/
             hash[:TIME] = dt.gsub(':', '')
-            hash.delete(:TZOFFSET)
-            hash.delete(:TZID)
           else
             return nil
           end

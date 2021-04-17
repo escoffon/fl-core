@@ -1167,6 +1167,14 @@ RSpec.describe Fl::Core::Icalendar do
         expect(dt.to_hash).to eql(dth)
         expect(dt.timezone_offset).to be_nil
       end
+
+      it 'should accept the \'YYY-MM-DD hh:mm:ss.xxx <TZ>\' format' do
+        s_t1 = '2016-02-10 10:20:40 -05:00'
+        dt = Fl::Core::Icalendar::Datetime.new(s_t1)
+        dth = { :DATE => '20160210', :TIME => '102040', :TZOFFSET => -300 }
+        expect(dt.to_hash).to eql(dth)
+        expect(dt.timezone_offset).to eql(-300)
+      end
       
       it 'should accept RFC 5545 format' do
         s_5545 = 'TZID=America/New_York:20160210T102040'
@@ -1239,8 +1247,31 @@ RSpec.describe Fl::Core::Icalendar do
         dth = { :DATE => '20160210' }
         dt = Fl::Core::Icalendar::Datetime.new(dth)
         expect(dt.to_rfc3339).to eql(s_3339)
+
+        s_3339 = '2016-08-10T10:20:40Z'
+        dth = { :DATE => '20160810', :TIME => '102040', :TZID => 'UTC' }
+        dt = Fl::Core::Icalendar::Datetime.new(dth)
+        expect(dt.to_rfc3339).to eql(s_3339)
       end
-    end
+ 
+      it 'should keep RFC 3339 format from a parsed RFC 3339 datetime' do
+        s_3339 = '2016-02-10T10:20:40-05:00'
+        dt = Fl::Core::Icalendar::Datetime.new(s_3339)
+        expect(dt.to_rfc3339).to eql(s_3339)
+
+        s_3339 = '2016-08-10T10:20:40-05:00'
+        dt = Fl::Core::Icalendar::Datetime.new(s_3339)
+        expect(dt.to_rfc3339).to eql(s_3339)
+
+        s_3339 = '2016-02-10'
+        dt = Fl::Core::Icalendar::Datetime.new(s_3339)
+        expect(dt.to_rfc3339).to eql(s_3339)
+
+        s_3339 = '2016-08-10T10:20:40Z'
+        dt = Fl::Core::Icalendar::Datetime.new(s_3339)
+        expect(dt.to_rfc3339).to eql(s_3339)
+      end
+   end
 
     context '#to_rfc5545' do
       it 'should return RFC 5545 format' do
