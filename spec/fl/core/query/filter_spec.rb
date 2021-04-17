@@ -1384,72 +1384,68 @@ RSpec.describe Fl::Core::Query::Filter do
       it 'should handle all supported comparisons' do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
-        t_1 = "2021-04-07 13:44:59 -0700"
-        ts_1 = Time.parse(t_1)
-        t_2 = "2021-04-07 14:44:59 -0700"
-        ts_2 = Time.parse(t_2)
+        t_1 = "2021-04-07T13:44:59Z"
+        t_2 = "2021-04-07T14:44:59Z"
 
         clause = g1.generate({ ts1: { at: t_1 } })
         expect(clause).to eql('(c_ts1 = :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { not_at: t_1 } })
         expect(clause).to eql('(c_ts1 != :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { after: t_1 } })
         expect(clause).to eql('(c_ts1 > :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { at_or_after: t_1 } })
         expect(clause).to eql('(c_ts1 >= :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { before: t_1 } })
         expect(clause).to eql('(c_ts1 < :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { at_or_before: t_1 } })
         expect(clause).to eql('(c_ts1 <= :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { between: [ t_1, t_2 ] } })
         expect(clause).to eql('(c_ts1 BETWEEN :p1 AND :p2)')
-        expect(g1.params).to include(p1: ts_1)
-        expect(g1.params).to include(p2: ts_2)
+        expect(g1.params).to include(p1: t_1)
+        expect(g1.params).to include(p2: t_2)
 
         g1.reset
         clause = g1.generate({ ts1: { not_between: [ t_1, t_2 ] } })
         expect(clause).to eql('(c_ts1 NOT BETWEEN :p1 AND :p2)')
-        expect(g1.params).to include(p1: ts_1)
-        expect(g1.params).to include(p2: ts_2)
+        expect(g1.params).to include(p1: t_1)
+        expect(g1.params).to include(p2: t_2)
       end
 
       it 'should reorder timestamps as needed for :between and :not_between' do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
         t_1 = "2021-04-07 13:44:59 -0700"
-        ts_1 = Time.parse(t_1)
         t_2 = "2021-04-07 14:44:59 -0700"
-        ts_2 = Time.parse(t_2)
 
         g1.reset
         clause = g1.generate({ ts1: { between: [ t_2, t_1 ] } })
         expect(clause).to eql('(c_ts1 BETWEEN :p1 AND :p2)')
-        expect(g1.params).to include(p1: ts_1)
-        expect(g1.params).to include(p2: ts_2)
+        expect(g1.params).to include(p1: t_1)
+        expect(g1.params).to include(p2: t_2)
 
         g1.reset
         clause = g1.generate({ ts1: { not_between: [ t_2, t_1 ] } })
         expect(clause).to eql('(c_ts1 NOT BETWEEN :p1 AND :p2)')
-        expect(g1.params).to include(p1: ts_1)
-        expect(g1.params).to include(p2: ts_2)
+        expect(g1.params).to include(p1: t_1)
+        expect(g1.params).to include(p2: t_2)
       end
 
       it 'should return nil on an unknown comparison' do
@@ -1488,70 +1484,67 @@ RSpec.describe Fl::Core::Query::Filter do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
         t_1 = "2021-04-07 13:44:59 -0700"
-        ts_1 = Time.parse(t_1)
         t_2 = "2021-04-07 14:44:59 -0700"
-        ts_2 = Time.parse(t_2)
 
         clause = g1.generate({ ts1: { at: t_1 } })
         expect(clause).to eql('(c_ts1 = :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { not_at: t_1 } })
         expect(clause).to eql('(c_ts1 != :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { after: t_1 } })
         expect(clause).to eql('(c_ts1 > :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { at_or_after: t_1 } })
         expect(clause).to eql('(c_ts1 >= :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { before: t_1 } })
         expect(clause).to eql('(c_ts1 < :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { at_or_before: t_1 } })
         expect(clause).to eql('(c_ts1 <= :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
 
         g1.reset
         clause = g1.generate({ ts1: { between: [ t_1, t_2 ] } })
         expect(clause).to eql('(c_ts1 BETWEEN :p1 AND :p2)')
-        expect(g1.params).to include(p1: ts_1)
-        expect(g1.params).to include(p2: ts_2)
+        expect(g1.params).to include(p1: t_1)
+        expect(g1.params).to include(p2: t_2)
 
         g1.reset
         clause = g1.generate({ ts1: { not_between: [ t_1, t_2 ] } })
         expect(clause).to eql('(c_ts1 NOT BETWEEN :p1 AND :p2)')
-        expect(g1.params).to include(p1: ts_1)
-        expect(g1.params).to include(p2: ts_2)
+        expect(g1.params).to include(p1: t_1)
+        expect(g1.params).to include(p2: t_2)
       end
 
       it 'should use the custom generator if provided' do
         g1 = Fl::Core::Query::Filter.new(cfg_2)
 
         t_1 = "2021-04-07 13:44:59 -0700"
-        ts_1 = Time.parse(t_1)
 
         clause = g1.generate({
                                ts1: { special: t_1 }
                              })
         expect(clause).to eql('(c_ts1 LIKE :p1)')
-        expect(g1.params).to include(p1: ts_1.to_s)
+        expect(g1.params).to include(p1: t_1.to_s)
 
         g1.reset
         clause = g1.generate({
                                ts1: { at: t_1 }
                              })
         expect(clause).to eql('(c_ts1 = :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
       end
     end
 
@@ -1583,7 +1576,6 @@ RSpec.describe Fl::Core::Query::Filter do
         g1 = Fl::Core::Query::Filter.new(cfg_1)
 
         t_1 = "2021-04-07 13:44:59 -0700"
-        ts_1 = Time.parse(t_1)
 
         clause = g1.generate({
                                all: {
@@ -1595,7 +1587,7 @@ RSpec.describe Fl::Core::Query::Filter do
                                }
                              })
         expect(clause).to eql('((c_ts1 = :p1) AND (c_one IN (:p2)))')
-        expect(g1.params).to include(p1: ts_1, p2: [ 1, 2, 3 ])
+        expect(g1.params).to include(p1: t_1, p2: [ 1, 2, 3 ])
 
         g1.reset
         clause = g1.generate({
@@ -1617,7 +1609,7 @@ RSpec.describe Fl::Core::Query::Filter do
                                }
                              })
         expect(clause).to eql('(c_ts1 = :p1)')
-        expect(g1.params).to include(p1: ts_1)
+        expect(g1.params).to include(p1: t_1)
       end
     end
   end

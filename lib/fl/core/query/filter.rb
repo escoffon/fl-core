@@ -767,11 +767,14 @@ module Fl::Core::Query
       end
 
       return nil if op.nil?
-      
+
       if (cmp == :between) || (cmp == :not_between)
         start_p = allocate_parameter
         end_p = allocate_parameter
-        if t[0] < t[1]
+        i0 = Fl::Core::Query::FilterHelper.parse_timestamp(t[0]).to_i
+        i1 = Fl::Core::Query::FilterHelper.parse_timestamp(t[1]).to_i
+
+        if i0 < i1
           @params[start_p] = t[0]
           @params[end_p] = t[1]
         else
@@ -780,8 +783,7 @@ module Fl::Core::Query
         end
         return "(#{desc[:field]} #{op} :#{start_p} AND :#{end_p})"
       else
-        param = allocate_parameter
-        @params[param] = t
+        param = allocate_parameter(t)
         return "(#{desc[:field]} #{op} :#{param})"
       end
     end
