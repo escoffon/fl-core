@@ -139,6 +139,83 @@ RSpec.describe Fl::Core::Query::QueryHelper do
     end
   end
 
+  describe '.generate_order_clause' do
+    context 'with string argument' do
+      it 'should generate a single axis option' do
+        c = qh.generate_order_clause({ order: 'mycol ASC' })
+        expect(c).to eql(' ORDER BY mycol ASC')
+      end
+
+      it 'should generate a multi axis option' do
+        c = qh.generate_order_clause({ order: 'mycol ASC, ocol DESC' })
+        expect(c).to eql(' ORDER BY mycol ASC, ocol DESC')
+      end
+
+      it 'should not generate with an empty string' do
+        c = qh.generate_order_clause({ order: '' })
+        expect(c).to eql('')
+      end
+    end
+    
+    context 'with array argument' do
+      it 'should generate a single axis option' do
+        c = qh.generate_order_clause({ order: [ 'mycol ASC' ] })
+        expect(c).to eql(' ORDER BY mycol ASC')
+      end
+
+      it 'should generate a multi axis option' do
+        c = qh.generate_order_clause({ order: [ 'mycol ASC', 'ocol DESC' ] })
+        expect(c).to eql(' ORDER BY mycol ASC, ocol DESC')
+      end
+
+      it 'should not generate with an empty array' do
+        c = qh.generate_order_clause({ order: [ ] })
+        expect(c).to eql('')
+      end
+    end
+    
+    context 'with false argument' do
+      it 'should not generate a clause' do
+        c = qh.generate_order_clause({ order: false })
+        expect(c).to eql('')
+      end
+    end
+    
+    context 'with nil argument' do
+      it 'should generate a backstop if the default is missing' do
+        c = qh.generate_order_clause({ order: nil })
+        expect(c).to eql(" ORDER BY #{default_order.join(', ')}")
+      end
+
+      it 'should normalize a default string' do
+        c = qh.generate_order_clause({ order: nil }, '   mycol   ASC  ,   alsocol  DESC   ')
+        expect(c).to eql(" ORDER BY mycol ASC, alsocol DESC")
+      end
+
+      it 'should convert a default array to a string' do
+        c = qh.generate_order_clause({ order: nil }, [ '   mycol   ASC  ',  '  alsocol  DESC   ' ])
+        expect(c).to eql(" ORDER BY mycol ASC, alsocol DESC")
+      end
+    end
+    
+    context 'with missing argument' do
+      it 'should return a backstop if the default is missing' do
+        c = qh.generate_order_clause({ })
+        expect(c).to eql(" ORDER BY #{default_order.join(', ')}")
+      end
+
+      it 'should normalize a default string' do
+        c = qh.generate_order_clause({ }, '   mycol   ASC  ,   alsocol  DESC   ')
+        expect(c).to eql(" ORDER BY mycol ASC, alsocol DESC")
+      end
+
+      it 'should convert a default array to a string' do
+        c = qh.generate_order_clause({ }, [ '   mycol   ASC  ',  '  alsocol  DESC   ' ])
+        expect(c).to eql(" ORDER BY mycol ASC, alsocol DESC")
+      end
+    end
+  end
+
   describe '.add_order_clause' do
     context 'with string argument' do
       it 'should add a single axis option' do
@@ -226,6 +303,34 @@ RSpec.describe Fl::Core::Query::QueryHelper do
     end
   end
 
+  describe '.generate_offset_clause' do
+    it 'should generate the option if non-nil' do
+      c = qh.generate_offset_clause({ offset: 10 })
+      expect(c).to eql(" OFFSET 10")
+
+      c = qh.generate_offset_clause({ offset: '10' })
+      expect(c).to eql(" OFFSET 10")
+    end
+
+    it 'should not generate the option if nil' do
+      c = qh.generate_offset_clause({ offset: nil })
+      expect(c).to eql('')
+    end
+
+    it 'should not generate the option if negative' do
+      c = qh.generate_offset_clause({ offset: -10 })
+      expect(c).to eql('')
+
+      c = qh.generate_offset_clause({ offset: '-10' })
+      expect(c).to eql('')
+    end
+
+    it 'should not generate the option if not present' do
+      c = qh.generate_offset_clause({ })
+      expect(c).to eql('')
+    end
+  end
+
   describe '.add_offset_clause' do
     it 'should add the option if non-nil' do
       o = qh.add_offset_clause(q1, { offset: 10 })
@@ -251,6 +356,34 @@ RSpec.describe Fl::Core::Query::QueryHelper do
     it 'should not add the option if not present' do
       o = qh.add_offset_clause(q1, { })
       expect(q1.offset_clause).to be_nil
+    end
+  end
+
+  describe '.generate_limit_clause' do
+    it 'should generate the option if non-nil' do
+      c = qh.generate_limit_clause({ limit: 10 })
+      expect(c).to eql(" LIMIT 10")
+
+      c = qh.generate_limit_clause({ limit: '10' })
+      expect(c).to eql(" LIMIT 10")
+    end
+
+    it 'should generate add the option if nil' do
+      c = qh.generate_limit_clause({ limit: nil })
+      expect(c).to eql('')
+    end
+
+    it 'should not add the option if negative' do
+      c = qh.generate_limit_clause({ limit: -10 })
+      expect(c).to eql('')
+
+      c = qh.generate_limit_clause({ limit: '-10' })
+      expect(c).to eql('')
+    end
+
+    it 'should not add the option if not present' do
+      c = qh.generate_limit_clause({ })
+      expect(c).to eql('')
     end
   end
 
