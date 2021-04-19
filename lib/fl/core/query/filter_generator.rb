@@ -61,6 +61,28 @@ module Fl::Core::Query
       def generate_simple_clause(name, desc, value)
         return nil
       end
+      
+      # Normalize a filter value.
+      # This method is used by {Fl::Core::Query::Filter#adjust} to normalize filter values before passing them
+      # to the block. For example, the implementation for {Fl::Core::Query::FilterGenerator::References} normalizes
+      # the **:only** and **:except** keys to arrays of object identifiers.
+      #
+      # The base implementation returns *value*; subclasses are expected to override this method and implement
+      # their specific normalization process.
+      #
+      # @param name [Symbol] The name of the filter. This is the value of a key in the *body* argument to
+      #  {Fl::Core::Query::Filter#generate}. It is also the value of a key in the **:filter** option of the
+      #  filter configuration passed to {Fl::Core::Query::Filter#initialize}.
+      # @param desc [Hash] The filter descriptor; this is the value in the **:filters** option corresponding
+      #  to *name*.
+      # @param value [any] The filter value; this is the value of the node in the *body* argument that triggered
+      #  this calls.
+      #
+      # @return [any] Returns the normalized filter value.
+      
+      def normalize_value(name, desc, value)
+        return value
+      end
     end
   end
 end

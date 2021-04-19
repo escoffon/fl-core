@@ -42,5 +42,34 @@ module Fl::Core::Query::FilterGenerator
         return filter.generate_partitioned_clause(name, desc, ph)
       end
     end
+      
+    # Normalize a filter value.
+    # Passes the **:only** and **:except** properties of *value* to
+    # {Fl::Core::Query::FilterHelper.convert_list_of_polymorphic_references} and installs its return value as the
+    # new value.
+    #
+    # @param name [Symbol] The name of the filter. This is the value of a key in the *body* argument to
+    #  {Fl::Core::Query::Filter#generate}. It is also the value of a key in the **:filter** option of the
+    #  filter configuration passed to {Fl::Core::Query::Filter#initialize}.
+    # @param desc [Hash] The filter descriptor; this is the value in the **:filters** option corresponding
+    #  to *name*.
+    # @param value [any] The filter value; this is the value of the node in the *body* argument that triggered
+    #  this calls.
+    #
+    # @return [any] Returns the normalized filter value.
+      
+    def normalize_value(name, desc, value)
+      nv = (value.is_a?(Hash)) ? value : { }
+
+      if nv.has_key?(:only)
+        nv[:only] = Fl::Core::Query::FilterHelper.convert_list_of_polymorphic_references(nv[:only])
+      end
+
+      if nv.has_key?(:except)
+        nv[:except] = Fl::Core::Query::FilterHelper.convert_list_of_polymorphic_references(nv[:except])
+      end
+
+      return nv
+    end
   end
 end

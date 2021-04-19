@@ -598,7 +598,16 @@ module Fl::Core::Query
           when :all, :any, :not
             acc[sk] = adjust(v) { |g, fk, fv| b.call(g, fk, fv) }
           else
-            acc[sk] = b.call(self, sk, v)
+            # this should be a known filter name from the configuration
+
+            raise Exception.new("unknown filter attribute #{name}") unless @config[:filters].has_key?(sk)
+
+            desc = @config[:filters][sk]
+            type = find_type(desc[:type])
+            raise Exception.new("unknown filter type #{desc[:type]} for #{sk}") unless type.is_a?(Hash)
+
+            generator = type[:class].new(self)
+            acc[sk] = b.call(self, sk, generator.normalize_value(sk, desc, v))
           end
 
           acc

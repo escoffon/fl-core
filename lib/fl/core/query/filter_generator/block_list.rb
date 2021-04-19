@@ -45,5 +45,35 @@ module Fl::Core::Query::FilterGenerator
         return filter.generate_partitioned_clause(name, desc, ph)
       end
     end
+      
+    # Normalize a filter value.
+    # Passes the **:only** and **:except** properties of *value* to the Proc (block) that was defined
+    # in the **:convert** property of *desc* and installs the Proc's return value as the new value.
+    #
+    # @param name [Symbol] The name of the filter. This is the value of a key in the *body* argument to
+    #  {Fl::Core::Query::Filter#generate}. It is also the value of a key in the **:filter** option of the
+    #  filter configuration passed to {Fl::Core::Query::Filter#initialize}.
+    # @param desc [Hash] The filter descriptor; this is the value in the **:filters** option corresponding
+    #  to *name*.
+    # @param value [any] The filter value; this is the value of the node in the *body* argument that triggered
+    #  this calls.
+    #
+    # @return [any] Returns the normalized filter value.
+      
+    def normalize_value(name, desc, value)
+      nv = (value.is_a?(Hash)) ? value : { }
+
+      if desc[:convert]
+        if nv.has_key?(:only)
+          nv[:only] = desc[:convert].call(self, nv[:only], :only)
+        end
+
+        if nv.has_key?(:except)
+          nv[:except] = desc[:convert].call(self, nv[:except], :except)
+        end
+      end
+
+      return nv
+    end
   end
 end
