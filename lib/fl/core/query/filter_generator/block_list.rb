@@ -36,7 +36,7 @@ module Fl::Core::Query::FilterGenerator
     #  by {#filter}, returns `nil`.
     
     def generate_simple_clause(name, desc, value)
-      ph = Fl::Core::Query::FilterHelper.partition_filter_lists(filter, value) do |f, l, e|
+      ph = Fl::Core::Query::FilterHelper.normalize_filter_lists(filter, value) do |f, l, e|
         desc[:convert].call(f, l, e)
       end
       if desc[:generator]

@@ -671,13 +671,19 @@ module Fl::Core::Query
     public
 
     # Generates a "partitioned" clause.
-    # This method generates a clause from a hash that contains one of two keys: **:only** and **:except**.
-    # These two keys were generated from a **:references**, **:polymorphic_references**, or **:block_list**
-    # filter type, as described in the class documentation.
+    # This method generates a clause from a hash with normalized **:only** and **:except** properties
+    # that was typically prcessed with {Fl::Core::Query::FilterHelper.normalize_lists_of_references},
+    # {Fl::Core::Query::FilterHelper.normalize_lists_of_polymorphic_references}, or
+    # {Fl::Core::Query::FilterHelper.normalize_filter_lists}.
+    # (Hence, these two keys were generated from a **:references**, **:polymorphic_references**, or **:block_list**
+    # filter type, as described in the class documentation.)
     #
-    # If **:only** is present, the method generates a WHERE clause for elements `IN` the value of **:only**;
-    # If **:except** is present, the method generates a WHERE clause for elements `NOT IN` the value of **:except**;
-    # and if neither is present, it returns `nil`.
+    # It calls {Fl::Core::Query::FilterHelper.adjust_only_except_lists} and then gereates a WHERE clause as
+    # follows:
+    #
+    # 1. If **:only** is present, the method generates a WHERE clause for elements `IN` the value of **:only**;
+    # 2. If **:except** is present, the method generates a WHERE clause for elements `NOT IN` the value of **:except**.
+    # 3. If neither is present, it returns `nil`.
     #
     # This is the default method called to generate the WHERE clause for one of the three "list" filters; you
     # can override it by providing a **:generator** property in the filter descriptor *desc*, as described in the
@@ -685,31 +691,30 @@ module Fl::Core::Query
     #
     # @param name [Symbol] The filter name.
     # @param desc [Hash] The corresponding filter descriptor.
-    # @param h [Hash] The value hash; contains the two keys **:only** and **:except**.
+    # @param value [Hash] The value hash; contains the two keys **:only** and **:except**.
     #
     # @return [String, nil] Returns the generated WHERE clause, or `nil` if neither key is present.
     #  Note that, as a side effect, the method allocates a parameter if it generates a clause.
     
-    def generate_partitioned_clause(name, desc, h)
-      return nil if h.nil?
+    def generate_partitioned_clause(name, desc, value)
+      return nil if value.nil?
+
+      h = Fl::Core::Query::FilterHelper.adjust_only_except_lists(value)
       
       if h[:only]
-        # If we have :only, the :except have already been eliminated, so all we need is the :only
-
-        param = allocate_parameter
-        @params[param] = h[:only]
+        # adjust_only_exec_lists has already removed :except from :only (and ignored :except)
+        
+        param = allocate_parameter(h[:only])
         return "(#{desc[:field]} IN (:#{param}))"
       elsif h[:except]
-        # since :only is not present, we need to add the :except.
-        # And, if :except is empty or nil, then we don't generate a clause, since filtering by an empty list to
-        # except should return all records
+        # if we are here, there was no :only property in the value; if :except is present but empty, we do not
+        # generate a WHERE clause, before an empty :except allows all records
 
-        if h[:except].count > 0
-          param = allocate_parameter
-          @params[param] = h[:except]
-          return "(#{desc[:field]} NOT IN (:#{param}))"
-        else
+        if h[:except].count < 1
           return nil
+        else
+          param = allocate_parameter(h[:except])
+          return "(#{desc[:field]} NOT IN (:#{param}))"
         end
       else
         return nil

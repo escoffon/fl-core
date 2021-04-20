@@ -147,24 +147,22 @@ module Fl::Core::Query
       end
     end
 
-    # Partition **:only** and **:except** lists in a set of query options.
+    # Normalize **:only** and **:except** lists or object references in a set of query options.
     # This method looks up the two options **:only** and **:except** in *opts* and
     # converts them using {#convert_list_of_references}. It then generates new values of **:only** and
     # **:except** lists from the converted references as follows.
     #
-    #  1. If the **:only** references is empty or not present, the return value contains the references
-    #     as is.
-    #  2. If the **:except** references is empty or not present, the return value contains the references
-    #     as is.
-    #  3. If both reference array are present, remove the contents of the **:except** array from the
-    #     **:only** array, and return the **:only** array and `nil` for the **:except** array.
+    #  1. If the **:only** references is empty or not present, the return value does not contain **:only**.
+    #  2. If the **:except** references is empty or not present, the return value does not contain **:except**.
+    #  3. If both reference arrays are present, both **:only** and **:except** are present; scalar values are
+    #     converted to one-element arrays.
     #
-    # For example, if *opts* is `{ only: [ 1, 2, 3, 4 ], except: [ 2, 4 ] }`, the return
-    # value from `partition_lists_of_references(opts, 'MyGroup')` is
-    # `{ only: [ 1, 3 ], except: nil }`.
+    # For example, if *opts* is `{ only: [ 1, 'MyGroup/2', 3, 'Other/4' ], except: [ 2, 4 ] }`, the return
+    # value from `normalize_lists_of_references(opts, 'MyGroup')` is
+    # `{ only: [ 1, 2, 3 ], except: [ 2, 4 ] }`.
     # If *opts* is `{ only: [ 1, 2, 3, 4 ] }`, the return
     # value from `partition_lists_of_references(opts, 'MyGroup')` is
-    # `{ only: [ 1, 2, 3, 4 ] }`.
+    # `{ only: [ 1, 2, 3 ] }`.
     # If *opts* is `{ except: [ 2, 4 ] }`, the return
     # value from `partition_lists_of_references(opts, MyGroup)` is
     # `{ except: [ 2, 4 ] }`.
@@ -177,39 +175,22 @@ module Fl::Core::Query
     #  key is `nil`, or if the key is missing, the value should be ignored.
     #  Note that, if *opts* is not a hash, `nil` is returned.
     
-    def self.partition_lists_of_references(opts, klass)
+    def self.normalize_lists_of_references(opts, klass)
       return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
       
       rv = { }
 
-      if opts.has_key?(:only)
-        if opts[:only].nil?
-          rv[:only] = nil
-        else
-          only_l = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
-          rv[:only] = convert_list_of_references(only_l, klass)
-        end
+      if opts.has_key?(:only) && !opts[:only].nil?
+        ol = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
+        rv[:only] = convert_list_of_references(ol, klass)
       end
 
-      if opts.has_key?(:except)
-        if opts[:except].nil?
-          rv[:except] = nil
-        else
-          x_l = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
-          except_refs = convert_list_of_references(x_l, klass)
-
-          # if there is a `:only`, then we need to remove the `:except` members from it.
-          # otherwise, we return `:except`
-
-          if rv[:only].is_a?(Array)
-            rv[:only] = rv[:only] - except_refs
-          else
-            rv[:except] = except_refs
-          end
-        end
+      if opts.has_key?(:except) && !opts[:except].nil?
+        xl = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
+        rv[:except] = convert_list_of_references(xl, klass)
       end
 
-      rv
+      return rv
     end
     
     # Extract a fingerprint from a parameter.
@@ -282,17 +263,15 @@ module Fl::Core::Query
       end
     end
 
-    # Partition **:only** and **:except** lists in a set of query options, for polymorphic references.
+    # Normalize **:only** and **:except** lists or polymorphic object references in a set of query options.
     # This method looks up the two options **:only** and **:except** in *opts* and
-    # converts them using {#convert_list_of_polymorphic_references}. It then generates new values of
-    # **:only** and **:except** lists from the converted references as follows.
+    # converts them using {#convert_list_of_polymorphic_references}. It then generates new values of **:only** and
+    # **:except** lists from the converted references as follows.
     #
-    #  1. If the **:only** references is empty or not present, the return value contains the references
-    #     as is.
-    #  2. If the **:except** references is empty or not present, the return value contains the references
-    #     as is.
-    #  3. If both reference array are present, remove the contents of the **:except** array from the
-    #     **:only** array, and return the **:only** array and `nil` for the **:except** array.
+    #  1. If the **:only** references is empty or not present, the return value does not contain **:only**.
+    #  2. If the **:except** references is empty or not present, the return value does not contain **:except**.
+    #  3. If both reference arrays are present, both **:only** and **:except** are present; scalar values are
+    #     converted to one-element arrays.
     #
     # @param opts [Hash,ActionController::Parameters] The query options.
     #
@@ -301,50 +280,56 @@ module Fl::Core::Query
     #  key is `nil`, or if the key is missing, the value should be ignored.
     #  Note that, if *opts* is not a hash, `nil` is returned.
     
-    def self.partition_lists_of_polymorphic_references(opts)
+    def self.normalize_lists_of_polymorphic_references(opts)
       return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
     
       rv = { }
 
-      if opts.has_key?(:only)
-        if opts[:only].nil?
-          rv[:only] = nil
-        else
-          only_l = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
-          rv[:only] = convert_list_of_polymorphic_references(only_l)
-        end
+      if opts.has_key?(:only) && !opts[:only].nil?
+        ol = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
+        rv[:only] = convert_list_of_polymorphic_references(ol)
       end
 
-      if opts.has_key?(:except)
-        if opts[:except].nil?
-          rv[:except] = nil
-        else
-          x_l = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
-          except_refs = convert_list_of_polymorphic_references(x_l)
-
-          # if there is a `:only`, then we need to remove the `:except` members from it.
-          # otherwise, we return `:except`
-
-          if rv[:only].is_a?(Array)
-            rv[:only] = rv[:only] - except_refs
-          else
-            rv[:except] = except_refs
-          end
-        end
+      if opts.has_key?(:except) && !opts[:except].nil?
+        xl = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
+        rv[:except] = convert_list_of_polymorphic_references(xl)
       end
 
-      rv
+      return rv
     end
 
-    # Partition **:only** and **:except** lists in a set of query options.
-    # This method looks up the two options **:only** and **:except** in *opts* and
-    # converts them using the given block *b*. It then generates new values of **:only** and
-    # **:except** lists from the converted items as follows.
+    # Convert a filtered list.
+    # This method converts *list* by passing it to the block *b* and returning its return value.
     #
-    #  1. If the **:only** array is empty or not present, the return value contains the array as is.
-    #  2. If the **:except** array is empty or not present, the return value contains the array as is.
-    #  3. If both arrays are present, remove the contents of the **:except** array from the
-    #     **:only** array, and return the **:only** array and `nil` for the **:except** array.
+    # @param filter [Fl::Core::Query::Filter] The filter object making the call. This value is passed to the block *b*.
+    # @param list [Array] An array of items to be converted by *b*; a scalar value is converted to a one-element
+    #  array before passing to the block.
+    # @param type [Symbol] A tag passed to the block to provide a hint about the list; this is used by
+    #  {.partition_filter_lists} to pass the name of the property being converted.
+    # @param b [Proc] The block to call; see below.
+    #
+    # @yield [filter, list, type] The three arguments are the filter object making the call, the array containing the
+    #  list to convert, and the value of *type*.
+    #
+    # @return [Array, nil] Returns the block value; if *list* is `nil`, returns `nil`.
+
+    def self.convert_filter_list(filter, list, type, &b)
+      return nil if list.nil?
+      
+      list = [ list ] unless list.is_a?(Array)
+
+      return b.call(filter, list, type)
+    end
+
+    # Normalize **:only** and **:except** filtered lists in a set of query options.
+    # This method looks up the two options **:only** and **:except** in *opts* and
+    # converts them using {#convert_filter_list}. It then generates new values of **:only** and
+    # **:except** lists from the converted references as follows.
+    #
+    #  1. If the **:only** references is empty or not present, the return value does not contain **:only**.
+    #  2. If the **:except** references is empty or not present, the return value does not contain **:except**.
+    #  3. If both reference arrays are present, both **:only** and **:except** are present; scalar values are
+    #     converted to one-element arrays.
     #
     # @param filter [Fl::Core::Query::Filter] The filter object making the call. This value is passed to the block *b*.
     # @param opts [Hash,ActionController::Parameters] The query options.
@@ -359,39 +344,67 @@ module Fl::Core::Query
     #  key is `nil`, or if the key is missing, the value should be ignored.
     #  Note that, if *opts* is not a hash (or ActionController::Parameters), `nil` is returned.
     
-    def self.partition_filter_lists(filter, opts, &b)
+    def self.normalize_filter_lists(filter, opts, &b)
       return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
     
       rv = { }
 
-      if opts.has_key?(:only)
-        if opts[:only].nil?
-          rv[:only] = nil
-        else
-          only_l = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
-          rv[:only] = b.call(filter, only_l, :only)
-        end
+      if opts.has_key?(:only) && !opts[:only].nil?
+        rv[:only] = convert_filter_list(filter, opts[:only], :only) { |f, l, t| b.call(f, l, t) }
       end
 
-      if opts.has_key?(:except)
-        if opts[:except].nil?
-          rv[:except] = nil
-        else
-          x_l = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
-          except_refs = b.call(filter, x_l, :except)
-
-          # if there is a `:only`, then we need to remove the `:except` members from it.
-          # otherwise, we return `:except`
-
-          if rv[:only].is_a?(Array)
-            rv[:only] = rv[:only] - except_refs
-          else
-            rv[:except] = except_refs
-          end
-        end
+      if opts.has_key?(:except) && !opts[:except].nil?
+        rv[:except] = convert_filter_list(filter, opts[:except], :except) { |f, l, t| b.call(f, l, t) }
       end
 
-      rv
+      return rv
+    end
+
+    # Adjust **:only** and **:except** lists in a set of query options.
+    # This method generates new values of **:only** and
+    # **:except** lists from *opts* as follows.
+    #
+    #  1. If the **:only** array is empty, not present, or `nil`, the return value does not contain **:only**.
+    #     The method also converts a scalar non-nil value to a one-element array.
+    #  2. If the **:except** array is empty, not present, or `nil`, the return value does not contain  **:except**.
+    #     The method also converts a scalar non-nil value to a one-element array.
+    #  3. If both arrays are present, remove the contents of the **:except** array from the
+    #     **:only** array, and return this new value in **:only**; the return value does not contain **:except**.
+    #
+    # For example, if *opts* is `{ only: [ 1, 2, 3, 4 ], except: [ 2, 4 ] }`, the return value is
+    # `{ only: [ 1, 3 ] }`.
+    # If *opts* is `{ only: [ 1, 2, 3, 4 ] }`, the return value is
+    # `{ only: [ 1, 2, 3, 4 ] }`.
+    # If *opts* is `{ except: [ 2, 4 ] }`, the return value is
+    # `{ except: [ 2, 4 ] }`.
+    #
+    # @param opts [Hash,ActionController::Parameters] The query options.
+    # @param klass [Class,String] The class or class name to pass to {#convert_list_of_references}.
+    #
+    # @return [Hash] Returns a hash that contains up to two key/value pairs: the **:only** key is the
+    #  list of elements to accept, and **:except** the list to reject. If the value of a
+    #  key is `nil`, or if the key is missing, the value should be ignored.
+    #  Note that, if *opts* is not a hash, `nil` is returned.
+    
+    def self.adjust_only_except_lists(opts)
+      return nil unless opts.is_a?(Hash) || opts.is_a?(ActionController::Parameters)
+      
+      rv = { }
+
+      if opts.has_key?(:only) && !opts[:only].nil?
+        o = (opts[:only].is_a?(Array)) ? opts[:only] : [ opts[:only] ]
+        
+        if opts.has_key?(:except) && !opts[:except].nil?
+          x = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
+          rv[:only] = o - x
+        else
+          rv[:only] = o
+        end
+      elsif opts.has_key?(:except) && !opts[:except].nil?
+        rv[:except] = (opts[:except].is_a?(Array)) ? opts[:except] : [ opts[:except] ]
+      end
+
+      return rv
     end
 
     # Parse a timestamp parameter's value.

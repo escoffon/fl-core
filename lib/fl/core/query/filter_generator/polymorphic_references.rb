@@ -35,7 +35,7 @@ module Fl::Core::Query::FilterGenerator
     #  by {#filter}, returns `nil`.
     
     def generate_simple_clause(name, desc, value)
-      ph = Fl::Core::Query::FilterHelper.partition_lists_of_polymorphic_references(value)
+      ph = Fl::Core::Query::FilterHelper.normalize_lists_of_polymorphic_references(value)
       if desc[:generator]
         return desc[:generator].call(filter, name, desc, ph)
       else

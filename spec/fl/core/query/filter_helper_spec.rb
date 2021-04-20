@@ -215,6 +215,41 @@ RSpec.describe Fl::Core::Query::FilterHelper do
     end
   end
 
+  describe '.extract_only_except_lists' do
+    it 'should process a single :only entry' do
+      expect(fh.adjust_only_except_lists(only: [ 1, 2, 3, 4 ])).to eql(only: [ 1, 2, 3, 4 ])
+      expect(fh.adjust_only_except_lists(only: [ 'aa', 'bb' ])).to eql(only: [ 'aa', 'bb' ])
+      expect(fh.adjust_only_except_lists(only: 10)).to eql(only: [ 10 ])
+      expect(fh.adjust_only_except_lists(only: 'aa')).to eql(only: [ 'aa' ])
+    end
+
+    it 'should process a single :except entry' do
+      expect(fh.adjust_only_except_lists(except: [ 1, 2, 3, 4 ])).to eql(except: [ 1, 2, 3, 4 ])
+      expect(fh.adjust_only_except_lists(except: [ 'aa', 'bb' ])).to eql(except: [ 'aa', 'bb' ])
+      expect(fh.adjust_only_except_lists(except: 10)).to eql(except: [ 10 ])
+      expect(fh.adjust_only_except_lists(except: 'aa')).to eql(except: [ 'aa' ])
+    end
+
+    it 'should process :only and :except entries' do
+      expect(fh.adjust_only_except_lists({
+                                           only: [ 1, 2, 3, 4 ],
+                                           except: [ 1, 3, 7, 9]
+                                         })).to eql(only: [ 2, 4 ])
+      expect(fh.adjust_only_except_lists({
+                                           only: [ 'aa', 'bb' ],
+                                           except: 'bb'
+                                         })).to eql(only: [ 'aa' ])
+      expect(fh.adjust_only_except_lists({
+                                           only: 10,
+                                           except: [ 20, 40 ]
+                                         })).to eql(only: [ 10 ])
+      expect(fh.adjust_only_except_lists({
+                                           only: 'aa',
+                                           except: 'bb'
+                                         })).to eql(only: [ 'aa' ])
+    end
+  end
+  
   describe '.convert_list_of_references' do
     it 'should support all formats in extract_identifier_from_reference' do
       rl = [ 10, '20', td1_1.to_signed_global_id, td1_2.to_global_id, td1_3.to_global_id.to_s,
@@ -236,29 +271,29 @@ RSpec.describe Fl::Core::Query::FilterHelper do
     end
   end
 
-  describe '.partition_lists_of_references' do
+  describe '.normalize_lists_of_references' do
     it 'should support all formats supported by .convert_list_of_references' do
       rl = [ 10, '20', td1_1.to_signed_global_id, td1_2.to_global_id, td1_3.to_global_id.to_s,
              td1_4.fingerprint, td1_5.to_signed_global_id.to_s, td1_6, 10.4, '10.8', 'not_a_fingerprint', [ ], { } ]
       xl = [ 10, 20, td1_1.id, td1_2.id, td1_3.id,
              td1_4.id, td1_5.id, td1_6.id ]
 
-      h = fh.partition_lists_of_references({ only: rl }, td1)
+      h = fh.normalize_lists_of_references({ only: rl }, td1)
       expect(h).to be_a(Hash)
       expect(h).to include(:only)
       expect(h[:only]).to eql(xl)
 
-      h = fh.partition_lists_of_references({ only: rl }, td1.name)
+      h = fh.normalize_lists_of_references({ only: rl }, td1.name)
       expect(h).to be_a(Hash)
       expect(h).to include(:only)
       expect(h[:only]).to eql(xl)
 
-      h = fh.partition_lists_of_references({ except: rl }, td1)
+      h = fh.normalize_lists_of_references({ except: rl }, td1)
       expect(h).to be_a(Hash)
       expect(h).to include(:except)
       expect(h[:except]).to eql(xl)
 
-      h = fh.partition_lists_of_references({ except: rl }, td1.name)
+      h = fh.normalize_lists_of_references({ except: rl }, td1.name)
       expect(h).to be_a(Hash)
       expect(h).to include(:except)
       expect(h[:except]).to eql(xl)
@@ -269,43 +304,25 @@ RSpec.describe Fl::Core::Query::FilterHelper do
              td1_4.fingerprint, td1_5.to_signed_global_id.to_s, td1_6, 10.4, '10.8', 'not_a_fingerprint', [ ], { } ]
       xl = [ 10, 20 ]
 
-      h = fh.partition_lists_of_references({ only: rl }, td2)
+      h = fh.normalize_lists_of_references({ only: rl }, td2)
       expect(h).to be_a(Hash)
       expect(h).to include(:only)
       expect(h[:only]).to eql(xl)
 
-      h = fh.partition_lists_of_references({ only: rl }, td2.name)
+      h = fh.normalize_lists_of_references({ only: rl }, td2.name)
       expect(h).to be_a(Hash)
       expect(h).to include(:only)
       expect(h[:only]).to eql(xl)
 
-      h = fh.partition_lists_of_references({ except: rl }, td2)
+      h = fh.normalize_lists_of_references({ except: rl }, td2)
       expect(h).to be_a(Hash)
       expect(h).to include(:except)
       expect(h[:except]).to eql(xl)
 
-      h = fh.partition_lists_of_references({ except: rl }, td2.name)
+      h = fh.normalize_lists_of_references({ except: rl }, td2.name)
       expect(h).to be_a(Hash)
       expect(h).to include(:except)
       expect(h[:except]).to eql(xl)
-    end
-
-    it 'should adjust :only and :except lists' do
-      ol = [ 10, '20', td1_1.to_signed_global_id, td1_2.to_global_id, td1_3.to_global_id.to_s,
-             td1_4.fingerprint, td1_5.to_signed_global_id.to_s, td1_6 ]
-      el = [ 10, td1_1.to_signed_global_id, td1_2.to_global_id,
-             td1_4.fingerprint, 10.4, '10.8', 'not_a_fingerprint', [ ], { } ]
-      oxl = [ 20, td1_3.id, td1_5.id, td1_6.id ]
-
-      h = fh.partition_lists_of_references({ only: ol, except: el }, td1)
-      expect(h).to be_a(Hash)
-      expect(h).to include(:only)
-      expect(h[:only]).to eql(oxl)
-
-      h = fh.partition_lists_of_references({ only: ol, except: el }, td1.name)
-      expect(h).to be_a(Hash)
-      expect(h).to include(:only)
-      expect(h[:only]).to eql(oxl)
     end
   end
 
@@ -360,7 +377,7 @@ RSpec.describe Fl::Core::Query::FilterHelper do
     end
   end
 
-  describe '.partition_lists_of_polymorphic_references' do
+  describe '.normalize_lists_of_polymorphic_references' do
     it 'should support all formats supported by .convert_list_of_polymorphic_references' do
       rl = [ 10, '20', td1_1.to_signed_global_id, td2_2.to_global_id, td1_3.to_global_id.to_s,
              td2_4.fingerprint, td1_5.to_signed_global_id.to_s, td2_6, 'My::Class/30',
@@ -368,12 +385,12 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       xl = [ td1_1.fingerprint, td2_2.fingerprint, td1_3.fingerprint,
              td2_4.fingerprint, td1_5.fingerprint, td2_6.fingerprint, 'My::Class/30' ]
 
-      h = fh.partition_lists_of_polymorphic_references({ only: rl })
+      h = fh.normalize_lists_of_polymorphic_references({ only: rl })
       expect(h).to be_a(Hash)
       expect(h).to include(:only)
       expect(h[:only]).to eql(xl)
 
-      h = fh.partition_lists_of_polymorphic_references({ except: rl })
+      h = fh.normalize_lists_of_polymorphic_references({ except: rl })
       expect(h).to be_a(Hash)
       expect(h).to include(:except)
       expect(h[:except]).to eql(xl)
@@ -384,23 +401,25 @@ RSpec.describe Fl::Core::Query::FilterHelper do
              td2_4.fingerprint, td1_5.to_signed_global_id.to_s, td2_6, 'My::Class/30' ]
       el = [ 10, td1_1.to_signed_global_id, td2_2.to_global_id,
              td2_4.fingerprint, 10.4, '10.8', 'not_a_fingerprint', [ ], { } ]
-      oxl = [ td1_3.fingerprint, td1_5.fingerprint, td2_6.fingerprint, 'My::Class/30' ]
 
-      h = fh.partition_lists_of_polymorphic_references({ only: ol, except: el })
+      h = fh.normalize_lists_of_polymorphic_references({ only: ol, except: el })
       expect(h).to be_a(Hash)
-      expect(h).to include(:only)
-      expect(h[:only]).to eql(oxl)
+      expect(h).to eql({
+                         only: [ td1_1.fingerprint, td2_2.fingerprint, td1_3.fingerprint, td2_4.fingerprint,
+                                 td1_5.fingerprint, td2_6.fingerprint, 'My::Class/30' ],
+                         except: [ td1_1.fingerprint, td2_2.fingerprint, td2_4.fingerprint ]
+                       })
     end
   end
 
-  describe '.partition_filter_lists' do
+  describe '.normalize_filter_lists' do
     it 'should trigger the block to process lists' do
       rl = [ 10, '20', td1_1.to_signed_global_id, td1_2.to_global_id, td1_3.to_global_id.to_s,
              td1_4.fingerprint, td1_5.to_signed_global_id.to_s, 10.4, '10.8', 'not_a_fingerprint', [ ], { } ]
       xl = [ 10, td1_1.id, td1_3.id, td1_5.id ]
 
       did_see = [ ]
-      h = fh.partition_filter_lists(nil, { only: rl }) do |f, l, type|
+      h = fh.normalize_filter_lists(nil, { only: rl }) do |f, l, type|
         did_see.push(type)
         rv = [ ]
         fh.convert_list_of_references(l, nil).each_with_index { |e, idx| rv.push(e) if (idx % 2) == 0 }
@@ -412,7 +431,7 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       expect(did_see).to eql([ :only ])
 
       did_see = [ ]
-      h = fh.partition_filter_lists(nil, { except: rl }) do |f, l, type|
+      h = fh.normalize_filter_lists(nil, { except: rl }) do |f, l, type|
         did_see.push(type)
         rv = [ ]
         fh.convert_list_of_references(l, nil).each_with_index { |e, idx| rv.push(e) if (idx % 2) == 0 }
@@ -428,10 +447,9 @@ RSpec.describe Fl::Core::Query::FilterHelper do
       ol = [ 10, '20', td1_1.to_signed_global_id, td1_2.to_global_id, td1_3.to_global_id.to_s,
              td1_4.fingerprint, td1_5.to_signed_global_id.to_s, 10.4, '10.8', 'not_a_fingerprint', [ ], { } ]
       el = [ 10, td1_4.id, td1_5.id ]
-      xl = [ td1_1.id, td1_3.id ]
 
       did_see = [ ]
-      h = fh.partition_filter_lists(nil, { only: ol, except: el }) do |f, l, type|
+      h = fh.normalize_filter_lists(nil, { only: ol, except: el }) do |f, l, type|
         did_see.push(type)
 
         if type == :only
@@ -443,8 +461,10 @@ RSpec.describe Fl::Core::Query::FilterHelper do
         end
       end
       expect(h).to be_a(Hash)
-      expect(h).to include(:only)
-      expect(h[:only]).to eql(xl)
+      expect(h).to eql({
+                         only: [ 10, td1_1.id, td1_3.id, td1_5.id ],
+                         except: [ 10, td1_4.id, td1_5.id ]
+                       })
       expect(did_see).to eql([ :only, :except ])
     end
   end
