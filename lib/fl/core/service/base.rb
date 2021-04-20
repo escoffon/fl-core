@@ -951,7 +951,7 @@ module Fl::Core::Service
     # @param _q [Hash] The query parameters, from the **:_q** key in the submission parameters.
     # @param _pg [Hash] The pagination parameters, from the **:_pg** key in the submission parameters.
     #
-    # @return [Hash] Returns a hash of query options.
+    # @return [ActiveSupport::HashWithIndifferentAcces] Returns a hash of query options.
 
     def init_query_opts(defs = {}, _q = {}, _pg = {})
       sdefs = {}
@@ -986,7 +986,7 @@ module Fl::Core::Service
 
       opts.delete(:limit) if opts[:limit] < 0
 
-      opts
+      return opts.with_indifferent_access
     end
 
     # Generate pagination control data for the next page in an `:index` query.
