@@ -590,7 +590,7 @@ module Fl::Core::Query
               end
       
       if hbody.is_a?(Hash)
-        return body.reduce({ }) do |acc, kvp|
+        return hbody.reduce({ }) do |acc, kvp|
           k, v = kvp
           sk = k.to_sym
 
