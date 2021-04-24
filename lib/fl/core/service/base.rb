@@ -634,7 +634,9 @@ module Fl::Core::Service
         begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            unless obj.update(p)
+            if obj.update(p)
+              after_update(obj, p)
+            else
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                               error_response_data('update_failure',
                                                   localized_message('update_failure', fingerprint: obj.fingerprint),
@@ -1179,6 +1181,16 @@ module Fl::Core::Service
     # @param [Hash,ActionController::Parameters] p The parameters that were used to create the object.
 
     def after_create(obj, p)
+    end
+
+    # Callback triggered after an object is updated.
+    # The defauly implementation is empty; subclasses can implement additional processing by overriding
+    # the method.
+    #
+    # @param [ActiveRecord::Base] obj The updated object.
+    # @param [Hash,ActionController::Parameters] p The parameters that were used to update the object.
+
+    def after_update(obj, p)
     end
 
     # @!visibility private
