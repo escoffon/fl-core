@@ -598,16 +598,23 @@ module Fl::Core::Query
           when :all, :any, :not
             acc[sk] = adjust(v) { |g, fk, fv| b.call(g, fk, fv) }
           else
-            # this should be a known filter name from the configuration
+            # if this is a known filter name, we process it; otherwise, we ignore it and return as is
+            # If we were to signal an error for an unknown filter name, we would not be able to use partial
+            # filter configurations to adjust a subset of a filter's options.
+            # Note that calling generate will then trigger an error (as it should) if the filter is not registered.
+            # This behavior support the use case where we want to adjust just a subset of a filter's options,
+            # so we may use a custom configuration that is a subset of the one used for generating the clauses
 
-            raise Exception.new("unknown filter attribute #{name}") unless @config[:filters].has_key?(sk)
+            if @config[:filters].has_key?(sk)
+              desc = @config[:filters][sk]
+              type = find_type(desc[:type])
+              raise Exception.new("unknown filter type #{desc[:type]} for #{sk}") unless type.is_a?(Hash)
 
-            desc = @config[:filters][sk]
-            type = find_type(desc[:type])
-            raise Exception.new("unknown filter type #{desc[:type]} for #{sk}") unless type.is_a?(Hash)
-
-            generator = type[:class].new(self)
-            acc[sk] = b.call(self, sk, generator.normalize_value(sk, desc, v))
+              generator = type[:class].new(self)
+              acc[sk] = b.call(self, sk, generator.normalize_value(sk, desc, v))
+            else
+              acc[sk] = v
+            end
           end
 
           acc

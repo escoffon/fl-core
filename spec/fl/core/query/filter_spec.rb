@@ -718,6 +718,21 @@ RSpec.describe Fl::Core::Query::Filter do
         end
         expect(nf).to eql(xf)
       end
+
+      it 'should ignore unregistered filter names' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          unknown: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] }
+        }
+        nf = g1.adjust(of) { |g, fk, fv| vf }
+        expect(nf).to eql(of)
+
+        g1.reset
+        expect do
+          clause = g1.generate(nf)
+        end.to raise_exception(Fl::Core::Query::Filter::Exception)
+      end
     end
 
     context 'with a multiple root filter' do
@@ -785,6 +800,41 @@ RSpec.describe Fl::Core::Query::Filter do
           end
         end
         expect(nf).to eql(xf)
+      end
+
+      it 'should ignore unregistered filter names' do
+        g1 = Fl::Core::Query::Filter.new(cfg_1)
+
+        of = {
+          ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+          any: {
+            unknown: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] }
+          }
+        }
+        xf = {
+          ones: { only: [ 'Fl::Core::TestDatumOne/1' ] },
+          any: {
+            unknown: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] }
+          }
+        }
+        nf = g1.adjust(of) do |g, fk, fv|
+          case fk
+          when :ones
+            fv.reduce({ }) do |acc, fkvp|
+              ek, ev = fkvp
+              acc[ek] = [ 'Fl::Core::TestDatumOne/1' ]
+              acc
+            end
+          else
+            fv
+          end
+        end
+        expect(nf).to eql(xf)
+
+        g1.reset
+        expect do
+          clause = g1.generate(nf)
+        end.to raise_exception(Fl::Core::Query::Filter::Exception)
       end
     end
 
