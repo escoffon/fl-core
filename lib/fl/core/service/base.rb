@@ -634,7 +634,7 @@ module Fl::Core::Service
         begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            if obj.update(p)
+            if update_object(obj, p)
               after_update(obj, p)
             else
               self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
@@ -851,6 +851,21 @@ module Fl::Core::Service
 
     def new_object(p)
       return self.model_class.new(p)
+    end
+
+    # Update wrapper for existing objects.
+    # This method is used by {#update} to give subclasses the ability to override the update process.
+    #
+    # The default implementation calls `obj.update(p)`, which for most service object implementations
+    # is the desired behavior.
+    #
+    # @param obj [ActiveRecord::Base] The object to update.
+    # @param p [Hash] The hash to pass to the initializer.
+    #
+    # @return [Boolean] Returns `true` on a successful update, `false` otherwise.
+
+    def update_object(obj, p)
+      return obj.update(p)
     end
     
     # The backstop values for the query options.
