@@ -95,7 +95,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       if r.respond_to?(:contents)
         r.contents
       elsif r.is_a?(Hash)
-        r['contents'] || r[:contents]
+        r['contents_html'] || r[:contents]
       else
         nil
       end
@@ -129,12 +129,14 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(p['comments'].count).to eql(0)
     end
 
-    it "should return comments if :only_commentables is present" do
+    it "should return comments if the commentables:only filter is present" do
       dl = [ d100, d101, d102, d200, d201, d202 ]
         
       xl = [ 'd100 - a10 - c1', 'd100 - a11 - c1', 'd100 - a10 - c2', 'd100 - a12 - c1', 'd100 - a12 - c2', 'd100 - a13 - c1' ]
-      get comments_url(), headers: { currenUser: a10.fingerprint }, params: {
-            _q: { only_commentables: [ d100.fingerprint ] }
+      get comments_url(), headers: { currentUser: a10.fingerprint }, params: {
+            _q: {
+              filters: { commentables: { only: [ d100.to_global_id.to_s ] } }
+            }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -145,7 +147,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(p['comments'].count).to eql(xl.count)
       expect(p['comments']).to be_a(Array)
       expect(p['comments'][0]).to be_a(Hash)
-      expect(p['comments'][0]).to include('commentable', 'author', 'title', 'contents', 'contents_delta')
+      expect(p['comments'][0]).to include('commentable', 'author', 'title', 'contents_html', 'contents_json')
       expect(p['comments'][0]['commentable']).to be_a(Hash)
       expect(p['comments'][0]['author']).to be_a(Hash)
       expect(_contents(p['comments'])).to match_array(xl)
@@ -155,8 +157,10 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       dl = [ d100, d101, d102, d200, d201, d202 ]
         
       xl = [ 'd100 - a10 - c1', 'd100 - a11 - c1', 'd100 - a10 - c2', 'd100 - a12 - c1', 'd100 - a12 - c2', 'd100 - a13 - c1' ]
-      get comments_url(), headers: { currenUser: a10.fingerprint }, params: {
-            _q: { only_commentables: [ d100.fingerprint ] }
+      get comments_url(), headers: { currentUser: a10.fingerprint }, params: {
+            _q: {
+              filters: { commentables: { only: [ d100.fingerprint ] } }
+            }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -168,7 +172,11 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       dl = [ d100, d101, d102, d200, d201, d202 ]
 
       xl = [ 'd100 - a10 - c1', 'd100 - a11 - c1', 'd100 - a10 - c2', 'd100 - a12 - c1', 'd100 - a12 - c2', 'd100 - a13 - c1' ]
-      get comments_url(), params: { _q: { only_commentables: [ d100.fingerprint ] } }
+      get comments_url(), params: {
+            _q: {
+              filters: { commentables: { only: [ d100.fingerprint ] } }
+            }
+          }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
       expect(jr).to include('_status', 'payload')
@@ -180,7 +188,9 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       xl = [ 'd101 - a10 - c1', 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
-            _q: { only_commentables: [ d101.fingerprint, d102.to_global_id.to_s ] }
+            _q: {
+              filters: { commentables: { only: [ d101.fingerprint, d102.to_global_id.to_s ] } }
+            }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -197,7 +207,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       xl = [ 'd200 - a10 - c1', 'd200 - a12 - c1', 'd200 - a13 - c1' ]
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
-            _q: { only_commentables: [ d200.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint ] } } }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -209,7 +219,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(_contents(p['comments'])).to match_array(xl)
 
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
-            _q: { only_commentables: [ d200.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint ] } } }
           }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
@@ -218,7 +228,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(jr['_error']).to include('type', 'message')
 
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
-            _q: { only_commentables: [ d200.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint ] } } }
           }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
@@ -227,7 +237,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(jr['_error']).to include('type', 'message')
 
       get comments_url(), params: {
-            _q: { only_commentables: [ d200.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint ] } } }
           }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
@@ -240,7 +250,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       dl = [ d100, d101, d102, d200, d201, d202 ]
 
       get comments_url(), params: {
-            _q: { only_commentables: [ d200.fingerprint, d201.to_global_id.to_s ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint, d201.to_global_id.to_s ] } } }
           }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
@@ -251,7 +261,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       xl = [ 'd200 - a10 - c1', 'd200 - a12 - c1', 'd200 - a13 - c1',
              'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
-            _q: { only_commentables: [ d200.fingerprint, d201.to_global_id.to_s ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint, d201.to_global_id.to_s ] } } }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -263,7 +273,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(_contents(p['comments'])).to match_array(xl)
 
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
-            _q: { only_commentables: [ d200.fingerprint, d201.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint, d201.fingerprint ] } } }
           }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
@@ -273,7 +283,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       xl = [ 'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
-            _q: { only_commentables: [ d201.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d201.fingerprint ] } } }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -285,7 +295,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(_contents(p['comments'])).to match_array(xl)
 
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
-            _q: { only_commentables: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ] } } }
           }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
@@ -295,7 +305,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       xl = [ 'd101 - a10 - c1', 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
-            _q: { only_commentables: [ d101.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d101.fingerprint ] } } }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -308,7 +318,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       xl = [ 'd101 - a10 - c1', 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
       get comments_url(), params: {
-            _q: { only_commentables: [ d101.fingerprint ] }
+            _q: { filters: { commentables: { only: [ d101.fingerprint ] } } }
           }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
@@ -320,14 +330,16 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(_contents(p['comments'])).to match_array(xl)
     end
 
-    it "should process :only_authors" do
+    it "should process the authors:only filter" do
       dl = [ d100, d101, d102, d200, d201, d202 ]
 
       xl = [ 'd201 - a11 - c1', 'd201 - a11 - c2' ]
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d200.fingerprint, d201.to_global_id.to_s ],
-              only_authors: [ a11.fingerprint ]
+              filters: {
+                commentables: { only: [ d200.fingerprint, d201.to_global_id.to_s ] },
+                authors: { only: [ a11.fingerprint ] }
+              }
             }
           }
       expect(response).to have_http_status(:ok)
@@ -342,8 +354,10 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       xl = [ 'd201 - a12 - c1', 'd101 - a10 - c1', 'd101 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
             _q: {
-              only_commentables: [ d101.fingerprint, d201.fingerprint ],
-              only_authors: [ a10.fingerprint, a12.to_global_id.to_s ]
+              filters: {
+                commentables: { only: [ d101.fingerprint, d201.fingerprint ] },
+                authors: { only: [ a10.fingerprint, a12.to_global_id.to_s ] }
+              }
             }
           }
       expect(response).to have_http_status(:ok)
@@ -364,8 +378,10 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
              'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ],
-              except_authors: [ a10.fingerprint ]
+              filters: {
+                commentables: { only: [ d200.fingerprint, d201.fingerprint, d101.fingerprint ] },
+                authors: { except: [ a10.fingerprint ] }
+              }
             }
           }
       expect(response).to have_http_status(:ok)
@@ -380,8 +396,10 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       xl = [ 'd101 - a11 - c1', 'd101 - a11 - c2', 'd101 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a13.fingerprint }, params: {
             _q: {
-              only_commentables: [ d101.fingerprint ],
-              except_authors: [ a10.fingerprint ]
+              filters: {
+                commentables: { only: [ d101.fingerprint ] },
+                authors: { except: [ a10.fingerprint ] }
+              }
             }
           }
       expect(response).to have_http_status(:ok)
@@ -396,8 +414,10 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       xl = [ 'd101 - a10 - c1' ]
       get comments_url(), headers: { currentUser: a12.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d101.fingerprint ],
-              except_authors: [ a11.to_global_id.to_s, a12.fingerprint ]
+              filters: {
+                commentables: { only: [ d201.fingerprint, d101.fingerprint ] },
+                authors: { except: [ a11.to_global_id.to_s, a12.fingerprint ] }
+              }
             }
           }
       expect(response).to have_http_status(:ok)
@@ -417,8 +437,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
              'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d100.fingerprint ],
-              order: 'contents asc'
+              filters: { commentables: { only: [ d201.fingerprint, d100.fingerprint ] } },
+              order: 'contents_html asc'
             }
           }
       expect(response).to have_http_status(:ok)
@@ -432,8 +452,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d100.fingerprint ],
-              order: 'contents desc'
+              filters: { commentables: { only: [ d201.fingerprint, d100.fingerprint ] } },
+              order: 'contents_html desc'
             }
           }
       expect(response).to have_http_status(:ok)
@@ -453,8 +473,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
              'd201 - a11 - c1', 'd201 - a11 - c2', 'd201 - a12 - c1' ]
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d100.fingerprint ],
-              order: 'contents asc', limit: 4, offset: 2
+              filters: { commentables: { only: [ d201.fingerprint, d100.fingerprint ] } },
+              order: 'contents_html asc', limit: 4, offset: 2
             }
           }
       expect(response).to have_http_status(:ok)
@@ -468,8 +488,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d100.fingerprint ],
-              order: 'contents asc', limit: 4
+              filters: { commentables: { only: [ d201.fingerprint, d100.fingerprint ] } },
+              order: 'contents_html asc', limit: 4
             }
           }
       expect(response).to have_http_status(:ok)
@@ -488,8 +508,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d100.fingerprint ],
-              order: 'contents asc'
+              filters: { commentables: { only: [ d201.fingerprint, d100.fingerprint ] } },
+              order: 'contents_html asc'
             },
             _pg: p['_pg']
           }
@@ -509,8 +529,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       get comments_url(), headers: { currentUser: a11.fingerprint }, params: {
             _q: {
-              only_commentables: [ d201.fingerprint, d100.fingerprint ],
-              order: 'contents asc'
+              filters: { commentables: { only: [ d201.fingerprint, d100.fingerprint ] } },
+              order: 'contents_html asc'
             },
             _pg: p['_pg']
           }
@@ -535,8 +555,8 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       {
         commentable: d100.fingerprint,
         title: 'c.d100 - t1',
-        contents: 'c.d100 - c1',
-        contents_delta: JSON.generate({ "ops" => [ { "insert" => 'c.d100 - c1' } ] })
+        contents_html: 'c.d100 - c1',
+        contents_json: JSON.generate({ "ops" => [ { "insert" => 'c.d100 - c1' } ] })
       }
     end
 
@@ -544,13 +564,13 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       {
         commentable: d200.fingerprint,
         title: 'c.d200 - t1',
-        contents: 'c.d200 - c1',
-        contents_delta: JSON.generate({ "ops" => [ { "insert" => 'c.d200 - c1' } ] })
+        contents_html: 'c.d200 - c1',
+        contents_json: JSON.generate({ "ops" => [ { "insert" => 'c.d200 - c1' } ] })
       }
     end
 
     it "should fail if not authenticated" do
-      post comments_url, params: { fl_core_comment: d100_params }
+      post comments_url, params: { fl_test_comment: d100_params }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
@@ -559,7 +579,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
     end
 
     it "should create a comment if authenticated and commentable does not support access control" do
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d100_params }
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d100_params }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
       expect(jr).to include('_status', 'payload')
@@ -568,39 +588,39 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(jr['payload']).to include('comment')
       c = jr['payload']['comment']
       expect(c).to be_a(Hash)
-      expect(c).to include('fingerprint', 'commentable', 'author', 'title', 'contents', 'contents_delta')
+      expect(c).to include('fingerprint', 'commentable', 'author', 'title', 'contents_html', 'contents_json')
       expect(c['commentable']).to be_a(Hash)
       expect(c['commentable']['fingerprint']).to eql(d100.fingerprint)
       expect(c['author']).to be_a(Hash)
       expect(c['author']['fingerprint']).to eql(a10.fingerprint)
       expect(c['title']).to eql(d100_params[:title])
-      expect(c['contents']).to eql(d100_params[:contents])
-      expect(c['contents_delta']).to be_a(String)
-      expect(JSON.parse(c['contents_delta'])).to eql(JSON.parse(d100_params[:contents_delta]))
+      expect(c['contents_html']).to eql(d100_params[:contents_html])
+      expect(c['contents_json']).to be_a(String)
+      expect(JSON.parse(c['contents_json'])).to eql(JSON.parse(d100_params[:contents_json]))
     end
 
     it "should create a comment if user has create permission" do
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d200_params }
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d200_params }
       expect(response).to have_http_status(:ok)
       jr = JSON.parse(response.body)
       c = jr['payload']['comment']
       expect(c['commentable']['fingerprint']).to eql(d200.fingerprint)
       expect(c['author']['fingerprint']).to eql(a10.fingerprint)
       expect(c['title']).to eql(d200_params[:title])
-      expect(c['contents']).to eql(d200_params[:contents])
-      expect(c['contents_delta']).to be_a(String)
-      expect(JSON.parse(c['contents_delta'])).to eql(JSON.parse(d200_params[:contents_delta]))
+      expect(c['contents_html']).to eql(d200_params[:contents_html])
+      expect(c['contents_json']).to be_a(String)
+      expect(JSON.parse(c['contents_json'])).to eql(JSON.parse(d200_params[:contents_json]))
     end
 
     it "should fail if user does not have create permission" do
-      post comments_url, headers: { currentUser: a12.fingerprint }, params: { fl_core_comment: d200_params }
+      post comments_url, headers: { currentUser: a12.fingerprint }, params: { fl_test_comment: d200_params }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
       expect(jr['_error']).to include('type', 'message')
 
-      post comments_url, headers: { currentUser: a13.fingerprint }, params: { fl_core_comment: d200_params }
+      post comments_url, headers: { currentUser: a13.fingerprint }, params: { fl_test_comment: d200_params }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
@@ -611,7 +631,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
     it "should fail on a missing :commentable param" do
       d = d200_params.dup
       d.delete(:commentable)
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
@@ -620,7 +640,7 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
 
       d = d100_params.dup
       d.delete(:commentable)
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:forbidden)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
@@ -628,73 +648,86 @@ RSpec.describe "Fl::Test::CommentsController", type: :request do
       expect(jr['_error']).to include('type', 'message')
     end
     
-    it "should fail on a missing :contents param" do
+    it "should fail on a missing :contents_html param" do
       d = d200_params.dup
-      d.delete(:contents)
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      d.delete(:contents_html)
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:unprocessable_entity)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      expect(jr['_error']).to include('type', 'message', 'details')
+      expect(jr['_error']['details']).to be_a(Hash)
+      expect(jr['_error']['details']).to include('messages', 'full_messages')
+      expect(jr['_error']['details']['messages']).to be_a(Hash)
+      expect(jr['_error']['details']['messages']).to include('contents_html')
 
       d = d100_params.dup
-      d.delete(:contents)
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      d.delete(:contents_html)
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:unprocessable_entity)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      expect(jr['_error']['details']).to include('messages', 'full_messages')
+      expect(jr['_error']['details']['messages']).to be_a(Hash)
+      expect(jr['_error']['details']['messages']).to include('contents_html')
     end
     
-    it "should fail on a missing :contents_delta param" do
+    it "should fail on a missing :contents_json param" do
       d = d200_params.dup
-      d.delete(:contents_delta)
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      d.delete(:contents_json)
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:unprocessable_entity)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      expect(jr['_error']['details']).to include('messages', 'full_messages')
+      expect(jr['_error']['details']['messages']).to be_a(Hash)
+      expect(jr['_error']['details']['messages']).to include('contents_json')
 
       d = d100_params.dup
-      d.delete(:contents_delta)
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      d.delete(:contents_json)
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:unprocessable_entity)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      expect(jr['_error']['details']).to include('messages', 'full_messages')
+      expect(jr['_error']['details']['messages']).to be_a(Hash)
+      expect(jr['_error']['details']['messages']).to include('contents_json')
     end
     
-    it "should fail on an invalid :contents_delta param" do
+    it "should fail on an invalid :contents_json param" do
       d = d200_params.dup
-      d[:contents_delta] = JSON.generate([ 1 ])
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      d[:contents_json] = JSON.generate([ 1 ])
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:unprocessable_entity)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      expect(jr['_error']['details']).to include('messages', 'full_messages')
+      expect(jr['_error']['details']['messages']).to be_a(Hash)
+      expect(jr['_error']['details']['messages']).to include('contents_json')
 
       d = d100_params.dup
-      d[:contents_delta] = JSON.generate("string value")
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
+      d[:contents_json] = JSON.generate("string value")
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
       expect(response).to have_http_status(:unprocessable_entity)
       jr = JSON.parse(response.body)
       expect(jr).to include('_error')
       expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      expect(jr['_error']['details']).to include('messages', 'full_messages')
+      expect(jr['_error']['details']['messages']).to be_a(Hash)
+      expect(jr['_error']['details']['messages']).to include('contents_json')
 
+      # the validation is now much more lenient, since we don't make any assumptions about the structure
+      # of the JSON contents
+      
       d = d100_params.dup
-      d[:contents_delta] = JSON.generate({ foo: 10 })
-      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_core_comment: d }
-      expect(response).to have_http_status(:unprocessable_entity)
-      jr = JSON.parse(response.body)
-      expect(jr).to include('_error')
-      expect(jr['_error']).to be_a(Hash)
-      expect(jr['_error']).to include('type', 'message')
+      d[:contents_json] = JSON.generate({ foo: 10 })
+      post comments_url, headers: { currentUser: a10.fingerprint }, params: { fl_test_comment: d }
+      expect(response).to have_http_status(:ok)
     end
   end
 end

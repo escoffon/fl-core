@@ -6,6 +6,10 @@ class Fl::Test::CommentService < Fl::Core::Comment::ActiveRecord::Service
 
   self.model_class = Fl::Test::Comment
 
+  # This statement overrides the namespace for create and update parameters.
+
+  self.parameter_namespace = :fl_test_comment
+
   protected
 
   # Perform the permission check for an action.
@@ -22,6 +26,6 @@ class Fl::Test::CommentService < Fl::Core::Comment::ActiveRecord::Service
   # @return [Boolean] Returns `false` if the permission is not granted.
 
   def _has_action_permission?(action, obj, opts = nil)
-    return _has_action_permission?(action, obj, opts)
+    return super(action, obj, opts)
   end
 end

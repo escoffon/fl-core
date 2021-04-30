@@ -26,14 +26,29 @@ class Fl::Test::CommentsController < ApplicationController
   # adding the include statement in ApplicationController; in that case, all you need to
   # do is comment out current_user.
 
+  # Hacked authentication for testing purposes; do NOT use for production
+  
+  def current_user
+    # for testing purposes, get the current user from a header
+
+    cu = nil
+    unless request.headers[:HTTP_CURRENTUSER].nil?
+      begin
+        cu = ActiveRecord::Base.find_by_fingerprint(request.headers[:HTTP_CURRENTUSER])
+      rescue => x
+      end
+    end
+    cu
+  end
+  
   # before_action :authenticate_user!
   # skip_before_action :verify_authenticity_token
 
-  unless self.instance_methods.include?(:current_user)
-    def current_user
-      nil
-    end
-  end
+  #unless self.instance_methods.include?(:current_user)
+  #  def current_user
+  #    nil
+  #  end
+  #end
   
   # GET /fl/core/comments
   def index

@@ -12,6 +12,25 @@ module Fl::Core::Comment::ActiveRecord
   class Service < Fl::Core::Service::Base
     self.model_class = Fl::Core::Comment::ActiveRecord::Comment
 
+    # @!visibility private
+    QUERY_FILTERS_CONFIG = {
+      generators: {
+      },
+      
+      filters: {
+        commentables: {
+          type: :polymorphic_references,
+          convert: :fingerprint
+        }
+      }
+    }
+
+    # Class attribute containing the namespace for create and update parameters.
+    # Extension subclasses will likey have to change the value.
+
+    cattr_accessor :parameter_namespace
+    self.parameter_namespace = :fl_core_comment
+    
     # Initializer.
     #
     # @param actor [Object] The actor (typically an object that mixed in {Fl::Core::Actor})
@@ -33,22 +52,44 @@ module Fl::Core::Comment::ActiveRecord
     #
     # @param p [Hash,ActionController::Params,String] The parameter value.
     #
-    # @return [ActionController::Parameters] Returns the query parameters.
+    # @return [Hash] Returns the query parameters, converted to a Hash.
 
     def query_params(p = nil)
       if @query_params.nil?
-        # We do not allow :except_commentables, because it opens a security hole if we are not careful, and it is
+        qp = normalize_query_params(p).permit({ filters: { } }, :order, :limit, :offset).permit!.to_h
+
+        # We do not allow commentables:except, because it opens a security hole if we are not careful, and it is
         # a low use option anyway.
-        # Also, we convert :only_commentables to objects, which the access control needs to check for permissions
-      
-        @query_params = normalize_query_params(p).permit({ only_commentables: [ ] },
-                                                         { only_authors: [ ] }, { except_authors: [ ] },
-                                                         :created_after, :updated_after, :created_before, :updated_before,
-                                                         :order, :limit, :offset)
-        only_c = convert_list_of_polymorphic_references(@query_params[:only_commentables])
-        @query_params[:only_commentables] = _instantiate_object_list(only_c)
+        # Also, we convert commentables:only to objects, which the access control needs to check for permissions
+
+        gen = Fl::Core::Query::Filter.new(QUERY_FILTERS_CONFIG)
+        nf = gen.adjust(qp[:filters]) do |f, name, value|
+          case name
+          when :commentables
+            rv = { }
+            rv[:only] = value[:only] if value.has_key?(:only)
+            rv
+          else
+            value
+          end
+        end
+
+        if nf.is_a?(Hash)
+          if nf.has_key?(:commentables) && nf[:commentables].has_key?(:only)
+            # the :only list has already been converted by the filter's adjust call, so all we need to do here
+            # is to instantiate the objects
+            
+            nf[:commentables][:only] = _instantiate_object_list(nf[:commentables][:only])
+          end
+
+          qp[:filters] = nf
+        else
+          qp[:filters] = { }
+        end
+        
+        @query_params = qp
       end
-      
+
       @query_params
     end
 
@@ -61,7 +102,8 @@ module Fl::Core::Comment::ActiveRecord
 
     def create_params(p = nil)
       # :author is implicit in the actor
-      cp = strong_params(p).require(:fl_core_comment).permit(:commentable, :title, :contents, :contents_delta)
+      cp = strong_params(p).require(self.parameter_namespace).permit(:commentable, :title,
+                                                                     :contents_html, :contents_json)
       cp[:author] = actor
       cp
     end
@@ -75,7 +117,7 @@ module Fl::Core::Comment::ActiveRecord
 
     def update_params(p = nil)
       # :commentable and :author may not be modified
-      cp = strong_params(p).require(:fl_core_comment).permit(:title, :contents, :contents_delta)
+      cp = strong_params(p).require(self.parameter_namespace).permit(:title, :contents_html, :contents_json)
       cp.delete(:commentable)
       cp.delete(:author)
       cp
@@ -86,7 +128,7 @@ module Fl::Core::Comment::ActiveRecord
     # Perform the permission check for an action.
     # Overrides the superclass for the following actions:
     #
-    # - **index** iterates over all elements in **:only_ommentables** and for each confirms that {#actor}
+    # - **index** iterates over all elements in the **commentables:only** filter and for each confirms that {#actor}
     #   has {Fl::Core::Comment::Permission::IndexContents} permission. If all commentables grant permission,
     #   returns `true`; otherwise, return `false`.
     # - **create** returns `false` if {#actor} is `nil`.
@@ -106,8 +148,10 @@ module Fl::Core::Comment::ActiveRecord
     def _has_action_permission?(action, obj, opts = nil)
       case action
       when 'index'
-        if query_params[:only_commentables].is_a?(Array)
-          not_granted = query_params[:only_commentables].reduce([ ]) do |acc, c|
+        qp = query_params
+        commentables = (qp[:filters].has_key?(:commentables)) ? qp[:filters][:commentables][:only] : nil
+        if commentables.is_a?(Array)
+          not_granted = commentables.reduce([ ]) do |acc, c|
             if c.respond_to?(:has_permission?) && \
                !c.has_permission?(Fl::Core::Comment::Permission::IndexComments::NAME, actor)
               acc << c
@@ -143,23 +187,26 @@ module Fl::Core::Comment::ActiveRecord
     #  on error.
 
     def index_query(query_opts = {})
-      # :only_commentables drops objects that do not grant {#actor} `index_comments`, and for good measure
-      # we ignore :except_commentables
+      # the commentables:only filter drops objects that do not grant {#actor} `index_comments`, and for good measure
+      # we ignore commentables:except
       #
-      # The :only_commentable value is already in objects, and strictly speaking we don't need the filter,
-      # since the access check has failed if any commentables are not indexable (by actor), but we leave the
+      # The commentable:only value is already in objects, and strictly speaking we don't need the `index_comments`
+      # check, since the access check has failed if any commentables are not indexable (by actor), but we leave the
       # filter in just in case.
       # Similarly there should not be a need to call _instantiate_object_list here
+      # And commentables:except should already have been eliminated
 
-      query_opts.delete(:except_commentables)
-      only_objects = _filter_object_list(_instantiate_object_list(query_opts[:only_commentables]))
+      filters = query_opts[:filters] || { }
+      cf = filters[:commentables] || { }
+      only_objects = _filter_object_list(_instantiate_object_list(cf[:only]))
 
       # if only_objects is empty, then we return no results: we must have at least one commentable
 
       return self.model_class.none if !only_objects.is_a?(Array) || (only_objects.count < 1)
 
-      query_opts[:only_commentables] = only_objects.map { |o| o.fingerprint }
-
+      filters[:commentables] = { only: only_objects }
+      query_opts[:filters] = filters
+      
       # the other query options can be passed to the query as they are
 
       return self.model_class.build_query(query_opts)
