@@ -10,8 +10,6 @@ module Fl::Core::Comment::ActiveRecord
   # commentable class, which makes for a busier API with a fair amount of redundant operations.
 
   class Service < Fl::Core::Service::Base
-    include Fl::Core::Query
-    
     self.model_class = Fl::Core::Comment::ActiveRecord::Comment
 
     # Initializer.

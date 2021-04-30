@@ -5,7 +5,7 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::ObjectHelpers
 end
 
-RSpec.describe 'Fl::Core::Comment', type: :model do
+RSpec.describe 'Fl::Test::Comment', type: :model do
   let(:a10) { create(:test_actor, name: 'a10') }
   let(:a11) { create(:test_actor, name: 'a11') }
   let(:a12) { create(:test_actor, name: 'a12') }

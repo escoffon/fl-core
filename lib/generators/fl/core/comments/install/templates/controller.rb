@@ -1,4 +1,4 @@
-class <%=@controller_class%> < ApplicationController
+class <%=@comment_controller_class%> < ApplicationController
   include Fl::Core::Concerns::Service::ApiResponse
   include Fl::Core::Concerns::Controller::ServiceStatus
   include Fl::Core::Concerns::Service::Params
@@ -9,7 +9,7 @@ class <%=@controller_class%> < ApplicationController
   # If you need to install a different class, change it here.
   
   def service_class
-    Fl::Core::Comment::ActiveRecord::Service
+    <%=@comment_service_class%>
   end
 
   public

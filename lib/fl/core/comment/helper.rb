@@ -5,6 +5,20 @@ module Fl::Core::Comment
   # This module defines utilities for comment management.
 
   module Helper
+    # @!visibility private
+    mattr_accessor :_object_class
+    self._object_class = nil
+    
+    # The comment object class.
+    # This method returns the class corresponding to the value of {Fl::Core::Comment.object_class_name}.
+
+    def self.object_class()
+      if self._object_class.nil?
+        self._object_class = Fl::Core::Comment.object_class_name.constantize
+      end
+      return self._object_class
+    end
+    
     # Convert a commentable parameter to an object.
     # This is a wrapper around {Fl::Core::ParametersHelper.object_from_parameter}; see that
     # documentation for details on the arguments.

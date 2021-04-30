@@ -9,7 +9,7 @@ class Fl::Test::CommentsController < ApplicationController
   # If you need to install a different class, change it here.
   
   def service_class
-    Fl::Core::Comment::ActiveRecord::Service
+    Fl::Test::CommentService
   end
 
   public
@@ -29,21 +29,6 @@ class Fl::Test::CommentsController < ApplicationController
   # before_action :authenticate_user!
   # skip_before_action :verify_authenticity_token
 
-  # Hacked authentication for testing purposes; do NOT use for production
-  
-  def current_user
-    # for testing purposes, get the current user from a header
-
-    cu = nil
-    unless request.headers[:HTTP_CURRENTUSER].nil?
-      begin
-        cu = ActiveRecord::Base.find_by_fingerprint(request.headers[:HTTP_CURRENTUSER])
-      rescue => x
-      end
-    end
-    cu
-  end
-  
   unless self.instance_methods.include?(:current_user)
     def current_user
       nil
@@ -86,6 +71,28 @@ class Fl::Test::CommentsController < ApplicationController
       end
     else
       render_error_response_from_service('create_failure', @service, @service.status[:status])
+    end
+  end
+
+  # PATCH/PUT /fl/core/comments/1
+  # PATCH/PUT /fl/core/comments/1.json
+  def update
+    @service = service_class.new(current_user, params, self)
+    @comment = @service.update()
+    if @comment
+      respond_to do |format|
+        format.json do
+          if @service.success?
+            render_success_response('', :ok, {
+                                      comment: hash_one_object(@comment, @service.to_hash_params)
+                                    })
+          else
+            render_error_response_from_service('update_failure', @service, @service.status[:status])
+          end
+        end
+      end
+    else
+      render_error_response_from_service('update_failure', @service, @service.status[:status])
     end
   end
 end

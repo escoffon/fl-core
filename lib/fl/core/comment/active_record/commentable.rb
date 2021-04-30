@@ -3,11 +3,10 @@ module Fl::Core::Comment::ActiveRecord
 
   module Commentable
     extend ActiveSupport::Concern
-    include Fl::Core::Query
 
     # Build a query to fetch an object's comments.
     # This method wraps a call to {Fl::Core::Comment::ActiveRecord::Comment.build_query} using the parameters
-    # in *opts* and setting **:only_commentables** to `self`.
+    # in *opts* and setting the **:commentables:only** filter to `self`.
     #
     # @param opts [Hash] A Hash containing configuration options for the query.
     #  See the documentation for {Fl::Core::Comment::ActiveRecord::Comment.build_query}.
@@ -23,25 +22,27 @@ module Fl::Core::Comment::ActiveRecord
     # @example Get the first 10 comments from a given user (showing equivalent calls)
     #  c = get_commentable_object()
     #  u = get_user()
-    #  q = c.comments_query(only_authors: u, order: 'created_at ASC, limit: 10)
-    #  q = c.comments_query(only_authors: u, order: nil).order('created_at ASC').limit(10)
+    #  q = c.comments_query(filters: { authors: { only: u } }, order: 'created_at ASC, limit: 10)
+    #  q = c.comments_query(filters: { authors: { only: u ] }, order: nil).order('created_at ASC').limit(10)
     #
     # @example Get all comments not from a given user
     #  c = get_commentable_object()
     #  u = get_user()
-    #  q = c.comments_query(except_authors: u)
+    #  q = c.comments_query(filters: { authors: { except: u } })
     #
     # @example Get all comments from a given user that were created less than ten days ago
     #  c = get_commentable_object()
     #  u = get_user()
     #  t = Time.new
     #  t -= 10.days
-    #  q = c.comments_query(only_authors: u, created_since: t)
+    #  q = c.comments_query(filters: { authors: { only: u }, created: { after: t } })
 
     def comments_query(opts = {})
       qo = opts.dup
-      qo.delete(:except_commentables)
-      qo[:only_commentables] = self
+      filters = qo.delete(:filters) || { }
+      filters.delete(:except_commentables)
+      filters[:commentables] = { only: self }
+      qo[:filters] = filters
       return Fl::Core::Comment::ActiveRecord::Comment.build_query(qo)
     end
 

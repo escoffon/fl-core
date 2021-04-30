@@ -12,11 +12,11 @@ class CreateFlCoreComments < ActiveRecord::Migration[6.0]
       t.string		:author_fingerprint, index: { name: 'fl_core_cmts_author_fp_idx' }
 
       # Comment properties
-      # :contents is the HTML representation of the contents, and :contents_delta the Delta representation
-      # (as a serialized JSON field). See the Quill editor documentation for a discussion of Delta format
+      # :contents_html is the HTML representation of the contents, and :contents_json the JSON representation
+      # (as a serialized JSON field).
       t.text		:title
-      t.text		:contents
-      t.text		:contents_delta
+      t.text		:contents_html
+      t.text		:contents_json
 
       # Comment counter; comments track the number of their subcomments
       t.integer		:num_comments, default: 0

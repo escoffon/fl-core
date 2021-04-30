@@ -42,6 +42,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
   describe ".commentable?" do
     it "should return true for the comment class" do
       expect(Fl::Core::Comment::ActiveRecord::Comment.commentable?).to eql(true)
+      expect(Fl::Test::Comment.commentable?).to eql(true)
     end
   end
 
@@ -50,8 +51,8 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       c1 = Fl::Core::Comment::ActiveRecord::Comment.create(
         author: a10,
         commentable: d10,
-        contents: 'contents1',
-        contents_delta: { ops: [ { insert: '' } ] }
+        contents_html: 'contents1',
+        contents_json: { ops: [ { insert: '' } ] }
       )
       expect(c1.commentable?).to eql(true)
     end
@@ -64,8 +65,8 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       c1 = Fl::Core::Comment::ActiveRecord::Comment.new(
         author: a10,
         commentable: d10,
-        contents: 'contents1',
-        contents_delta: { ops: [ { insert: '' } ] }
+        contents_html: 'contents1',
+        contents_json: { ops: [ { insert: '' } ] }
       )
       expect(c1.valid?).to eql(true)
       expect(c1.save).to eql(true)
@@ -78,8 +79,8 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       c1 = Fl::Core::Comment::ActiveRecord::Comment.new(
         author: a10,
         commentable: d10,
-        contents: 'contents1',
-        contents_delta: { ops: [ { insert: '' } ] }
+        contents_html: 'contents1',
+        contents_json: { ops: [ { insert: '' } ] }
       )
       expect(c1.valid?).to eql(true)
       expect(c1.save).to eql(true)
@@ -93,8 +94,8 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       h = {
         author: a10,
         commentable: d10,
-        contents: 'contents1',
-        contents_delta: { ops: [ { insert: '' } ] },
+        contents_html: 'contents1',
+        contents_json: { ops: [ { insert: '' } ] },
         title: 'title1'
       }
 
@@ -268,32 +269,32 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support :only_authors" do
-        q = d100.comments_query(only_authors: a10)
+      it "should support the :authors:only filter" do
+        q = d100.comments_query(filters: { authors: { only: a10 } })
         xl = [ 'a10 - t1', 'a10 - t2' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
-        q = d100.comments_query(only_authors: [ a10.fingerprint, a13.to_global_id.to_s ])
+        q = d100.comments_query(filters: { authors: { only: [ a10.fingerprint, a13.to_global_id.to_s ] } })
         xl = [ 'a10 - t1', 'a10 - t2', 'a13 - t1' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support :except_authors" do
-        q = d100.comments_query(except_authors: a10)
+      it "should support the :authors:except filter" do
+        q = d100.comments_query(filters: { authors: { except: a10 } })
         xl = [ 'a11 - t1', 'a12 - t1', 'a12 - t2', 'a13 - t1' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
-        q = d100.comments_query(except_authors: [ a10.fingerprint, a13.to_global_id.to_s ])
+        q = d100.comments_query(filters: { authors: { except: [ a10.fingerprint, a13.to_global_id.to_s ] } })
         xl = [ 'a11 - t1', 'a12 - t1', 'a12 - t2' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support both :only_authors and :except_authors" do
-        q = d100.comments_query(only_authors: [ a10, a12.fingerprint ], except_authors: a10)
+      it "should support both :authors:only and :authors:except" do
+        q = d100.comments_query(filters: { authors: { only: [ a10, a12.fingerprint ], except: a10 } })
         xl = [ 'a12 - t1', 'a12 - t2' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
@@ -343,45 +344,44 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
   describe "comment" do
     context "validation" do
       it "should detect a missing :commentable attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(author: a10, contents: 'c1 -c',
-                                                          contents_delta: { ops: [ { insert: 'c1 - c' } ] })
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(author: a10, contents_html: 'c1 -c',
+                                                          contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:commentable)
       end
 
       it "should detect a missing :author attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, contents: 'c1 -c',
-                                                          contents_delta: { ops: [ { insert: 'c1 - c' } ] })
+        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, contents_html: 'c1 -c',
+                                                          contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:author)
       end
 
-      it "should detect a missing :contents attribute" do
+      it "should detect a missing :contents_html attribute" do
         c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
-                                                          contents_delta: { ops: [ { insert: 'c1 - c' } ] })
+                                                          contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
-        expect(c1.errors.messages).to include(:contents)
+        expect(c1.errors.messages).to include(:contents_html)
       end
 
-      it "should detect a missing :contents_delta attribute" do
+      it "should detect a missing :contents_json attribute" do
         c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
-                                                          contents: 'c1 -c')
+                                                          contents_html: 'c1 -c')
         expect(c1.valid?).to eql(false)
-        expect(c1.errors.messages).to include(:contents_delta)
+        expect(c1.errors.messages).to include(:contents_json)
       end
 
-      it "should detect an invalid :contents_delta attribute" do
+      it "should detect an invalid :contents_json attribute" do
         c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
-                                                          contents: 'c1 -c',
-                                                          contents_delta: [ 1 ])
+                                                          contents_html: 'c1 -c',
+                                                          contents_json: [ 1 ])
         expect(c1.valid?).to eql(false)
-        expect(c1.errors.messages).to include(:contents_delta)
+        expect(c1.errors.messages).to include(:contents_json)
 
         c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
-                                                          contents: 'c1 -c',
-                                                          contents_delta: { foo: 10 })
-        expect(c1.valid?).to eql(false)
-        expect(c1.errors.messages).to include(:contents_delta)
+                                                          contents_html: 'c1 -c',
+                                                          contents_json: { foo: 10 })
+        expect(c1.valid?).to eql(true)
       end
     end
     
@@ -401,7 +401,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     context '#to_hash' do
       let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id, :virtual_type ] }
       let(:min_keys) { id_keys | [ :created_at, :updated_at, :permissions,
-                                   :commentable, :author, :title, :contents, :contents_delta ] }
+                                   :commentable, :author, :title, :contents_html, :contents_json ] }
       let(:std_keys) { min_keys | [ ] }
       let(:vrb_keys) { std_keys | [ ] }
       let(:cmp_keys) { vrb_keys | [ ] }
@@ -410,8 +410,8 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         Fl::Core::Comment::ActiveRecord::Comment.create(
           author: a10,
           commentable: d10,
-          contents: 'contents1',
-          contents_delta: { ops: [ { insert: '' } ] }
+          contents_html: 'contents1',
+          contents_json: { ops: [ { insert: '' } ] }
         )
       end
 
@@ -430,9 +430,9 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         expect(h[:commentable]).to be_a(Hash)
         expect(h[:commentable][:fingerprint]).to eql(d10.fingerprint)
         expect(h[:title]).to eql(c1.title)
-        expect(h[:contents]).to eql(c1.contents)
-        expect(h[:contents_delta]).to be_a(String)
-        expect(JSON.parse(h[:contents_delta])).to eql(c1.contents_delta)
+        expect(h[:contents_html]).to eql(c1.contents_html)
+        expect(h[:contents_json]).to be_a(String)
+        expect(JSON.parse(h[:contents_json])).to eql(c1.contents_json)
         
         h = c1.to_hash(a10, { verbosity: :standard })
         expect(h.keys.sort).to eql(std_keys.sort)
@@ -543,103 +543,114 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support :only_commentables" do
+      it "should support the :commentables:only filter" do
         dl = [ d100, d101, d102 ]
         
         xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1' ]
-        q = cc.build_query(only_commentables: d100)
+        q = cc.build_query(filters: { commentables: { only: d100 } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
-        q = cc.build_query(only_commentables: d101.fingerprint)
+        q = cc.build_query(filters: { commentables: { only: d101.fingerprint } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
                'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
-        q = cc.build_query(only_commentables: [ d100.fingerprint, d101.to_global_id, d102.to_global_id.to_s ])
+        q = cc.build_query(filters: { commentables: { only: [ d100.fingerprint, d101.to_global_id,
+                                                              d102.to_global_id.to_s ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ ]
-        q = cc.build_query(only_commentables: [ d102.to_global_id.to_s ])
+        q = cc.build_query(filters: { commentables: { only: [ d102.to_global_id.to_s ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support :except_commentables" do
+      it "should support the :commentables:except filter" do
         dl = [ d100, d101, d102 ]
         
         xl = [ 'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
-        q = cc.build_query(except_commentables: d100)
+        q = cc.build_query(filters: { commentables: { except: d100 } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1' ]
-        q = cc.build_query(except_commentables: d101.fingerprint)
+        q = cc.build_query(filters: { commentables: { except: d101.fingerprint } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ ]
-        q = cc.build_query(except_commentables: [ d100.fingerprint, d101.to_global_id, d102.to_global_id.to_s ])
+        q = cc.build_query(filters: { commentables: { except: [ d100.fingerprint, d101.to_global_id,
+                                                                d102.to_global_id.to_s ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
                'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
-        q = cc.build_query(except_commentables: [ d102.to_global_id.to_s ])
+        q = cc.build_query(filters: { commentables: { except: [ d102.to_global_id.to_s ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
       
-      it "should support :only_authors" do
+      it "should support the :authors:only filter" do
         dl = [ d100, d101, d102 ]
 
         xl = [ 'd100 - a10 - t1', 'd100 - a10 - t2', 'd101 - a10 - t1' ]
-        q = cc.build_query(only_authors: [ a10.to_global_id.to_s ])
+        q = cc.build_query(filters: { authors: { only: [ a10.to_global_id.to_s ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd100 - a10 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2',
                'd101 - a10 - t1', 'd101 - a12 - t1' ]
-        q = cc.build_query(only_authors: [ a10.to_global_id.to_s, a12.fingerprint ])
+        q = cc.build_query(filters: { authors: { only: [ a10.to_global_id.to_s, a12.fingerprint ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support :except_authors" do
+      it "should support the :authors:except filter" do
         dl = [ d100, d101, d102 ]
 
         xl = [ 'd100 - a11 - t1', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
                'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
-        q = cc.build_query(except_authors: [ a10.to_global_id.to_s ])
+        q = cc.build_query(filters: { authors: { except: [ a10.to_global_id.to_s ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd100 - a11 - t1', 'd100 - a13 - t1',
                'd101 - a11 - t1', 'd101 - a11 - t2' ]
-        q = cc.build_query(except_authors: [ a10.to_global_id.to_s, a12.fingerprint ])
+        q = cc.build_query(filters: { authors: { except: [ a10.to_global_id.to_s, a12.fingerprint ] } })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support combinations of _commentables and _authors" do
+      it "should support combinations of :commentables and :authors" do
         dl = [ d100, d101, d102 ]
         
         xl = [ 'd100 - a10 - t1', 'd100 - a10 - t2' ]
-        q = cc.build_query(only_commentables: [ d100.to_global_id.to_s ], only_authors: a10.fingerprint)
+        q = cc.build_query(filters: {
+                             commentables: { only: [ d100.to_global_id.to_s ] },
+                             authors: { only: a10.fingerprint }
+                           })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd100 - a11 - t1', 'd100 - a13 - t1',
                'd101 - a11 - t1', 'd101 - a11 - t2' ]
-        q = cc.build_query(except_commentables: [ d102.to_global_id.to_s ], only_authors: [ a11, a13.to_global_id ])
+        q = cc.build_query(filters: {
+                             commentables: { except: [ d102.to_global_id.to_s ] },
+                             authors: { only: [ a11, a13.to_global_id ] }
+                           })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
         xl = [ 'd101 - a10 - t1', 'd101 - a12 - t1' ]
-        q = cc.build_query(except_commentables: [ d100.to_global_id.to_s ], except_authors: [ a11, a13.to_global_id ])
+        q = cc.build_query(filters: {
+                             commentables: { except: [ d100.to_global_id.to_s ] },
+                             authors: { except: [ a11, a13.to_global_id ] }
+                           })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
@@ -692,31 +703,33 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       end
 
       it "should support :only_authors" do
-        q = c100.comments_query(only_authors: a10)
+        q = c100.comments_query(filters: { authors: { only: a10 } })
         xl = [ 'a10 - st1', 'a10 - st2' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
-        q = c100.comments_query(only_authors: [ a10.fingerprint, a13.to_global_id.to_s ])
+        q = c100.comments_query(filters: { authors: { only: [ a10.fingerprint, a13.to_global_id.to_s ] } })
         xl = [ 'a10 - st1', 'a10 - st2', 'a13 - st1' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
       it "should support :except_authors" do
-        q = c100.comments_query(except_authors: a10)
+        q = c100.comments_query(filters: { authors: { except: a10 } })
         xl = [ 'a11 - st1', 'a12 - st1', 'a12 - st2', 'a13 - st1' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
 
-        q = c100.comments_query(except_authors: [ a10.fingerprint, a13.to_global_id.to_s ])
+        q = c100.comments_query(filters: { authors: { except: [ a10.fingerprint, a13.to_global_id.to_s ] } })
         xl = [ 'a11 - st1', 'a12 - st1', 'a12 - st2' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end
 
-      it "should support both :only_authors and :except_authors" do
-        q = c100.comments_query(only_authors: [ a10, a12.fingerprint ], except_authors: a10)
+      it "should support both :authors:only and :authors:except" do
+        q = c100.comments_query(filters: {
+                                  authors: { only: [ a10, a12.fingerprint ], except: a10 }
+                                })
         xl = [ 'a12 - st1', 'a12 - st2' ]
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)

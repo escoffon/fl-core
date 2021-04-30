@@ -100,7 +100,7 @@ module Fl::Core::Comment
         else
           @summary_method = :title
         end
-        
+
         orm = if cfg.has_key?(:orm)
                 case cfg[:orm]
                 when :activerecord, :neo4j
@@ -116,9 +116,11 @@ module Fl::Core::Comment
 
         case orm
         when :activerecord
-          has_many :comments, as: :commentable, class_name: :'Fl::Core::Comment::ActiveRecord::Comment', dependent: :destroy
+          has_many :comments, as: :commentable,
+                   class_name: Fl::Core::Comment.object_class_name,
+                   dependent: :destroy
           def build_comment(h)
-            Fl::Core::Comment::ActiveRecord::Comment.new(h)
+            return Fl::Core::Comment::Helper.object_class.new(h)
           end
 
           counter = if cfg[:counter].nil? || (cfg[:counter] == false)
@@ -232,20 +234,20 @@ EOD
     # `comment_base` in the commentable).
     #
     # @param author [Object] The comment author, who will be its owner.
-    # @param contents [String] The contents of the comment.
-    # @param contents_delta [Hash,String] The contents of the comment, in Quill Delta format.
+    # @param contents_html [String] The HTML contents of the comment.
+    # @param contents_deltjson [Hash,String] The contents of the comment, in JSON.
     #  A string value is parsed as a JSON object.
     # @param title [String] The title of the comment; if `nil`, the title is extracted from the first
     #  40 text elements of the contents.
     #
     # @return [Object, nil] Returns the new comment if it was created successfully, `nil` otherwise.
 
-    def add_comment(author, contents, contents_delta, title = nil)
+    def add_comment(author, contents_html, contents_json, title = nil)
       h = {
         author: author,
         commentable: self,
-        contents: contents,
-        contents_delta: contents_delta
+        contents_html: contents_html,
+        contents_json: contents_json
       }
 
       h[:title] = title unless title.nil?

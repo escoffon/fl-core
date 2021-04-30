@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_07_04_165314) do
+ActiveRecord::Schema.define(version: 2021_04_29_213701) do
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
@@ -68,8 +68,8 @@ ActiveRecord::Schema.define(version: 2020_07_04_165314) do
     t.integer "author_id"
     t.string "author_fingerprint"
     t.text "title"
-    t.text "contents"
-    t.text "contents_delta"
+    t.text "contents_html"
+    t.text "contents_json"
     t.integer "num_comments", default: 0
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false

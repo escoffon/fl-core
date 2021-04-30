@@ -24,33 +24,33 @@ module Fl::Core::Comment
     TITLE_LENGTH = 40
 
     # Set up the comment state before validation.
-    # This method populates the **:title** attribute, if necessary, from the contents.
+    # This method populates the **:title** attribute, if necessary, from the HTML contents.
 
     def _before_validation_title_checks
-      populate_title_if_needed(:contents, TITLE_LENGTH)
+      populate_title_if_needed(:contents_html, TITLE_LENGTH)
     end
 
     # Set up the comment state before saving.
-    # This method populates the **:title** attribute, if necessary, from the contents.
+    # This method populates the **:title** attribute, if necessary, from the HTML contents.
 
     def _before_save_title_checks
-      populate_title_if_needed(:contents, TITLE_LENGTH)
+      populate_title_if_needed(:contents_html, TITLE_LENGTH)
     end
 
-    # Validate the Delta contents.
-    # Minimal validation checks that it is a Hash containing the `'ops'` key (an array).
+    # Validate the JSON contents.
+    # Minimal validation checks that it is a Hash.
 
-    def _check_contents_delta
-      unless self.contents_delta.blank?
-        cd = self.contents_delta
-        if !cd.is_a?(Hash) || !cd['ops'].is_a?(Array)
-          self.errors.add(:contents_delta, I18n.tx('fl.core.comment.comment.validate.invalid_delta'))
+    def _check_contents_json
+      unless self.contents_json.blank?
+        cd = self.contents_json
+        if !cd.is_a?(Hash)
+          self.errors.add(:contents_json, I18n.tx('fl.core.comment.comment.validate.invalid_json'))
         end
       end
     end
 
     # @!visibility private
-    DEFAULT_HASH_KEYS = [ :commentable, :author, :title, :contents, :contents_delta ]
+    DEFAULT_HASH_KEYS = [ :commentable, :author, :title, :contents_html, :contents_json ]
 
     # Given a verbosity level, return predefined hash options to use.
     #
@@ -109,8 +109,8 @@ module Fl::Core::Comment
     # - *:updated_at* When last updated, as a UNIX timestamp.
     # - *:permissions* An array containing permissions on this comment.
     # - *:title* The comment title.
-    # - *:contents* The contents of the comment.
-    # - *:contents_delta* The contents of the comment.
+    # - *:contents_html* The HTML contents of the comment.
+    # - *:contents_json* The JSON contents of the comment.
 
     def to_hash_local(actor, keys, opts = {})
       to_hash_opts = opts[:to_hash] || {}
@@ -136,8 +136,8 @@ module Fl::Core::Comment
                                                      include: [ :username, :full_name, :avatar ]
                                                    })
           rv[sk] = u.to_hash(actor, author_opts)
-        when :contents_delta
-          rv[sk] = JSON.generate(self.contents_delta)
+        when :contents_json
+          rv[sk] = JSON.generate(self.contents_json)
         else
           rv[sk] = self.send(k) if self.respond_to?(k)
         end
@@ -154,16 +154,16 @@ module Fl::Core::Comment
     # - In the context of the comment class, includes the modules
     #   {Fl::Core::AttributeFilters}, {Fl::Core::TitleManagement}, {Fl::Core::ModelHash},
     #   {Fl::Core::Comment::Helper}, and {Fl::Core::Comment::Commentable}.
-    # - Registers attribute filters for **:title** and **:contents** the title is converted to text only,
-    #   and contents are stripped of dangerous HTML.
+    # - Registers attribute filters for **:title** and **:contents_html**: the title is converted to text only,
+    #   and HTML contents are stripped of dangerous HTML.
     # - Registers a `before_validation` callback to set up the title for validation;
     #   see {._before_validation_title_checks}.
     # - Registers a `before_save` callback to set up the title for saving; see {._before_save_title_checks}.
     # - Adds validation rules:
-    #   - **:commentable**, **:author**, **:contents**, and **:contents_delta** must be present.
-    #   - Minimum content length for **:contents** is 1.
+    #   - **:commentable**, **:author**, **:contents_html**, and **:contents_json** must be present.
+    #   - Minimum content length for **:contents_HTML** is 1.
     #   - Maximum content length for **:title** is 100.
-    #   - Run a minimal validation on the Delta contents.
+    #   - Run a minimal validation on the JSON contents.
 
     included do
       include Fl::Core::AttributeFilters
@@ -176,14 +176,14 @@ module Fl::Core::Comment
 
       filtered_attribute :title, [ const_get(:FILTER_HTML_STRIP_DANGEROUS_ELEMENTS),
                                    const_get(:FILTER_HTML_TEXT_ONLY) ]
-      filtered_attribute :contents, const_get(:FILTER_HTML_STRIP_DANGEROUS_ELEMENTS)
+      filtered_attribute :contents_html, const_get(:FILTER_HTML_STRIP_DANGEROUS_ELEMENTS)
 
       # Validation
 
-      validates_presence_of :commentable, :author, :contents, :contents_delta
-      validates_length_of :contents, :minimum => 1
+      validates_presence_of :commentable, :author, :contents_html, :contents_json
+      validates_length_of :contents_html, :minimum => 1
       validates_length_of :title, :maximum => 100
-      validate :_check_contents_delta
+      validate :_check_contents_json
 
       # Hooks
     

@@ -1,8 +1,8 @@
 const _ = require('lodash');
-const { FlExtensions, FlClassManager } = require('./object_system');
+const { FlExtensions, FlClassManager } = require('fl/core/object_system');
 const {
     FlModelBase, FlModelCache, FlModelFactory, FlGlobalModelFactory
-} = require('./model_factory');
+} = require('fl/core/model_factory');
 
 /**
  * @ngdoc module
@@ -14,18 +14,18 @@ const {
 
 /**
  * @ngdoc type
- * @name FlCoreComment
+ * @name FlTestComment
  * @module fl.models
  * @requires FlModelBase
- * @description Model class for `Fl::Core::Comment`
+ * @description Model class for ``
  */
 
-let FlCoreComment = FlClassManager.make_class({
-    name: 'FlCoreComment',
+let FlTestComment = FlClassManager.make_class({
+    name: 'FlTestComment',
     superclass: 'FlModelBase',
     /**
      * @ngdoc method
-     * @name FlCoreComment#constructor
+     * @name FlTestComment#constructor
      * @description The constructor; called during `new` creation.
      *  Calls the superclass implementation, passing the value of *data*.
      *
@@ -42,7 +42,7 @@ let FlCoreComment = FlClassManager.make_class({
     instance_methods: {
 	/**
 	 * @ngdoc method
-	 * @name FlCoreComment#refresh
+	 * @name FlTestComment#refresh
 	 * @description
 	 *  Refresh the state of the instance based on the contents
 	 *  of the hash representation of a Comment object.
@@ -50,7 +50,7 @@ let FlCoreComment = FlClassManager.make_class({
 	 *
 	 *  - **commentable** into an object if the model factory supports it.
 	 *  - **author** into an object if the model factory supports it.
-	 *  - **contents_delta** into an object (from a JSON representation)
+	 *  - **contents_json** into an object (from a JSON representation)
 	 *
 	 * @param {Object} data An object containing a representation of the
 	 *  comment object. This representation may be partial.
@@ -69,36 +69,36 @@ let FlCoreComment = FlClassManager.make_class({
 		this.author = FlModelFactory.defaultFactory().create(data.author);
 	    }
 
-	    if (_.isString(data.contents_delta))
+	    if (_.isString(data.contents_json))
 	    {
-		this.contents_delta = JSON.parse(data.contents_delta);
+		this.contents_json = JSON.parse(data.contents_json);
 	    }
 	}
     },
     class_methods: {
 	/**
 	 * @ngdoc method
-	 * @name FlCoreComment#create
+	 * @name FlTestComment#create
 	 * @classmethod
 	 * @description
 	 *  Factory for a user object.
 	 *
 	 * @param {Object} data The representation of the user object.
 	 *
-	 * @return {FlCoreComment} Returns an instance of {@sref FlCoreComment}.
+	 * @return {FlTestComment} Returns an instance of {@sref FlTestComment}.
 	 */
 
 	create: function(data) {
-	    return FlClassManager.modelize('FlCoreComment', data);
+	    return FlClassManager.modelize('FlTestComment', data);
 	}
     },
     extensions: [ ]
 });
 
 FlGlobalModelFactory.register('fl.models', [
-    { service: FlCoreComment, class_name: 'Fl::Core::Comment' }
+    { service: FlTestComment, class_name: '' }
 ]);
 
 module.exports = {
-    FlCoreComment
+    FlTestComment
 };

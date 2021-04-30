@@ -6,8 +6,18 @@ Description:
   - It registers a route for the comments controller in config/routes.rb.
   - It installs Javascript support for the Fl::Core::Comment object and an API service to the controller API.
 
-Arguments:
-  CONTROLLER_CLASS # The name of the controller class. The default is 'Fl::Core::CommentsController'
+Options:
+  --object_class OBJECT_CLASS
+    The name of the comment object class; this is a simple subclass of the comment implementation class
+    for the requested ORM (which, currently, is aways 'active_record').
+    Defaults to 'Fl::Core::Comment::Comment'.
+  --service_class SERVICE_CLASS
+    The name of the comment service object class; this is a simple subclass of the comment service class
+    that overrides the name of the comment object class above.
+    Defaults to 'Fl::Core::Comment::Service'.
+  --controller_class CONTROLLER_CLASS
+    The name of the controller class.
+    Defaults to 'Fl::Core::CommentsController'.
 
 Example:
   Given this command:
@@ -17,42 +27,47 @@ Example:
   - Create the migration file
       db/migrate/TS_create_fl_core_comments.fl_core.rb
     where TS is a timestamp.
+  - Create the comment object class
+      app/extensions/fl/core/comment/comment.rb
+  - Create the service object class
+      app/extensions/fl/core/comment/service.rb
   - Create the controller file
       app/controllers/fl/core/comments_controller.rb
   - Adds a route for that controller in config/routes.rb.
-  - Adds vendor/javascript/fl/core/comment.js for the Fl::Core::Comment object.
+  - Adds vendor/javascript/fl/core/comment.js for the Fl::Core::Comment::Comment object.
   - Adds vendor/javascript/fl/core/comments_api_service.js For the comment API service object.
 
-  With a custom controller class name:
-    rails generate fl:core:comments:install My::CustomCommentsController
+  With a custom class names:
+    rails generate fl:core:comments:install --object_class My::Comment::Comment --service_class My::Comment::Service --controller_class My::CommentsController
   the generator performs the following operations:
   
   - Create the migration file
       db/migrate/TS_create_fl_core_comments.fl_core.rb
+  - Create the comment object class
+      app/extensions/my/comment/comment.rb
+  - Create the service object class
+      app/extensions/my/comment/service.rb
   - Create the controller file
-      app/controllers/my/custom_comments_controller.rb
+      app/controllers/my/comments_controller.rb
   - Adds a route for that controller in config/routes.rb.
-  - Adds vendor/javascript/fl/core/comment.js for the Fl::Core::Comment object.
+  - Adds vendor/javascript/fl/core/comment.js for the My::Comment::Comment object.
   - Adds vendor/javascript/my/custom_comments_api_service.js For the comment API service object.
 
 Post install:
   After the generator has run, you will have to perform a few additional steps:
 
   - Run the migration (rake db:migrate).
-  - Examine the app/controllers/fl/core/comments_controller.rb file and make necessary
-    changes for your environment. The most common change is to add authentication; see
-    the comments in the code for hints.
+  - Examine the generated controller file and make necessary changes for your environment.
+    The most common change is to add authentication; see the comments in the code for hints.
   - Add commentable functionality to existing classes. For example, to turn on comments
     in class MyClass, add the lines
       include Fl::Core::Comment::Commentable
       include Fl::Core::Comment::ActiveRecord::Commentable
-
       has_comments 
     to the class definition:
       class MyClass < ApplicationRecord
         include Fl::Core::Comment::Commentable
         include Fl::Core::Comment::ActiveRecord::Commentable
-
         has_comments 
       end
 

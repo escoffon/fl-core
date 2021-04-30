@@ -8,16 +8,9 @@ module Fl::Core::Comments
 
     RESOURCES = "resources :<resource_name>, only: [ :index, :create, :update ]"
 
-    APP_ROOT = File.join('app', 'javascript', 'fl', 'core')
-    VENDOR_ROOT = File.join('vendor', 'javascript', 'fl', 'core')
-    APP_ASSETS = [
-      {
-        from: File.join(APP_ROOT, 'comment.js'),
-        to: File.join(VENDOR_ROOT, 'comment.js'),
-      }
-    ]
-
-    argument :controller_class, type: :string, default: 'Fl::Core::CommentsController'
+    class_option :object_class, type: :string, default: 'Fl::Core::Comment::Comment'
+    class_option :service_class, type: :string, default: 'Fl::Core::Comment::Service'
+    class_option :controller_class, type: :string, default: 'Fl::Core::CommentsController'
 
     source_root File.expand_path('../templates', __FILE__)
     
@@ -28,29 +21,83 @@ module Fl::Core::Comments
     def run_generator()
       @gem_root = File.expand_path('../../../../../..', __dir__)
 
+      init_variables()
       create_migration_files()
+      create_initializer_file()
+      create_object_file()
+      create_service_file()
       create_controller_file()
+      create_object_js_file()
+      create_api_service_file()
       add_route()
-
-      copy_assets()
     end
 
     private
 
+    def init_variables()
+      @comment_object_class = options['object_class']
+      @comment_service_class = options['service_class']
+      @comment_controller_class = options['controller_class']
+
+      path = @comment_controller_class.underscore.split('/')
+      file_root = path.pop.gsub('_controller', '')
+      path << file_root
+      
+      @api_service_root = "/#{path.join('/')}"
+      @api_service_class_name = "#{@comment_controller_class.gsub('Controller', '').gsub('::', '')}APIService"
+
+      l = path.pop.singularize
+      path << l
+      @api_namespace = path.join('_')
+      @api_pathname = path.join('/')
+      @api_class_name = @comment_object_class.gsub(':', '')
+    end
+    
     def create_migration_files
       MIGRATION_FILE_NAMES.each { |fn| create_migration_file(DB_MIGRATE, fn) }
     end
 
+    def create_initializer_file
+      outfile = File.join(destination_root, 'config', 'initializers', 'comment.rb')
+      template('initializer.rb', outfile)
+    end
+
+    def create_object_file
+      outfile = File.join(destination_root, 'app', 'extensions', @comment_object_class.underscore + '.rb')
+      template('comment.rb', outfile)
+    end
+
+    def create_service_file
+      outfile = File.join(destination_root, 'app', 'extensions', @comment_service_class.underscore + '.rb')
+      template('service.rb', outfile)
+    end
+
     def create_controller_file
-      outfile = File.join(destination_root, 'app', 'controllers', controller_class.underscore + '.rb')
+      outfile = File.join(destination_root, 'app', 'controllers', @comment_controller_class.underscore + '.rb')
       template('controller.rb', outfile)
+    end
+
+    def create_object_js_file()
+      path = @comment_controller_class.underscore.split('/')
+      file_root = path.pop.gsub('_controller', '')
+      outfile = File.join(destination_root, 'vendor', 'javascript', path.join('/'), "#{file_root}.js")
+      
+      template('comment.js', outfile)
+    end
+
+    def create_api_service_file()
+      path = @comment_controller_class.underscore.split('/')
+      file_root = path.pop.gsub('_controller', '')
+      outfile = File.join(destination_root, 'vendor', 'javascript', path.join('/'), "#{file_root}_api_service.js")
+      
+      template('comments_api_service.js', outfile)
     end
 
     def add_route
       route_file = 'config/routes.rb'
 
       if File.exist?(route_file)
-        route = _route_from_class(@controller_class)
+        route = _route_from_class(@comment_controller_class)
         if !_has_route?(route_file, route)
           _add_route(route_file, route)
         else
@@ -64,13 +111,8 @@ module Fl::Core::Comments
       end
     end
 
-    def copy_assets
-      _copy_assets(APP_ASSETS, @gem_root, destination_root)
-      _copy_api_service_file(destination_root)
-    end
-
     def _route_from_class(cname)
-      components = @controller_class.underscore.split('/')
+      components = @comment_controller_class.underscore.split('/')
       return components.push(components.pop.gsub('_controller', ''))
     end
     
@@ -206,25 +248,6 @@ module Fl::Core::Comments
         fd.write(routes.join(''))
       end
       say_status('modify', "added the #{route.join(':')} route to #{route_file}")
-    end
-
-    def _copy_assets(assets, iroot, oroot)
-      assets.each do |a|
-        ifile = File.join(iroot, a[:from])
-        ofile = File.join(oroot, a[:to])
-        copy_file(ifile, ofile)
-      end
-    end
-
-    def _copy_api_service_file(oroot)
-      path = controller_class.underscore.split('/')
-      file_root = path.pop.gsub('_controller', '')
-      outfile = File.join(destination_root, 'vendor',  'javascript', path.join('/'), "#{file_root}_api_service.js")
-      path.push(file_root)
-      
-      @api_service_root = "/#{path.join('/')}"
-      @api_service_class_name = "#{controller_class.gsub('Controller', '').gsub('::', '')}APIService"
-      template('comments_api_service.js', outfile)
     end
   end
 end

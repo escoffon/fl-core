@@ -70,8 +70,8 @@ RSpec.describe 'Fl::Core::Commentable', type: :model do
       expect(d10.comments.count).to eql(1)
       expect(c1.author.fingerprint).to eql(a10.fingerprint)
       expect(c1.title).to eql('title1')
-      expect(c1.contents).to eql('contents1')
-      expect(c1.contents_delta).to eql({ "ops" => [ { "insert" => "contents1" } ] })
+      expect(c1.contents_html).to eql('contents1')
+      expect(c1.contents_json).to eql({ "ops" => [ { "insert" => "contents1" } ] })
     end
   end
 end

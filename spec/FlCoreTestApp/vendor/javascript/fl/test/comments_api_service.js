@@ -1,18 +1,18 @@
 const _ = require('lodash');
-const { FlExtensions, FlClassManager } = require('./object_system');
+const { FlExtensions, FlClassManager } = require('fl/core/object_system');
 const {
     FlModelBase, FlModelCache, FlModelFactory, FlGlobalModelFactory
-} = require('./model_factory');
+} = require('fl/core/model_factory');
 const {
     FlAPIService, FlAPIServiceRegistry, FlGlobalAPIServiceRegistry
-} = require('./api_services');
+} = require('fl/core/api_services');
 
 // This is imported so that webpack pulls in the sources, or we run the risk of not loading it
-const { FlCoreComment } = require('./comment');
+const { FlTestComment } = require('fl/test/comment');
 
 const API_CFG = {
-    root_url_template: '/fl/test/comments_api_service',
-    namespace: 'fl_core_comment',
+    root_url_template: '/fl/test/comments',
+    namespace: 'fl_test_comment',
     data_names: [ 'comment', 'comments' ]
 };
 
@@ -26,17 +26,17 @@ const API_CFG = {
  */
 
 let FlTestCommentsAPIService = FlClassManager.make_class({
-    name: 'FlCoreCommentAPIService',
+    name: 'FlTestCommentsAPIService',
     superclass: 'FlAPIService',
     /**
      * @ngdoc method
-     * @name FlCoreCommentAPIService#constructor
+     * @name FlTestCommentsAPIService#constructor
      * @description The constructor; called during `new` creation.
      *  Calls the superclass implementation, passing the following API configuration:
      *  ```
      *  {
-     *    root_url_template: '/fl/core/comments',
-     *    namespace: 'fl_core_comment',
+     *    root_url_template: '/fl/test/comments',
+     *    namespace: 'fl_test_comment',
      *    data_names: [ 'comment', 'comments' ]
      *  }
      *  ```
@@ -55,7 +55,7 @@ let FlTestCommentsAPIService = FlClassManager.make_class({
     instance_methods: {
 	/**
 	 * @ngdoc method
-	 * @name FlCoreCommentAPIService#commentable_comments
+	 * @name FlTestCommentsAPIService#commentable_comments
 	 * @description Wrapper for an :index call for a given commentable.
 	 *  The method sets the value of **only_commentables** to *commentable*, removes **except_commentables**,
 	 *  and then calls the the {@sref FlAPIService#index} method.
@@ -79,7 +79,8 @@ let FlTestCommentsAPIService = FlClassManager.make_class({
 	 */
 
 	commentable_comments: function(commentable, params, config) {
-	    let _q = _.isObject(params._q) ? _.merge({ }, params._q) : { };
+	    if (_.isNil(params)) params = { };
+	    let _q = _.isUndefined(params._q) ? { } : _.merge({ }, params._q);
 
 	    delete _q.except_commentables;
 	    _q.only_commentables = (_.isString(commentable)) ? [ commentable ] : [ commentable.fingerprint ];
@@ -90,7 +91,7 @@ let FlTestCommentsAPIService = FlClassManager.make_class({
 
 	/**
 	 * @ngdoc method
-	 * @name FlCoreCommentAPIService#add_comment
+	 * @name FlTestCommentsAPIService#add_comment
 	 * @description Creates a comment associated with a given commentable.
 	 *  The method sets up the appropriate submission parameters, and then calls the the
 	 *  {@sref FlAPIService#create} method.
@@ -133,6 +134,6 @@ let FlTestCommentsAPIService = FlClassManager.make_class({
     extensions: [ ]
 });
 
-FlGlobalAPIServiceRegistry.register('fl.services', { FlCoreCommentAPIService: 'Fl::Core::Comment' });
+FlGlobalAPIServiceRegistry.register('fl.services', { FlTestCommentsAPIService: '' });
 
-module.exports = { FlCoreCommentAPIService };
+module.exports = { FlTestCommentsAPIService };
