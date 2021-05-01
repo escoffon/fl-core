@@ -228,15 +228,17 @@ module Fl::Core::Query
     # This method wraps the standard procedure for adding WHERE clauses to a query, based on the *filters*
     # parameter. For a discussion of filters, see {Fl::Core::Query::Filter}.
     #
-    # If *filters* is an acceptable filter body, instantiate a {Fl::Core::Query::Filter} with configuration *config*.
-    # Then, call {Fl::Core::Query::Filter#generate} and, if the return value is a valid clause, call the
-    # `where`  on *q* to generate a WHERE clause.
+    # If *filters* is an acceptable filter body, call {Fl::Core::Query::Filter#generate} on *f* and, if the return
+    # value is a valid clause, call the `where` method on *q* to generate a WHERE clause.
+    # If *f* is a hash, the method first instantiates a {Fl::Core::Query::Filter}. This is actually the use for
+    # most situations; however, if you need to use a custom filter, you can instantiate it and pass it as the
+    # *f* argument.
     #
     # Note that {Fl::Core::Query::Filter#generate} is called with the default top level operand **:all**; if you
     # need OR behavior at the top level, you have to specify **:any** explicitly:
     #
     # ```
-    # q = Fl::Core::Query::QueryHelper.add_filters({
+    # q = Fl::Core::Query::QueryHelper.add_filters(q, {
     #         any: {
     #           ones: { only: [ 1, 2 ] },
     #           twos: { except: [ 4, 6 ] }
@@ -246,16 +248,26 @@ module Fl::Core::Query
     #
     # @param q [Relation] The target relation.
     # @param filters [Hash, nil] A hash containing the filters to apply.
-    # @param config [Hash] The filters configuration; this hash describes the available filters.
+    # @param f [Hash, Fl::Core::Query::Filter] The filter to use, or a hash to create a filter automatically.
+    #  For most uses, you can pass the configuration hash for the filter, but if you need a custom filter class,
+    #  you have the option to instantiate one and pass it along instead.
     #
     # @return [Relation] Returns the modified relation *q*.
 
-    def self.add_filters(q, filters, config)
+    def self.add_filters(q, filters, f)
       if Fl::Core::Query::Filter.acceptable_body?(filters)
-        gen = Fl::Core::Query::Filter.new(config)
-        clause = gen.generate(filters)
-        if !clause.nil? && clause.length > 0
-          q = q.where(clause, gen.params)
+        gen = if f.is_a?(Hash)
+                Fl::Core::Query::Filter.new(f)
+              elsif f.is_a?(Fl::Core::Query::Filter)
+                f
+              else
+                nil
+              end
+        unless gen.nil?
+          clause = gen.generate(filters)
+          if !clause.nil? && clause.length > 0
+            q = q.where(clause, gen.params)
+          end
         end
       end
 

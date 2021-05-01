@@ -50,6 +50,13 @@ class TestRelation
   end
 end
 
+class TestFilter < Fl::Core::Query::Filter
+  def initialize(cfg, other)
+    @other = 10
+    super(cfg)
+  end
+end
+
 RSpec.describe Fl::Core::Query::QueryHelper do
   let(:qh) { Fl::Core::Query::QueryHelper }
 
@@ -773,6 +780,27 @@ RSpec.describe Fl::Core::Query::QueryHelper do
                             polys: { except: 'Fl::Core::TestDatum/1' },
                             blocked: { only: [ 1, 2 ], except: [ 1 ] }
                           }, cfg_1)
+        expect(q.last_clause).to eql('((c_one IN (:p1)) AND (c_poly NOT IN (:p2)) AND (c_blocked IN (:p3)))')
+        expect(q.last_params).to include(p1: [ 1, 2 ],
+                                         p2: [ 'Fl::Core::TestDatum/1' ],
+                                         p3: [ 20 ])
+    end
+
+    it 'should accept a filter object instead of a configuration' do
+      q = TestRelation.new(10)
+      
+      q1 = qh.add_filters(q, {
+                            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] }
+                          }, TestFilter.new(cfg_1, 10))
+      expect(q.last_clause).to eql('(c_one IN (:p1))')
+      expect(q.last_params).to include(p1: [ 1, 2 ])
+
+      q.reset
+      q1 = qh.add_filters(q, {
+                            ones: { only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ] },
+                            polys: { except: 'Fl::Core::TestDatum/1' },
+                            blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                          }, TestFilter.new(cfg_1, 20))
         expect(q.last_clause).to eql('((c_one IN (:p1)) AND (c_poly NOT IN (:p2)) AND (c_blocked IN (:p3)))')
         expect(q.last_params).to include(p1: [ 1, 2 ],
                                          p2: [ 'Fl::Core::TestDatum/1' ],
