@@ -1,3 +1,5 @@
+require 'fl/core/comment'
+
 FactoryBot.define do
   sequence(:datum_comment_two_counter) { |n| "#{n}" }
 

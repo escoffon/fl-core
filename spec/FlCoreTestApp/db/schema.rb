@@ -67,6 +67,7 @@ ActiveRecord::Schema.define(version: 2021_04_29_213701) do
     t.string "author_type"
     t.integer "author_id"
     t.string "author_fingerprint"
+    t.boolean "is_visible"
     t.text "title"
     t.text "contents_html"
     t.text "contents_json"

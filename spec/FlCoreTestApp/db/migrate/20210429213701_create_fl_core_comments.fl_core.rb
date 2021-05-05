@@ -14,6 +14,7 @@ class CreateFlCoreComments < ActiveRecord::Migration[6.0]
       # Comment properties
       # :contents_html is the HTML representation of the contents, and :contents_json the JSON representation
       # (as a serialized JSON field).
+      t.boolean		:is_visible
       t.text		:title
       t.text		:contents_html
       t.text		:contents_json

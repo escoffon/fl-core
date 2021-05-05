@@ -8,6 +8,7 @@ module Fl::Core::Comment::ActiveRecord
   # #### Attributes
   # This class defines the following attributes:
   #
+  # - **is_visible** is a boolean flag to indicate if the comment is visible or not.
   # - **title** is a string containing a title for the comment.
   # - **contents_html** is a string containing the HTML representation of the contents of the comment.
   # - **contents_json** is a hash containing the JSON representation of the contents of the comment.
@@ -36,11 +37,14 @@ module Fl::Core::Comment::ActiveRecord
     include Fl::Core::Comment::Commentable
     include Fl::Core::Comment::ActiveRecord::Commentable
     include Fl::Core::Comment::Common
-#    extend Fl::Core::Query
 
     self.table_name = 'fl_core_comments'
 
     has_access_control Fl::Core::Comment::Checker.new
+    
+    # @!attribute [rw] is_visible
+    # The visibility flag; defaults to `true`.
+    # @return [Boolean] a boolean value to indicate if the comment is visible.
 
     # @!attribute [rw] title
     # The comment title; typically generated from the first (40) character of the contents.
@@ -96,6 +100,7 @@ module Fl::Core::Comment::ActiveRecord
     after_create :_bump_comment_count_callback
     after_destroy :_drop_comment_count_callback
     after_destroy :_update_commentable_timestamp
+    before_save :_check_visibility
     after_save :_update_commentable_timestamp
 
     # has_comments defines the :comments association
@@ -123,6 +128,30 @@ module Fl::Core::Comment::ActiveRecord
           type: :polymorphic_references,
           field: 'author_fingerprint',
           convert: :fingerprint
+        },
+
+        visibility: {
+          type: :custom,
+          field: 'is_visible',
+          convert: :custom,
+          generator: Proc.new do |g, n, d, v|
+            # Note that this generator is not called if :visibility is not defined, which means that if the
+            # filter is not defined all records are returned.
+            # If the value is nil, we don't generate a clause, which results in all records being returned
+            # Otherwise, :visible and :hidden select the corresponding record types, and anything else generates
+            # no clause
+
+            dflag = v.nil? ? :both : v.to_sym
+            if dflag == :visible
+              p = g.allocate_parameter(true)
+              "(is_visible = :#{p})"
+            elsif dflag == :hidden
+              p = g.allocate_parameter(false)
+              "(is_visible = :#{p})"
+            else
+              nil
+            end
+          end
         },
 
         created: {
@@ -205,7 +234,11 @@ module Fl::Core::Comment::ActiveRecord
         end
         self.errors.delete(:contents_json)
       rescue => exc
-        self.errors[:contents_json] << exc.message
+        if Rails.version >= "6.1"
+          self.errors.add(:contents_json, exc.message)
+        else
+          self.errors[:contents_json] << exc.message
+        end
       end
     end
     
@@ -221,6 +254,11 @@ module Fl::Core::Comment::ActiveRecord
     # - **:authors** is a **:polymorphic_references** filter that limits the returned values to those comments
     #   whose {#author} appears in the **:only** list, or does not appear in the **:except** list.
     #   The elements in the arrays are: instances of {ActiveRecord::Base}; object fingerprints; or GlobalIDs.
+    # - **:visibility** defines how to filter based on the {#is_visible} attribute.
+    #   A value of `:visible` or `'visible'` selects records where {#is_visible} is `true`; a value of `:hidden`
+    #   or `'hidden'` those where {#is_visible} is `false`; and any other value (`:both` or `nil` is a good candidate)
+    #   returns both.
+    #   If the option is not present, no filter is triggered, so that all records are returned by default.
     # - **:created** is a **:timestamp** filter type that selects based on the **:created_at** column.
     # - **:updated** is a **:timestamp** filter type that selects based on the **:updated_at** column.
     #
@@ -331,6 +369,10 @@ module Fl::Core::Comment::ActiveRecord
     def _update_commentable_timestamp()
       self.commentable.updated_at = Time.new
       self.commentable.save
+    end
+
+    def _check_visibility()
+      self.is_visible = true if self.is_visible.nil?
     end
   end
 end

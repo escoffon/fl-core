@@ -73,6 +73,50 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       expect(c1.title).to eql('contents1')
     end
 
+    it 'should accept the :is_visible attribute' do
+      c1 = Fl::Core::Comment::ActiveRecord::Comment.create(
+        is_visible: true,
+        author: a10,
+        commentable: d10,
+        contents_html: 'contents1',
+        contents_json: { ops: [ { insert: '' } ] }
+      )
+      expect(c1.valid?).to eql(true)
+      expect(c1.is_visible).to eql(true)
+
+      c2 = Fl::Core::Comment::ActiveRecord::Comment.create(
+        is_visible: false,
+        author: a10,
+        commentable: d10,
+        contents_html: 'contents2',
+        contents_json: { ops: [ { insert: '' } ] }
+      )
+      expect(c2.valid?).to eql(true)
+      expect(c2.is_visible).to eql(false)
+    end
+    
+    it 'should populate the :is_visible attribute if not present' do
+      c1 = Fl::Core::Comment::ActiveRecord::Comment.new(
+        author: a10,
+        commentable: d10,
+        contents_html: 'contents1',
+        contents_json: { ops: [ { insert: '' } ] }
+      )
+      expect(c1.valid?).to eql(true)
+      expect(c1.is_visible).to be_nil
+      expect(c1.save).to eql(true)
+      expect(c1.is_visible).to eql(true)
+
+      c2 = Fl::Core::Comment::ActiveRecord::Comment.create(
+        author: a10,
+        commentable: d10,
+        contents_html: 'contents2',
+        contents_json: { ops: [ { insert: '' } ] }
+      )
+      expect(c2.valid?).to eql(true)
+      expect(c2.is_visible).to eql(true)
+    end
+    
     it "should populate the _fingerprint attributes" do
       expect(d10.comments.count).to eql(0)
 
@@ -539,6 +583,40 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2', 'd100 - a13 - t1',
                'd101 - a10 - t1', 'd101 - a11 - t1', 'd101 - a11 - t2', 'd101 - a12 - t1' ]
         q = cc.build_query
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+      end
+
+      it "should support the :visibility filter" do
+        d = create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content')
+        d1 = d.add_comment(a10, 'd100 - a10 - c1', { ops: [ { insert: '' } ] }, 'd100 - a10 - t1')
+        d2 = d.add_comment(a11, 'd100 - a11 - c1', { ops: [ { insert: '' } ] }, 'd100 - a11 - t1')
+        d3 = d.add_comment(a10, 'd100 - a10 - c2', { ops: [ { insert: '' } ] }, 'd100 - a10 - t2')
+        d4 = d.add_comment(a12, 'd100 - a12 - c1', { ops: [ { insert: '' } ] }, 'd100 - a12 - t1')
+        d5 = d.add_comment(a12, 'd100 - a12 - c2', { ops: [ { insert: '' } ] }, 'd100 - a12 - t2')
+        d6 = d.add_comment(a13, 'd100 - a13 - c1', { ops: [ { insert: '' } ] }, 'd100 - a13 - t1')
+
+        
+        xl = [ 'd100 - a10 - t1', 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t1', 'd100 - a12 - t2',
+               'd100 - a13 - t1' ]
+        q = cc.build_query(filters: { visibility: :both })
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        q = cc.build_query(filters: { visibility: :nil })
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        expect(d1.update(is_visible: false)).to eql(true)
+        expect(d4.update(is_visible: false)).to eql(true)
+        
+        xl = [ 'd100 - a11 - t1', 'd100 - a10 - t2', 'd100 - a12 - t2', 'd100 - a13 - t1' ]
+        q = cc.build_query(filters: { visibility: :visible })
+        expect(q.count).to eql(xl.count)
+        expect(_clist(q)).to match_array(xl)
+
+        xl = [ 'd100 - a10 - t1', 'd100 - a12 - t1' ]
+        q = cc.build_query(filters: { visibility: :hidden })
         expect(q.count).to eql(xl.count)
         expect(_clist(q)).to match_array(xl)
       end

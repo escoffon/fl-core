@@ -259,8 +259,16 @@ EOD
         end
         c
       else
-        c.errors.each do |ek, ev|
-          self.errors.add("comment_#{ek}", ev)
+        if Rails.version >= "6.1"
+          # Rails 6.1 uses a one-parameter block
+
+          c.errors.each do |e|
+            errors.add("comment.#{e.attribute}".to_sym, e.message)
+          end
+        else
+          c.errors.each do |ek, ev|
+            self.errors.add("comment.#{ek}", ev)
+          end
         end
         nil
       end
