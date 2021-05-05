@@ -445,7 +445,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     context '#to_hash' do
       let(:id_keys) { [ :type, :global_id, :api_root, :fingerprint, :id, :virtual_type ] }
       let(:min_keys) { id_keys | [ :created_at, :updated_at, :permissions,
-                                   :commentable, :author, :title, :contents_html, :contents_json ] }
+                                   :commentable, :author, :is_visible, :title, :contents_html, :contents_json ] }
       let(:std_keys) { min_keys | [ ] }
       let(:vrb_keys) { std_keys | [ ] }
       let(:cmp_keys) { vrb_keys | [ ] }

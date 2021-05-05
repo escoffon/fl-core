@@ -50,7 +50,7 @@ module Fl::Core::Comment
     end
 
     # @!visibility private
-    DEFAULT_HASH_KEYS = [ :commentable, :author, :title, :contents_html, :contents_json ]
+    DEFAULT_HASH_KEYS = [ :commentable, :author, :is_visible, :title, :contents_html, :contents_json ]
 
     # Given a verbosity level, return predefined hash options to use.
     #
