@@ -1,6 +1,9 @@
 class CreateFlCoreComments < ActiveRecord::Migration[6.0]
   def change
     create_table :fl_core_comments do |t|
+      # The type name, for STI. This column is used mainly to support custom class names
+      t.string		:type, null: false, index: { name: :fl_comment_type_idx }
+
       # Polymorphic reference to the commentable (object to which the comment is attached)
       # The commentable_fingerprint field is a query optimization
       t.references	:commentable, polymorphic: true, index: { name: 'fl_core_cmts_cmtable_ref_idx' }

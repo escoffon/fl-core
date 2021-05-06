@@ -6,6 +6,8 @@ RSpec.configure do |c|
 end
 
 RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
+  let(:test_class) { Fl::Test::Comment }
+
   let(:a10) { create(:test_actor, name: 'a10') }
   let(:a11) { create(:test_actor, name: 'a11') }
   let(:a12) { create(:test_actor, name: 'a12') }
@@ -20,6 +22,32 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
 
   let(:d20_content) { 'd20 - content' }
   let(:d20) { create(:test_datum_comment_two, owner: a10, content: d20_content) }
+      
+  let(:d100) do
+    d = create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content')
+    d.add_comment(a10, 'd100 - a10 - c1', { ops: [ { insert: '' } ] }, 'd100 - a10 - t1')
+    d.add_comment(a11, 'd100 - a11 - c1', { ops: [ { insert: '' } ] }, 'd100 - a11 - t1')
+    d.add_comment(a10, 'd100 - a10 - c2', { ops: [ { insert: '' } ] }, 'd100 - a10 - t2')
+    d.add_comment(a12, 'd100 - a12 - c1', { ops: [ { insert: '' } ] }, 'd100 - a12 - t1')
+    d.add_comment(a12, 'd100 - a12 - c2', { ops: [ { insert: '' } ] }, 'd100 - a12 - t2')
+    d.add_comment(a13, 'd100 - a13 - c1', { ops: [ { insert: '' } ] }, 'd100 - a13 - t1')
+    
+    d
+  end
+
+  let(:d101) do
+    d = create(:test_datum_comment, owner: a10, title: 'd101.title', content: 'd101.content')
+    d.add_comment(a10, 'd101 - a10 - c1', { ops: [ { insert: '' } ] }, 'd101 - a10 - t1')
+    d.add_comment(a11, 'd101 - a11 - c1', { ops: [ { insert: '' } ] }, 'd101 - a11 - t1')
+    d.add_comment(a11, 'd101 - a11 - c2', { ops: [ { insert: '' } ] }, 'd101 - a11 - t2')
+    d.add_comment(a12, 'd101 - a12 - c1', { ops: [ { insert: '' } ] }, 'd101 - a12 - t1')
+    
+    d
+  end
+
+  let(:d102) do
+    create(:test_datum_comment, owner: a10, title: 'd102.title', content: 'd102.content')
+  end
 
   def _clist(cl)
     cl.map do |c|
@@ -48,7 +76,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
 
   describe "#commentable?" do
     it "should return true for comment objects" do
-      c1 = Fl::Core::Comment::ActiveRecord::Comment.create(
+      c1 = test_class.create(
         author: a10,
         commentable: d10,
         contents_html: 'contents1',
@@ -62,7 +90,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     it "should populate the :title attribute" do
       expect(d10.comments.count).to eql(0)
 
-      c1 = Fl::Core::Comment::ActiveRecord::Comment.new(
+      c1 = test_class.new(
         author: a10,
         commentable: d10,
         contents_html: 'contents1',
@@ -74,7 +102,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     end
 
     it 'should accept the :is_visible attribute' do
-      c1 = Fl::Core::Comment::ActiveRecord::Comment.create(
+      c1 = test_class.create(
         is_visible: true,
         author: a10,
         commentable: d10,
@@ -84,7 +112,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       expect(c1.valid?).to eql(true)
       expect(c1.is_visible).to eql(true)
 
-      c2 = Fl::Core::Comment::ActiveRecord::Comment.create(
+      c2 = test_class.create(
         is_visible: false,
         author: a10,
         commentable: d10,
@@ -96,7 +124,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     end
     
     it 'should populate the :is_visible attribute if not present' do
-      c1 = Fl::Core::Comment::ActiveRecord::Comment.new(
+      c1 = test_class.new(
         author: a10,
         commentable: d10,
         contents_html: 'contents1',
@@ -107,7 +135,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       expect(c1.save).to eql(true)
       expect(c1.is_visible).to eql(true)
 
-      c2 = Fl::Core::Comment::ActiveRecord::Comment.create(
+      c2 = test_class.create(
         author: a10,
         commentable: d10,
         contents_html: 'contents2',
@@ -120,7 +148,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     it "should populate the _fingerprint attributes" do
       expect(d10.comments.count).to eql(0)
 
-      c1 = Fl::Core::Comment::ActiveRecord::Comment.new(
+      c1 = test_class.new(
         author: a10,
         commentable: d10,
         contents_html: 'contents1',
@@ -146,7 +174,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       expect(d10.comments.count).to eql(0)
 
       c1 = Fl::Core::TestDatumComment.build_comment(h)
-      expect(c1).to be_a(Fl::Core::Comment::ActiveRecord::Comment)
+      expect(c1).to be_a(test_class)
       expect(c1.valid?).to eql(true)
       expect(c1.save).to eql(true)
       expect(d10.comments.count).to eql(1)
@@ -285,7 +313,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         expect(d10.comments.count).to eql(0)
 
         c1 = d10.add_comment(a10, 'contents1', { ops: [ { insert: '' } ] }, 'title1')
-        expect(c1).to be_a(Fl::Core::Comment::ActiveRecord::Comment)
+        expect(c1).to be_a(test_class)
         expect(c1.valid?).to eql(true)
         expect(c1.persisted?).to eql(true)
         expect(d10.comments.count).to eql(1)
@@ -347,39 +375,39 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
 
     context "on destroy" do
       it "should delete comments" do
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: d10.fingerprint)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: d10.fingerprint)
         expect(q.count).to eql(0)
         
         c1 = d10.add_comment(a10, 'contents1', { ops: [ { insert: 'contents1' } ] }, 'title1')
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: d10.fingerprint)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: d10.fingerprint)
         expect(q.count).to eql(1)
         
         d10_fp = d10.fingerprint
         d10.destroy
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
         expect(q.count).to eql(0)
       end
 
       it "should delete nested comments" do
         d10_fp = d10.fingerprint
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
         expect(q.count).to eql(0)
         
         c1 = d10.add_comment(a10, 'contents1', { ops: [ { insert: 'contents1' } ] }, 'title1')
         c1_fp = c1.fingerprint
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
         expect(q.count).to eql(1)
 
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: c1_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: c1_fp)
         expect(q.count).to eql(0)
         sc1 = c1.add_comment(a11, 'subcontents1', { ops: [ { insert: 'subcontents1' } ] }, 'subtitle1')
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: c1_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: c1_fp)
         expect(q.count).to eql(1)
 
         d10.destroy
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: d10_fp)
         expect(q.count).to eql(0)
-        q = Fl::Core::Comment::ActiveRecord::Comment.where('(commentable_fingerprint = :cfp)', cfp: c1_fp)
+        q = test_class.where('(commentable_fingerprint = :cfp)', cfp: c1_fp)
         expect(q.count).to eql(0)
       end
     end
@@ -388,41 +416,41 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
   describe "comment" do
     context "validation" do
       it "should detect a missing :commentable attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(author: a10, contents_html: 'c1 -c',
+        c1 = test_class.new(author: a10, contents_html: 'c1 -c',
                                                           contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:commentable)
       end
 
       it "should detect a missing :author attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, contents_html: 'c1 -c',
+        c1 = test_class.new(commentable: d10, contents_html: 'c1 -c',
                                                           contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:author)
       end
 
       it "should detect a missing :contents_html attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+        c1 = test_class.new(commentable: d10, author: a10,
                                                           contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:contents_html)
       end
 
       it "should detect a missing :contents_json attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+        c1 = test_class.new(commentable: d10, author: a10,
                                                           contents_html: 'c1 -c')
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:contents_json)
       end
 
       it "should detect an invalid :contents_json attribute" do
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+        c1 = test_class.new(commentable: d10, author: a10,
                                                           contents_html: 'c1 -c',
                                                           contents_json: [ 1 ])
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:contents_json)
 
-        c1 = Fl::Core::Comment::ActiveRecord::Comment.new(commentable: d10, author: a10,
+        c1 = test_class.new(commentable: d10, author: a10,
                                                           contents_html: 'c1 -c',
                                                           contents_json: { foo: 10 })
         expect(c1.valid?).to eql(true)
@@ -435,7 +463,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         expect(c1.comments.count).to eql(0)
         sc1 = c1.add_comment(a11, 'subcontents1', { ops: [ { insert: '' } ] }, 'subtitle1')
 
-        expect(sc1).to be_a(Fl::Core::Comment::ActiveRecord::Comment)
+        expect(sc1).to be_a(test_class)
         expect(sc1.valid?).to eql(true)
         expect(sc1.persisted?).to eql(true)
         expect(c1.comments.count).to eql(1)
@@ -451,7 +479,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       let(:cmp_keys) { vrb_keys | [ ] }
 
       let(:c1) do
-        Fl::Core::Comment::ActiveRecord::Comment.create(
+        test_class.create(
           author: a10,
           commentable: d10,
           contents_html: 'contents1',
@@ -548,34 +576,26 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
       end
     end
 
+    context 'with extension class' do
+      it 'a query should return extension class instances' do
+        dl = [ d100, d101, d102 ]
+
+        Fl::Test::Comment.all.each do |c|
+          expect(c).to be_a(Fl::Test::Comment)
+        end
+      end
+
+      it 'the :comments association should return extension class instances' do
+        dl = [ d100, d101, d102 ]
+
+        d100.comments.each do |c|
+          expect(c).to be_a(Fl::Test::Comment)
+        end
+      end
+    end
+    
     context ".build_query" do
-      let(:cc) { Fl::Core::Comment::ActiveRecord::Comment }
-      
-      let(:d100) do
-        d = create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content')
-        d.add_comment(a10, 'd100 - a10 - c1', { ops: [ { insert: '' } ] }, 'd100 - a10 - t1')
-        d.add_comment(a11, 'd100 - a11 - c1', { ops: [ { insert: '' } ] }, 'd100 - a11 - t1')
-        d.add_comment(a10, 'd100 - a10 - c2', { ops: [ { insert: '' } ] }, 'd100 - a10 - t2')
-        d.add_comment(a12, 'd100 - a12 - c1', { ops: [ { insert: '' } ] }, 'd100 - a12 - t1')
-        d.add_comment(a12, 'd100 - a12 - c2', { ops: [ { insert: '' } ] }, 'd100 - a12 - t2')
-        d.add_comment(a13, 'd100 - a13 - c1', { ops: [ { insert: '' } ] }, 'd100 - a13 - t1')
-        
-        d
-      end
-
-      let(:d101) do
-        d = create(:test_datum_comment, owner: a10, title: 'd101.title', content: 'd101.content')
-        d.add_comment(a10, 'd101 - a10 - c1', { ops: [ { insert: '' } ] }, 'd101 - a10 - t1')
-        d.add_comment(a11, 'd101 - a11 - c1', { ops: [ { insert: '' } ] }, 'd101 - a11 - t1')
-        d.add_comment(a11, 'd101 - a11 - c2', { ops: [ { insert: '' } ] }, 'd101 - a11 - t2')
-        d.add_comment(a12, 'd101 - a12 - c1', { ops: [ { insert: '' } ] }, 'd101 - a12 - t1')
-        
-        d
-      end
-
-      let(:d102) do
-        create(:test_datum_comment, owner: a10, title: 'd102.title', content: 'd102.content')
-      end
+      let(:cc) { test_class }
 
       it "should return all comments with default (empty) options" do
         dl = [ d100, d101, d102 ]

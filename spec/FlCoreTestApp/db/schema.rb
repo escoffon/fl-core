@@ -61,6 +61,7 @@ ActiveRecord::Schema.define(version: 2021_04_29_213701) do
   end
 
   create_table "fl_core_comments", force: :cascade do |t|
+    t.string "type", null: false
     t.string "commentable_type"
     t.integer "commentable_id"
     t.string "commentable_fingerprint"
@@ -78,6 +79,7 @@ ActiveRecord::Schema.define(version: 2021_04_29_213701) do
     t.index ["author_type", "author_id"], name: "fl_core_cmts_author_ref_idx"
     t.index ["commentable_fingerprint"], name: "fl_core_cmts_cmtable_fp_idx"
     t.index ["commentable_type", "commentable_id"], name: "fl_core_cmts_cmtable_ref_idx"
+    t.index ["type"], name: "fl_comment_type_idx"
   end
 
   create_table "fl_core_test_actor_twos", force: :cascade do |t|

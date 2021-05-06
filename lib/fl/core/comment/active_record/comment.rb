@@ -5,6 +5,17 @@ module Fl::Core::Comment::ActiveRecord
   # Implementation of the comment object for an ActiveRecord database.
   # It will need the migration `create_fl_core_comments`.
   #
+  # #### Single Table Inheritance
+  #
+  # The class defines the `type` attribute (column) to support Single Table Inheritance (STI).
+  # The main reason for this is to provide better support for custom comment class names, as outlined in the
+  # documentation for the `fl:core:comments:install` generator: when the comment subsystem is installed in a Rails
+  # application, a simple comment class is installed as an empty subclass of `Fl::Core::Comment::ActiveRecord::Comment`.
+  # This gives the application a more convenient (and customizable) name for the comment class, and an anchor for
+  # extension features. STI is not strictly speaking needed, but it does provide a more predictable API than if
+  # the the custom class was generated without it. (It also bakes in STI, so that the application does not need
+  # to add it locally.)
+  #
   # #### Attributes
   # This class defines the following attributes:
   #
