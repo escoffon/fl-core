@@ -570,10 +570,12 @@ module Fl::Core::Service
             if !obj.nil? && obj.save
               after_create(obj, p)
             else
-              self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                              error_response_data('creation_failure',
-                                                  localized_message('creation_failure', class: self.model_class.name),
-                                                  (obj) ? obj.errors : nil))
+              if self.success?
+                self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                                error_response_data('creation_failure',
+                                                    localized_message('creation_failure', class: self.model_class.name),
+                                                    (obj) ? obj.errors : nil))
+              end
             end
           end
         end
@@ -637,10 +639,12 @@ module Fl::Core::Service
             if update_object(obj, p)
               after_update(obj, p)
             else
-              self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
-                              error_response_data('update_failure',
-                                                  localized_message('update_failure', fingerprint: obj.fingerprint),
-                                                  obj.errors))
+              if self.success?
+                self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                                error_response_data('update_failure',
+                                                    localized_message('update_failure', fingerprint: obj.fingerprint),
+                                                    obj.errors))
+              end
             end
           end
         rescue => exc
