@@ -86,7 +86,7 @@ module Fl::Core::Comment::ActiveRecord
         else
           qp[:filters] = { }
         end
-        
+
         @query_params = qp
       end
 
@@ -187,27 +187,15 @@ module Fl::Core::Comment::ActiveRecord
     #  on error.
 
     def index_query(query_opts = {})
-      # the commentables:only filter drops objects that do not grant {#actor} `index_comments`, and for good measure
-      # we ignore commentables:except
+      # If we get here, the query parameters have gone through permission checks, and therefore the
+      # :commentables are acceptable. (If they weren't, then the service object would have triggered an access
+      # failure and never get here.)
       #
-      # The commentable:only value is already in objects, and strictly speaking we don't need the `index_comments`
-      # check, since the access check has failed if any commentables are not indexable (by actor), but we leave the
-      # filter in just in case.
-      # Similarly there should not be a need to call _instantiate_object_list here
-      # And commentables:except should already have been eliminated
+      # But we do check for an empty commentables:only, and if so return no records
 
       filters = query_opts[:filters] || { }
       cf = filters[:commentables] || { }
-      only_objects = _filter_object_list(_instantiate_object_list(cf[:only]))
-
-      # if only_objects is empty, then we return no results: we must have at least one commentable
-
-      return self.model_class.none if !only_objects.is_a?(Array) || (only_objects.count < 1)
-
-      filters[:commentables] = { only: only_objects }
-      query_opts[:filters] = filters
-      
-      # the other query options can be passed to the query as they are
+      return self.model_class.none if !cf[:only].is_a?(Array) || (cf[:only].count < 1)
 
       return self.model_class.build_query(query_opts)
     end
@@ -245,25 +233,6 @@ module Fl::Core::Comment::ActiveRecord
 
         acc
       end
-    end
-
-    def _filter_object_list(ol)
-      return nil if ol.nil?
-      ol = [ ol ] unless ol.is_a?(Array)
-
-      fl = ol.reduce([ ]) do |acc, o|
-        if o.respond_to?(:has_permission?)
-          if o.has_permission?(Fl::Core::Comment::Permission::IndexComments::NAME, actor)
-            acc << o
-          end
-        else
-          acc << o
-        end
-
-        acc
-      end
-
-      return (fl.count > 0) ? fl : nil
     end
   end
 end
