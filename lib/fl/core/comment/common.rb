@@ -117,7 +117,7 @@ module Fl::Core::Comment
       c = self.commentable
       u = self.author
 
-      rv = { virtual_type: 'Fl::Core::Comment' }
+      rv = { virtual_type: Fl::Core::Comment.object_class_name }
       keys.each do |k|
         sk = k.to_sym
         case sk
