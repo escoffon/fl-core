@@ -52,6 +52,37 @@ module Fl::Core::Comment::ActiveRecord
     self.table_name = 'fl_core_comments'
 
     has_access_control Fl::Core::Comment::Checker.new
+
+    # Return the default `to_hash` options for a commentable.
+    # The comment class could potentially use multiple commentable classes: for example, since comments
+    # are commentables, they can be associated with comment instances as well as others.
+    #
+    # This method supports the ability to define the `to_hash` parameters to use with a **:commentable**
+    # key; users of the framework can override this method to add support for user-specific commentable
+    # classes.
+    #
+    # The default implementation returns `{ verbosity: :minimal }`.
+    #
+    # @param commentable [Object] The commentable to hash.
+    #
+    # @return [Hash] Returns a hash containing default options for *commentable*; note that this value can be
+    #  overridden in a `to_hash` by passing appropriate arguments.
+
+    def self.default_commentable_to_hash_options(commentable)
+      return { verbosity: :minimal }
+    end
+
+    # Return the default `to_hash` options for a commentable.
+    # This is wrapper that forwards the call to the class object; see {.default_commentable_to_hash_options}.
+    #
+    # @param commentable [Object] The commentable to hash.
+    #
+    # @return [Hash] Returns a hash containing default options for *commentable*; note that this value can be
+    #  overridden in a `to_hash` by passing appropriate arguments.
+
+    def default_commentable_to_hash_options(commentable)
+      return self.class.default_commentable_to_hash_options(commentable)
+    end
     
     # @!attribute [rw] is_visible
     # The visibility flag; defaults to `true`.

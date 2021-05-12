@@ -48,7 +48,7 @@ module Fl::Core::Comment
         end
       end
     end
-
+    
     # @!visibility private
     DEFAULT_HASH_KEYS = [ :commentable, :author, :is_visible, :title, :contents_html, :contents_json ]
 
@@ -96,9 +96,11 @@ module Fl::Core::Comment
     #
     # @return [Hash] Returns a Hash containing the comment representation.
     #
-    # - *:commentable* A Hash containing the two keys *:id* and *:type*, respectively the id and class name
-    #   of the commentable object for which the comment was created. This hash contains the key **:num_comments**
-    #   if defined by the commentable object.
+    # - *:commentable* A Hash generated using the `to_hash` options from {.default_commentable_to_hash_options},
+    #   The **:num_comments** keys is added automatically, so that it will be present if the commentable
+    #   responds to `:num_comments`.
+    #   Note that {.default_commentable_to_hash_options} is provided so that subclasses can augment the properties
+    #   returned in the hash.
     # - *:author* Information about the author; a Hash containing these keys (if supported):
     #   - *:id* The id.
     #   - *:username* The login name.
@@ -122,7 +124,8 @@ module Fl::Core::Comment
         sk = k.to_sym
         case sk
         when :commentable
-          commentable_opts = to_hash_opts_with_defaults(to_hash_opts[:commentable], { verbosity: :id })
+          commentable_opts = to_hash_opts_with_defaults(to_hash_opts[:commentable],
+                                                        default_commentable_to_hash_options(c))
           if commentable_opts.has_key?(:include)
             commentable_opts[:include] = [ commentable_opts[:include] ] unless commentable_opts[:include].is_a?(Array)
             commentable_opts[:include] << :num_comments unless commentable_opts[:include].include?(:num_comments)
@@ -147,7 +150,7 @@ module Fl::Core::Comment
     end
 
     public
-  
+    
     # Include hook.
     # This method performs the following operations:
     #

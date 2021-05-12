@@ -5,6 +5,16 @@ RSpec.configure do |c|
   c.include Fl::Core::Test::ObjectHelpers
 end
 
+class TestComment < Fl::Test::Comment
+  def self.default_commentable_to_hash_options(commentable)
+    if commentable.is_a?(Fl::Core::TestDatumComment)
+      return { verbosity: :minimal, except: [ :content ] }
+    else
+      return { verbosity: :minimal }
+    end
+  end
+end
+
 RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
   let(:test_class) { Fl::Test::Comment }
 
@@ -573,6 +583,39 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
         c_keys = min_keys - [ :title, :author ]
         h = c1.to_hash(a10, { verbosity: :minimal, except: [ :title, :author ] })
         expect(h.keys).to match_array(c_keys)
+      end
+
+      context 'with custom to_hash options' do
+        it 'should customize the commentable hash defaults' do
+          cx = TestComment.create(
+            author: a10,
+            commentable: d10,
+            contents_html: 'contents1',
+            contents_json: { ops: [ { insert: '' } ] }
+          )
+
+          h = cx.to_hash(a10, { verbosity: :minimal })
+          expect(h[:commentable]).to include(:created_at, :updated_at, :title)
+          expect(h[:commentable]).not_to include(:content)
+        end
+
+        it 'should override the commentable hash defaults locally' do
+          cx = TestComment.create(
+            author: a10,
+            commentable: d10,
+            contents_html: 'contents1',
+            contents_json: { ops: [ { insert: '' } ] }
+          )
+
+          h = cx.to_hash(a10, {
+                           verbosity: :minimal,
+                           to_hash: {
+                             commentable: { verbosity: :minimal, except: [ :created_at, :updated_at ] }
+                           }
+                         })
+          expect(h[:commentable]).to include(:title, :content)
+          expect(h[:commentable]).not_to include(:created_at, :updated_at)
+        end
       end
     end
 
