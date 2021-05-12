@@ -45,12 +45,11 @@ module Fl::Core::Comments
       
       @api_service_root = "/#{path.join('/')}"
       @api_service_class_name = "#{@comment_controller_class.gsub('Controller', '').gsub('::', '')}APIService"
-
+      @api_class_name = @comment_object_class.gsub(':', '')
+      @api_pathname = path.join('/')
       l = path.pop.singularize
       path << l
       @api_namespace = path.join('_')
-      @api_pathname = path.join('/')
-      @api_class_name = @comment_object_class.gsub(':', '')
     end
     
     def create_migration_files
