@@ -27,6 +27,7 @@ class TestRelation
   attr_reader :last_clause
   attr_reader :last_params
   attr_reader :id
+  attr_reader :saw_none
   
   def initialize(id)
     @id = id
@@ -37,6 +38,7 @@ class TestRelation
     @last_includes = nil
     @last_clause = nil
     @last_params = nil
+    @saw_none = false
   end
 
   def includes(inc)
@@ -48,6 +50,10 @@ class TestRelation
     @last_clause = clause
     @last_params = params
   end
+
+  #def none()
+  #  @saw_none = true
+  #end
 end
 
 class TestFilter < Fl::Core::Query::Filter
@@ -742,6 +748,64 @@ RSpec.describe Fl::Core::Query::QueryHelper do
         q1 = qh.add_includes(q, nil, [ :one, :two, :avatar ], [ :one ])
         expect(q.last_includes).to eql([ { one_attachment: [ :blob ] }, :two, :avatar ])
       end
+    end
+  end
+
+  describe '.process_filters' do
+    it 'should return a nil WHERE clause if the filter argument is nil' do
+      clause, params = qh.process_filters(nil, cfg_1)
+      expect(clause).to be_nil
+      expect(params).to be_nil
+    end
+
+    it 'should return a nil WHERE clause if the filter argument is an empty hash' do
+      clause, params = qh.process_filters({ }, cfg_1)
+      expect(clause).to be_nil
+      expect(params).to be_nil
+    end
+
+    it 'should return a WHERE clause if filters are present' do
+      clause, params = qh.process_filters({
+                                            ones: {
+                                              only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ]
+                                            }
+                                          }, cfg_1)
+      expect(clause).to eql('(c_one IN (:p1))')
+      expect(params).to include(p1: [ 1, 2 ])
+
+      clause, params = qh.process_filters({
+                                            ones: {
+                                              only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ]
+                                            },
+                                            polys: { except: 'Fl::Core::TestDatum/1' },
+                                            blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                                          }, cfg_1)
+        expect(clause).to eql('((c_one IN (:p1)) AND (c_poly NOT IN (:p2)) AND (c_blocked IN (:p3)))')
+        expect(params).to include(p1: [ 1, 2 ],
+                                  p2: [ 'Fl::Core::TestDatum/1' ],
+                                  p3: [ 20 ])
+    end
+
+    it 'should accept a filter object instead of a configuration' do
+      clause, params = qh.process_filters({
+                                            ones: {
+                                              only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ]
+                                            }
+                                          }, TestFilter.new(cfg_1, 10))
+      expect(clause).to eql('(c_one IN (:p1))')
+      expect(params).to include(p1: [ 1, 2 ])
+
+      clause, params = qh.process_filters({
+                                            ones: {
+                                              only: [ 'Fl::Core::TestDatumOne/1', 'Fl::Core::TestDatumOne/2' ]
+                                            },
+                                            polys: { except: 'Fl::Core::TestDatum/1' },
+                                            blocked: { only: [ 1, 2 ], except: [ 1 ] }
+                                          }, TestFilter.new(cfg_1, 20))
+        expect(clause).to eql('((c_one IN (:p1)) AND (c_poly NOT IN (:p2)) AND (c_blocked IN (:p3)))')
+        expect(params).to include(p1: [ 1, 2 ],
+                                  p2: [ 'Fl::Core::TestDatum/1' ],
+                                  p3: [ 20 ])
     end
   end
 

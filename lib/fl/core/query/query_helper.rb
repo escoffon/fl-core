@@ -224,12 +224,61 @@ module Fl::Core::Query
       return (inc == false) ? q : q.includes(inc)
     end
 
+    # Process a filter specification to generate a WHERE clause.
+    # If *filters* is an acceptable filter body, call {Fl::Core::Query::Filter#generate} on *f* and return the
+    # generated WHERE clause and associated parameters.
+    # If *f* is a hash, the method first instantiates a {Fl::Core::Query::Filter}. This is actually the use for
+    # most situations; however, if you need to use a custom filter, you can instantiate it and pass it as the
+    # *f* argument.
+    #
+    # Note that {Fl::Core::Query::Filter#generate} is called with the default top level operand **:all**; if you
+    # need OR behavior at the top level, you have to specify **:any** explicitly:
+    #
+    # ```
+    # q = Fl::Core::Query::QueryHelper.process_filters({
+    #         any: {
+    #           ones: { only: [ 1, 2 ] },
+    #           twos: { except: [ 4, 6 ] }
+    #         }
+    #       }, my_config)
+    # ```
+    #
+    # @param filters [Hash, nil] A hash containing the filters to apply.
+    # @param f [Hash, Fl::Core::Query::Filter] The filter to use, or a hash to create a filter automatically.
+    #  For most uses, you can pass the configuration hash for the filter, but if you need a custom filter class,
+    #  you have the option to instantiate one and pass it along instead.
+    #
+    # @return [Array] Returns a two-element array containing the WHERE clause and a hash of replacement parameters.
+    #  If the first element is `nil`, no clause was generated.
+
+    def self.process_filters(filters, f)
+      return [ nil, nil ] unless Fl::Core::Query::Filter.acceptable_body?(filters)
+      gen = if f.is_a?(Hash)
+              Fl::Core::Query::Filter.new(f)
+            elsif f.is_a?(Fl::Core::Query::Filter)
+              f
+            else
+              nil
+            end
+      if gen.nil?
+        return [ nil, nil ]
+      else
+        clause = gen.generate(filters)
+        if !clause.nil? && (clause.length > 0)
+          return [ clause, gen.params.dup ]
+        else
+          return [ nil, nil ]
+        end
+      end
+    end
+
     # Add filter clauses to an ActiveRecord relation.
     # This method wraps the standard procedure for adding WHERE clauses to a query, based on the *filters*
     # parameter. For a discussion of filters, see {Fl::Core::Query::Filter}.
     #
-    # If *filters* is an acceptable filter body, call {Fl::Core::Query::Filter#generate} on *f* and, if the return
-    # value is a valid clause, call the `where` method on *q* to generate a WHERE clause.
+    # The method calls {.process_filters} to generate a WHERE clause; if the clause value is `false`, a
+    # statement is generated that returns no records. If it is `nil`, no WHERE clause is generated.
+    # And if it is a valid clause, call the `where` method on *q* to generate a WHERE clause.
     # If *f* is a hash, the method first instantiates a {Fl::Core::Query::Filter}. This is actually the use for
     # most situations; however, if you need to use a custom filter, you can instantiate it and pass it as the
     # *f* argument.
@@ -255,19 +304,12 @@ module Fl::Core::Query
     # @return [Relation] Returns the modified relation *q*.
 
     def self.add_filters(q, filters, f)
-      if Fl::Core::Query::Filter.acceptable_body?(filters)
-        gen = if f.is_a?(Hash)
-                Fl::Core::Query::Filter.new(f)
-              elsif f.is_a?(Fl::Core::Query::Filter)
-                f
-              else
-                nil
-              end
-        unless gen.nil?
-          clause = gen.generate(filters)
-          if !clause.nil? && clause.length > 0
-            q = q.where(clause, gen.params)
-          end
+      clause, filter_params = process_filters(filters, f)
+      if !clause.nil?
+        if clause == false
+          q = q.none
+        else
+          q = q.where(clause, filter_params)
         end
       end
 
