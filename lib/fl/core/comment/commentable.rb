@@ -141,15 +141,17 @@ module Fl::Core::Comment
             #raise "Internal error: has_comments expects #{self.name} to have attribute :#{counter}"
 
             bumper = <<EOD
-def _bump_comment_count()
+def _bump_comment_count(saveit = true)
   if self.class.attribute_names.include?('#{counter}')
     if self.#{counter}.blank?
       self.#{counter} = 1
     else
       self.#{counter} = self.#{counter} + 1
     end
-    unless self.save
-      Rails.logger.warn("++++++++++ WARNING: failed to bump comment counter: \#{self.errors.messages}")
+    if saveit
+      unless self.save
+        Rails.logger.warn("++++++++++ WARNING: failed to bump comment counter: \#{self.errors.messages}")
+      end
     end
   else
     Rails.logger.warn("++++++++++ WARNING: #{self.name} does not define attribute #{counter}")
@@ -159,7 +161,7 @@ EOD
             class_eval bumper
 
             dropper = <<EOD
-def _drop_comment_count()
+def _drop_comment_count(saveit = true)
   if self.class.attribute_names.include?('#{counter}')
     if self.#{counter}.blank?
       self.#{counter} = 0
@@ -167,8 +169,10 @@ def _drop_comment_count()
       self.#{counter} = self.#{counter} - 1
     end
     self.#{counter} = 0 if self.#{counter} < 0
-    unless self.save
-      Rails.logger.warn("++++++++++ WARNING: failed to drop comment counter: \#{self.errors.messages}")
+    if saveit
+      unless self.save
+        Rails.logger.warn("++++++++++ WARNING: failed to drop comment counter: \#{self.errors.messages}")
+      end
     end
   else
     Rails.logger.warn("++++++++++ WARNING: #{self.name} does not define attribute #{counter}")

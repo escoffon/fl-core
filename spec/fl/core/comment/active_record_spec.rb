@@ -32,7 +32,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
 
   let(:d20_content) { 'd20 - content' }
   let(:d20) { create(:test_datum_comment_two, owner: a10, content: d20_content) }
-      
+  
   let(:d100) do
     d = create(:test_datum_comment, owner: a10, title: 'd100.title', content: 'd100.content')
     d.add_comment(a10, 'd100 - a10 - c1', { ops: [ { insert: '' } ] }, 'd100 - a10 - t1')
@@ -212,7 +212,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
 
       it "should not execute the callback if not enabled" do
         # there's no clear way to know that it does not get executed, but at least we can check that it runs
-      
+
         expect(d20.comments.count).to eql(0)
 
         c1 = d20.add_comment(a10, 'contents1', { ops: [ { insert: 'contents1' } ] }, 'title1')
@@ -272,7 +272,7 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
 
       it "should not execute the callback if not enabled" do
         # there's no clear way to know that it does not get executed, but at least we can check that it runs
-      
+
         expect(d20.comments.count).to eql(0)
 
         c1 = d20.add_comment(a10, 'contents1', { ops: [ { insert: 'contents1' } ] }, 'title1')
@@ -427,43 +427,93 @@ RSpec.describe 'Fl::Core::Comment::ActiveRecord', type: :model do
     context "validation" do
       it "should detect a missing :commentable attribute" do
         c1 = test_class.new(author: a10, contents_html: 'c1 -c',
-                                                          contents_json: { ops: [ { insert: 'c1 - c' } ] })
+                            contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:commentable)
       end
 
       it "should detect a missing :author attribute" do
         c1 = test_class.new(commentable: d10, contents_html: 'c1 -c',
-                                                          contents_json: { ops: [ { insert: 'c1 - c' } ] })
+                            contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:author)
       end
 
       it "should detect a missing :contents_html attribute" do
         c1 = test_class.new(commentable: d10, author: a10,
-                                                          contents_json: { ops: [ { insert: 'c1 - c' } ] })
+                            contents_json: { ops: [ { insert: 'c1 - c' } ] })
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:contents_html)
       end
 
       it "should detect a missing :contents_json attribute" do
         c1 = test_class.new(commentable: d10, author: a10,
-                                                          contents_html: 'c1 -c')
+                            contents_html: 'c1 -c')
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:contents_json)
       end
 
       it "should detect an invalid :contents_json attribute" do
         c1 = test_class.new(commentable: d10, author: a10,
-                                                          contents_html: 'c1 -c',
-                                                          contents_json: [ 1 ])
+                            contents_html: 'c1 -c',
+                            contents_json: [ 1 ])
         expect(c1.valid?).to eql(false)
         expect(c1.errors.messages).to include(:contents_json)
 
         c1 = test_class.new(commentable: d10, author: a10,
-                                                          contents_html: 'c1 -c',
-                                                          contents_json: { foo: 10 })
+                            contents_html: 'c1 -c',
+                            contents_json: { foo: 10 })
         expect(c1.valid?).to eql(true)
+      end
+    end
+
+    context 'the :is_visible attribute' do
+      it 'should bump the commentable\'s comment count if true at creation' do
+        c1 = test_class.create(commentable: d10, author: a10,
+                               contents_html: 'c1 -c',
+                               contents_json: { ops: [ ] })
+        expect(c1.valid?).to eql(true)
+
+        d10.reload
+        expect(d10.num_comments).to eql(1)
+      end
+      
+      it 'should not bump the commentable\'s comment count if false at creation' do
+        c1 = test_class.create(commentable: d10, author: a10, is_visible: false,
+                               contents_html: 'c1 -c',
+                               contents_json: { ops: [ ] })
+        expect(c1.valid?).to eql(true)
+
+        d10.reload
+        expect(d10.num_comments).to eql(0)
+      end
+      
+      it 'should drop the commentable\'s comment count if changed to false' do
+        c1 = test_class.create(commentable: d10, author: a10,
+                               contents_html: 'c1 -c',
+                               contents_json: { ops: [ ] })
+        expect(c1.valid?).to eql(true)
+
+        d10.reload
+        expect(d10.num_comments).to eql(1)
+
+        expect(c1.update(is_visible: false)).to eql(true)
+        d10.reload
+        expect(d10.num_comments).to eql(0)
+      end
+      
+      it 'should drop the commentable\'s comment count if changed to true' do
+        c1 = test_class.create(commentable: d10, author: a10, is_visible: false,
+                               contents_html: 'c1 -c',
+                               contents_json: { ops: [ ] })
+        expect(c1.valid?).to eql(true)
+
+        d10.reload
+        expect(d10.num_comments).to eql(0)
+
+        expect(c1.update(is_visible: true)).to eql(true)
+        d10.reload
+        expect(d10.num_comments).to eql(1)
       end
     end
     

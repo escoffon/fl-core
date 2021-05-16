@@ -139,11 +139,10 @@ module Fl::Core::Comment::ActiveRecord
 
     # manage comment counts in the commentable
     
-    after_create :_bump_comment_count_callback
-    after_destroy :_drop_comment_count_callback
-    after_destroy :_update_commentable_timestamp
+    after_create :_after_create_check
+    after_destroy :_after_destroy_check
     before_save :_check_visibility
-    after_save :_update_commentable_timestamp
+    after_save :_after_save_check
 
     # has_comments defines the :comments association
 
@@ -404,21 +403,41 @@ module Fl::Core::Comment::ActiveRecord
       write_attribute(:commentable_fingerprint, self.commentable.fingerprint) if self.commentable
     end
 
-    def _bump_comment_count_callback()
-      if self.commentable.respond_to?('_bump_comment_count')
-        self.commentable.send('_bump_comment_count')
+    def _after_create_check()
+      if self.is_visible && self.commentable.respond_to?('_bump_comment_count')
+        self.commentable.send('_bump_comment_count', true)
       end
     end
 
-    def _drop_comment_count_callback()
-      if self.commentable.respond_to?('_drop_comment_count')
-        self.commentable.send('_drop_comment_count')
+    def _after_destroy_check()
+      if self.is_visible && self.commentable.respond_to?('_drop_comment_count')
+        self.commentable.send('_drop_comment_count', true)
       end
     end
 
-    def _update_commentable_timestamp()
-      self.commentable.updated_at = Time.new
-      self.commentable.save
+    def _after_save_check()
+      if saved_changes?
+        sh = saved_changes
+        if sh.has_key?('is_visible')
+          # if the initial value was nil, then the comment was just created, and we do not bump/drop; if we do,
+          # we end up with a double call, since after_save is called on a create
+
+          unless sh['is_visible'][0].nil?
+            if sh['is_visible'][1]
+              if self.commentable.respond_to?('_bump_comment_count')
+                self.commentable.send('_bump_comment_count', false)
+              end
+            else
+              if self.commentable.respond_to?('_drop_comment_count')
+                self.commentable.send('_drop_comment_count', false)
+              end
+            end
+          end
+        else
+          self.commentable.updated_at = Time.new
+        end
+        self.commentable.save
+      end
     end
 
     def _check_visibility()
