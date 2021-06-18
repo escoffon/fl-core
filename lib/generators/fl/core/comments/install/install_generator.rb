@@ -34,14 +34,23 @@ module Fl::Core::Comments
 
     private
 
+    def path_to_class(klass)
+      klass = klass.name unless klass.is_a?(String)
+      path = klass.underscore.split('/')
+      file_root = path.pop.gsub('_controller', '')
+      return [ path.join('/'), file_root ]
+    end
+    
     def init_variables()
       @comment_object_class = options['object_class']
       @comment_service_class = options['service_class']
       @comment_controller_class = options['controller_class']
 
-      path = @comment_controller_class.underscore.split('/')
-      file_root = path.pop.gsub('_controller', '')
-      path << file_root
+      @comment_object_class_path = path_to_class(options['object_class'])
+      @comment_service_class_path = path_to_class(options['service_class'])
+      @comment_controller_class_path = path_to_class(options['controller_class'])
+      
+      path = @comment_controller_class_path.join('/').split('/')
       
       @api_service_root = "/#{path.join('/')}"
       @api_service_class_name = "#{@comment_controller_class.gsub('Controller', '').gsub('::', '')}APIService"
@@ -50,6 +59,7 @@ module Fl::Core::Comments
       l = path.pop.singularize
       path << l
       @api_namespace = path.join('_')
+      @api_dot_namespace = path.join('.')
     end
     
     def create_migration_files
@@ -62,17 +72,20 @@ module Fl::Core::Comments
     end
 
     def create_object_file
-      outfile = File.join(destination_root, 'app', 'extensions', @comment_object_class.underscore + '.rb')
+      path = @comment_object_class_path.join('/')
+      outfile = File.join(destination_root, 'app', 'extensions', path + '.rb')
       template('comment.rb', outfile)
     end
 
     def create_service_file
-      outfile = File.join(destination_root, 'app', 'extensions', @comment_service_class.underscore + '.rb')
+      path = @comment_service_class_path.join('/')
+      outfile = File.join(destination_root, 'app', 'extensions', path + '.rb')
       template('service.rb', outfile)
     end
 
     def create_controller_file
-      outfile = File.join(destination_root, 'app', 'controllers', @comment_controller_class.underscore + '.rb')
+      path = @comment_controller_class_path.join('/')
+      outfile = File.join(destination_root, 'app', 'controllers', path + '_controller.rb')
       template('controller.rb', outfile)
     end
 

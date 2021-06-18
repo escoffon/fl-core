@@ -97,4 +97,20 @@ class <%=@comment_controller_class%> < ApplicationController
       render_error_response_from_service('update_failure', @service, @service.status[:status])
     end
   end
+
+  # DELETE /<%=@api_pathname%>/1 or /<%=@api_pathname%>/1.json
+  def destroy
+    @service = service_class.new(current_user, params, self)
+    destroyed = @service.destroy()
+    respond_to do |format|
+      format.json do
+        if destroyed[0] && @service.success?
+          render_success_response(I18n.tx('<%=@api_dot_namespace%>.controller.destroy.did_destroy',
+                                          title: destroyed[1].title), :ok)
+        else
+          render_error_response_from_service('destroy_failure', @service, @service.status[:status])
+        end
+      end
+    end
+  end
 end
