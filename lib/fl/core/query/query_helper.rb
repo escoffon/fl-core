@@ -162,7 +162,7 @@ module Fl::Core::Query
     #  A single symbol is converted to a one-element array.
     # @param attachments [String,Symbol,Array<String,Symbol>] The names of properties in *includes*
     #  that contain ActiveStorage attachments; these properties are converted to a blob association by
-    #  {#normalize_includes}. A scalar value is converted to a one element array.
+    #  {.normalize_includes}. A scalar value is converted to a one element array.
     #  Defaults to `[ :avatar ]`.
     #
     # @return [Array,false] Returns an array of include descriptors, or if *includes* is `false`, the
@@ -213,7 +213,7 @@ module Fl::Core::Query
     #  You can pass `false` or `nil` to indicate that, if *includes* is `nil`, no eager loading is to be done.
     # @param attachments [String,Symbol,Array<String,Symbol>] The names of properties in *includes*
     #  that contain ActiveStorage attachments; these properties are converted to a blob association by
-    #  {#normalize_includes}. A scalar value is converted to a one element array.
+    #  {.normalize_includes}. A scalar value is converted to a one element array.
     #  Defaults to `[ :avatar ]`.
     #
     # @return [Relation] Returns the modified relation *q*.

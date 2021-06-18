@@ -95,7 +95,7 @@ module I18n
     # Executes a block with a given locale array set.
     # This method sets the locale array, executes the block, and resets it to the original value.
     #
-    # @param locale_array [Array<Symbol, String>,nil] An array of locale names; strings are converted to symbols.
+    # @param tmp_locale_array [Array<Symbol, String>,nil] An array of locale names; strings are converted to symbols.
     #  A `nil` value clears the locale array.
     #
     # @yield No parameters are passed to the block.

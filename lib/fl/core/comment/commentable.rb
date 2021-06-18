@@ -239,7 +239,7 @@ EOD
     #
     # @param author [Object] The comment author, who will be its owner.
     # @param contents_html [String] The HTML contents of the comment.
-    # @param contents_deltjson [Hash,String] The contents of the comment, in JSON.
+    # @param contents_json [Hash,String] The contents of the comment, in JSON.
     #  A string value is parsed as a JSON object.
     # @param title [String] The title of the comment; if `nil`, the title is extracted from the first
     #  40 text elements of the contents.

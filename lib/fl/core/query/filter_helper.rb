@@ -323,7 +323,7 @@ module Fl::Core::Query
 
     # Normalize **:only** and **:except** filtered lists in a set of query options.
     # This method looks up the two options **:only** and **:except** in *opts* and
-    # converts them using {#convert_filter_list}. It then generates new values of **:only** and
+    # converts them using {.convert_filter_list}. It then generates new values of **:only** and
     # **:except** lists from the converted references as follows.
     #
     #  1. If the **:only** references is empty or not present, the return value does not contain **:only**.
@@ -379,7 +379,6 @@ module Fl::Core::Query
     # `{ except: [ 2, 4 ] }`.
     #
     # @param opts [Hash,ActionController::Parameters] The query options.
-    # @param klass [Class,String] The class or class name to pass to {#convert_list_of_references}.
     #
     # @return [Hash] Returns a hash that contains up to two key/value pairs: the **:only** key is the
     #  list of elements to accept, and **:except** the list to reject. If the value of a
