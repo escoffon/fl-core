@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "nokogiri", "~> 1.10"
   spec.add_runtime_dependency "loofah", "~> 2.3"
   #- spec.add_runtime_dependency 'fl-google'
-  spec.add_runtime_dependency "mimemagic", "~> 0.3"
+  spec.add_runtime_dependency "mimemagic", "~> 0.4"
   
   spec.add_development_dependency "rails", "~> 6.0.2", ">= 6.0.2.1"
   spec.add_development_dependency "bundler", "~> 2.0"

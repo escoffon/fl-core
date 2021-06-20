@@ -1,7 +1,5 @@
 require 'tempfile'
 require 'mimemagic'
-require 'mimemagic/overlay'
-
 require 'base64'
 
 module Fl::Core::Test
