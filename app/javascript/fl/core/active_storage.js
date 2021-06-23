@@ -52,12 +52,16 @@ let ActiveStorageAttachment = FlClassManager.make_class({
 	 * 
 	 * @param {Object} data An object containing a representation of the 
 	 *  attachment object. This representation may be partial.
+	 *
+	 * @return [Boolean] Returns `true` if the state was refreshed from *data*, `false* otherwise.
 	 */
 
 	refresh: function(data) {
-	    this.__super('FlModelBase', 'refresh', data);
+	    if (!this.__super('FlModelBase', 'refresh', data)) return false;
 
 	    if (!_.isArray(this.variants)) this.variants = [ ];
+
+	    return true;
 	},
 
 	/**
@@ -175,10 +179,12 @@ let ActiveStorageAttachedOne = FlClassManager.make_class({
 	 * 
 	 * @param {Object} data An object containing a representation of the 
 	 *  proxy object. This representation may be partial.
+	 *
+	 * @return [Boolean] Returns `true` if the state was refreshed from *data*, `false* otherwise.
 	 */
 
 	refresh: function(data) {
-	    this.__super('FlModelBase', 'refresh', data);
+	    if (!this.__super('FlModelBase', 'refresh', data)) return false;
 
 	    if (_.isArray(data.attachments))
 	    {
@@ -189,6 +195,8 @@ let ActiveStorageAttachedOne = FlClassManager.make_class({
 		    return new ActiveStorageAttachment(a);
 		});
 	    }
+
+	    return true;
 	}
     },
     class_methods: {
@@ -249,10 +257,12 @@ let ActiveStorageAttachedMany = FlClassManager.make_class({
 	 * 
 	 * @param {Object} data An object containing a representation of the 
 	 *  proxy object. This representation may be partial.
+	 *
+	 * @return [Boolean] Returns `true` if the state was refreshed from *data*, `false* otherwise.
 	 */
 
 	refresh: function(data) {
-	    this.__super('FlModelBase', 'refresh', data);
+	    if (!this.__super('FlModelBase', 'refresh', data)) return false;
 
 	    if (_.isArray(data.attachments))
 	    {
@@ -263,6 +273,8 @@ let ActiveStorageAttachedMany = FlClassManager.make_class({
 		    return new ActiveStorageAttachment(a);
 		});
 	    }
+
+	    return true;
 	}
     },
     class_methods: {

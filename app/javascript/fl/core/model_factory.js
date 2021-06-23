@@ -51,8 +51,9 @@ const moment = require('moment');
  *     <pre ng-non-bindable>
  *    instance_methods: {
  *      refresh: function(data) {
- *        this.&#95;&#95;super('FlModelBase', 'refresh', data);
+ *        if (!this.&#95;&#95;super('FlModelBase', 'refresh', data)) return false;
  *        // additional processing of the instance data ...
+ *        return true;
  *      },
  *
  *      my_method: function(p1, p2) {
@@ -105,11 +106,7 @@ let FlModelBase = FlClassManager.make_class({
 	 * @ngdoc method
 	 * @name FlModelBase#refresh
 	 * @description Refresh the state of the instance based on the contents
-	 *  of the hash representation of an object. It copies the value of the properties in *data* to
-	 *  `this`, if *data* seems to be more recent that the state of the instance.
-	 *  Specifically, if *data* contains an **updated_at** property and `this` also has an **updated_at**,
-	 *  and the timestamp for the *data* property is earlier than that for `this`, then no refresh is
-	 *  performed. This check prevents stale versions of an object from overriding more recent ones.
+	 *  of the hash representation of an object.
 	 * 
 	 *  This method also validates that a refresh does not change the class type and object
 	 *  identifier, if they are already set. This check prevents clients for creating an instance
@@ -119,6 +116,34 @@ let FlModelBase = FlClassManager.make_class({
 	 *
 	 * @param {Object} data An object containing a representation of the 
 	 *  server object. This representation may be partial.
+	 *
+	 * @return [Boolean] Returns `true` if the state was refreshed from *data*, `false* otherwise.
+	 *  (In other words, returns `false` if it detected that the update time in *data* is older than
+	 *  the object's current update time.) Subclasses should use the return value to decide if the
+	 *  subclass-specific state should be refreshed. For example:
+	 *
+	 *  ```
+	 *  let MySub = FlClassManager.make_class({
+	 *    name: 'MySub',
+	 *    superclass: 'FlModelBase',
+	 *
+	 *    initializer: function(data) {
+	 *      this.__super_init('FlModelBase', data);
+	 *    },
+	 *    instance_properties: {
+	 *    },
+	 *    instance_methods: {
+	 *      refresh: function(data) {
+	 *        if (!this.__super('FlModelBase', 'refresh', data)) return false;
+	 *
+	 *        // refresh the MySub-specific state here
+	 *
+	 *        // make sure to return `true` so that subclasses can chain appropriately
+	 *        return true;
+	 *      }
+	 *    }
+	 *  });
+	 *  ```
 	 *
 	 * @throws Throws an exception if the properties **type** and **fingerprint** already exist
 	 *  in `this`, and their value is different from those in *data*.
@@ -142,7 +167,7 @@ let FlModelBase = FlClassManager.make_class({
 		let self_updated_at = (_.isDate(self.updated_at)) ? self.updated_at : new Date(self.updated_at);
 		updated_at = new Date(data.updated_at);
 		if (updated_at.getTime() < self_updated_at.getTime()) {
-		    return;
+		    return false;
 		}
 	    }
 	    
@@ -152,6 +177,8 @@ let FlModelBase = FlClassManager.make_class({
 
 	    if (!_.isNil(data.created_at)) self.created_at = new Date(data.created_at);
 	    if (!_.isNil(updated_at)) self.updated_at = updated_at;
+
+	    return true;
 	},
 
 	/**
