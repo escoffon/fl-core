@@ -105,7 +105,11 @@ let FlModelBase = FlClassManager.make_class({
 	 * @ngdoc method
 	 * @name FlModelBase#refresh
 	 * @description Refresh the state of the instance based on the contents
-	 *  of the hash representation of an object.
+	 *  of the hash representation of an object. It copies the value of the properties in *data* to
+	 *  `this`, if *data* seems to be more recent that the state of the instance.
+	 *  Specifically, if *data* contains an **updated_at** property and `this` also has an **updated_at**,
+	 *  and the timestamp for the *data* property is earlier than that for `this`, then no refresh is
+	 *  performed. This check prevents stale versions of an object from overriding more recent ones.
 	 * 
 	 *  This method also validates that a refresh does not change the class type and object
 	 *  identifier, if they are already set. This check prevents clients for creating an instance
@@ -131,14 +135,23 @@ let FlModelBase = FlClassManager.make_class({
 	    {
 		throw new Error('fingerprint mismatch in model data refresh');
 	    }
-	    
+
 	    let self = this;
+	    let updated_at = null;
+	    if (!_.isNil(data.updated_at) && !_.isNil(self.updated_at)) {
+		let self_updated_at = (_.isDate(self.updated_at)) ? self.updated_at : new Date(self.updated_at);
+		updated_at = new Date(data.updated_at);
+		if (updated_at.getTime() < self_updated_at.getTime()) {
+		    return;
+		}
+	    }
+	    
 	    _.forEach(data, function(v, k) {
 		self[k] = self._convert_value(v);
 	    });
 
 	    if (!_.isNil(data.created_at)) self.created_at = new Date(data.created_at);
-	    if (!_.isNil(data.updated_at)) self.updated_at = new Date(data.updated_at);
+	    if (!_.isNil(updated_at)) self.updated_at = updated_at;
 	},
 
 	/**
