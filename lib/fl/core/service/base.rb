@@ -529,9 +529,16 @@ module Fl::Core::Service
     #
     # The method calls {#has_action_permission?} with action `create` to confirm that the
     # service's *actor* has permission to create objects. If the permission is not granted, `nil` is returned.
+    # It then calls {#new_object} to build an unpersisted instance of the object.
+    # If {#new_object} returns a non-nil instance, the method first saves the object to persist it into the
+    # database, and if that succeeds it calls {#after_create} to give subclasses a hook
+    # to perform additional processing. If {#after_create} returns a failure result, the object is destroyed
+    # before returning an error status. We do this bit of song and dance to support situations where the creation
+    # of an object may trigger creation of related but not dependent objects.
     #
-    # If an object is created successfully, the method calls {#after_create} to give subclasses a hook
-    # to perform additional processing.
+    # Note that {#new_object} and {#after_create} should call {#set_status} to set appropriate failure results;
+    # this method generates a standard failure result if either call fails and the current status is still
+    # reporting success.
     #
     # @param opts [Hash] Options to the method. This section describes the common options; subclasses may
     #  define type-specific ones.
@@ -566,10 +573,28 @@ module Fl::Core::Service
         if has_action_permission?('create', self.model_class, ctx)
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
+            self.clear_status
+            
             obj = new_object(p)
             if !obj.nil? && obj.save
-              after_create(obj, p)
+              if !after_create(obj, p)
+                obj.destroy
+                obj = nil
+
+                # We set the status if it is still marked as being successful; if not, then after_create
+                # has already set it and we don't override it
+                  
+                if self.success?
+                  self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
+                                  error_response_data('creation_failure',
+                                                      localized_message('creation_failure', class: self.model_class.name),
+                                                      nil))
+                end
+              end
             else
+              # We set the status if it is still marked as being successful; if not, then one of the calls above
+              # has already set it and we don't override it
+                  
               if self.success?
                 self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                                 error_response_data('creation_failure',
@@ -598,6 +623,8 @@ module Fl::Core::Service
     # The method calls {#has_action_permission?} with action `update` to confirm that the
     # service's {#actor} has permission to update the object.
     # If the permission is not granted, `nil` is returned.
+    # Orherwise, it calls {#update_object} and {#after_update}, and if either returns `false` if fails the
+    # operation.
     #
     # @param opts [Hash] Options to the method. This section describes the common options; subclasses may
     #  define type-specific ones.
@@ -636,9 +663,7 @@ module Fl::Core::Service
         begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            if update_object(obj, p)
-              after_update(obj, p)
-            else
+            if !update_object(obj, p) && !after_update(obj, p)
               if self.success?
                 self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                                 error_response_data('update_failure',
@@ -1198,8 +1223,12 @@ module Fl::Core::Service
     #
     # @param [ActiveRecord::Base] obj The newly created object.
     # @param [Hash,ActionController::Parameters] p The parameters that were used to create the object.
-
+    #
+    # @return [Boolean] Returns `true` if the operation succeded, `false` otherwise. If `false` is returned,
+    #  the method should call {#set_status} to load an appropriate failure status.
+    
     def after_create(obj, p)
+      return true
     end
 
     # Callback triggered after an object is updated.
@@ -1208,8 +1237,12 @@ module Fl::Core::Service
     #
     # @param [ActiveRecord::Base] obj The updated object.
     # @param [Hash,ActionController::Parameters] p The parameters that were used to update the object.
+    #
+    # @return [Boolean] Returns `true` if the operation succeded, `false` otherwise. If `false` is returned,
+    #  the method should call {#set_status} to load an appropriate failure status.
 
     def after_update(obj, p)
+      return true
     end
 
     # @!visibility private
