@@ -663,7 +663,7 @@ module Fl::Core::Service
         begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            if !update_object(obj, p) && !after_update(obj, p)
+            unless update_object(obj, p) && after_update(obj, p)
               if self.success?
                 self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                                 error_response_data('update_failure',
