@@ -507,6 +507,16 @@ module Fl::Core::Query
       @params[pk] = value unless value.nil?
     end
 
+    # Get the value of a parameter for the WHERE clause.
+    #
+    # @param pk [Symbol] The parameter name.
+    #
+    # @return [any,nil] If the parameter *pk* is present, return its value; otherwise, return `nil`.
+    
+    def get_parameter(pk)
+      return @params[pk]
+    end
+
     # Traverse the filter body and generates an equivalent WHERE clause.
     # If *body* contains nested filters, the method calls itself recursively to generate the multilevel clause.
     # The resulting WHERE clause string is returned, and any parameters the method defines are added to the
