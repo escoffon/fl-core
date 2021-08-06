@@ -67,6 +67,7 @@ en:
         comment:
           validate:
             invalid_json: "invalid JSON contents"
+            missing_content: "missing HTML or JSON representation of the contents"
 
     framework:
       access:

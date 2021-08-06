@@ -14,6 +14,12 @@ module Fl::Core::Comment
   #    end
   #  end
   # ```
+  #
+  # #### Validation
+  #
+  # - If {#contents_html} or {#contents_json} are present in the save attributes, then both must be present: the
+  #   object will not let you save just the HTML or just the JSON representation. But, or course, it won't check
+  #   that the two are consistent with each other.
 
   module Common
     extend ActiveSupport::Concern
@@ -45,6 +51,17 @@ module Fl::Core::Comment
         cd = self.contents_json
         if !cd.is_a?(Hash)
           self.errors.add(:contents_json, I18n.tx('fl.core.comment.comment.validate.invalid_json'))
+        end
+      end
+    end
+
+    # Validate that both HTML and JSON representations are present if one is in the save set.
+
+    def _check_contents_present
+      cs = changes_to_save
+      if cs.has_key?(:contents_html) || cs.has_key?(:contents_json)
+        if !cs.has_key?(:contents_html) || !cs.has_key?(:contents_json)
+          self.errors.add(:base, I18n.tx('fl.core.comment.comment.validate.missing_content'))
         end
       end
     end
@@ -187,6 +204,7 @@ module Fl::Core::Comment
       validates_length_of :contents_html, :minimum => 1
       validates_length_of :title, :maximum => 100
       validate :_check_contents_json
+      validate :_check_contents_present
 
       # Hooks
     
