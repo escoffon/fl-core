@@ -243,15 +243,17 @@ EOD
     #  A string value is parsed as a JSON object.
     # @param title [String] The title of the comment; if `nil`, the title is extracted from the first
     #  40 text elements of the contents.
+    # @param visible [Boolean] The visibility state of the comment.
     #
     # @return [Object, nil] Returns the new comment if it was created successfully, `nil` otherwise.
 
-    def add_comment(author, contents_html, contents_json, title = nil)
+    def add_comment(author, contents_html, contents_json, title = nil, visible = true)
       h = {
         author: author,
         commentable: self,
         contents_html: contents_html,
-        contents_json: contents_json
+        contents_json: contents_json,
+        is_visible: visible
       }
 
       h[:title] = title unless title.nil?
