@@ -16,7 +16,7 @@
 const _ = require('lodash');
 const jscache = require('js-cache');
 const { FlExtensions, FlClassManager } = require('./object_system');
-const moment = require('moment');
+const { DateTime } = require('luxon');
 
 /**
  * @ngdoc type
@@ -263,8 +263,7 @@ let FlModelBase = FlClassManager.make_class({
 	 * @name FlModelBase#_convert_date_value
 	 * @description
 	 *  Convert a datetime representation to a Javascript Date object.
-	 *  If *value* is a string, use `moment` to convert it to a Date; otherwise, return as is.
-	 *  If *value* is not a string, return it as is.
+	 *  If *value* is a string, use `luxon` to convert it to a Date; otherwise, return as is.
 	 * 
 	 * @param {any} value The value to convert.
 	 *
@@ -273,10 +272,24 @@ let FlModelBase = FlClassManager.make_class({
 	
 	_convert_date_value: function(value) {
 	    if (_.isString(value)) {
-		return moment.utc(value).toDate();
-	    }
+		let l = DateTime.fromISO(value, { zone: 'utc' });
+		if (l.isValid) return l.toJSDate();
 
-	    return value;
+		l = DateTime.fromRFC2822(value, { zone: 'utc' });
+		if (l.isValid) return l.toJSDate();
+
+		l = DateTime.fromHTTP(value, { zone: 'utc' });
+		if (l.isValid) return l.toJSDate();
+
+		l = DateTime.fromSQL(value, { zone: 'utc' });
+		if (l.isValid) return l.toJSDate();
+
+		return value;
+	    } else if (_.isObject(value, { zone: 'utc' })) {
+		return DateTime.fromObject(value, { zone: 'utc' }).toJSDate();
+	    } else {
+		return value;
+	    }
 	}
     },
     class_methods: {
