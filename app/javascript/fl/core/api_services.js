@@ -617,9 +617,12 @@ let FlAPIService = FlClassManager.make_class({
 	 * @param {String} action The name of the action. The base implementation supports the standard
 	 *  Rails actions `index`, `create`, `show`, `update`, and `destroy`; subclasses can augment this set
 	 *  as needed.
-	 * @param {Object|Integer} [target] Some actions need a target object whose identifier to place
-	 *  in the path. The value is either an object that contains a **id** property, or the
-	 *  identifier itself.
+	 * @param {Object|Integer|String} [target] Some actions need additional context for the URL; for example,
+	 *  a target object whose identifier to place in the path.
+	 *  The value of this parameter is really unspecified, and is interpreted by subclass implementations as
+	 *  needed; typically, it is either an object that contains an **id** property, or the identifier itself.
+	 *  Some services may need to pack a number of URL parameters (dynamic segments) into a single object
+	 *  to pass in this parameters.
 	 * 
 	 * @return {String|null} Returns the URL path for the action; if *action* is not supported,
 	 *  returns `null`.
