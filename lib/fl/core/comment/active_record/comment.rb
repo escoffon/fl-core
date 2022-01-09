@@ -328,7 +328,7 @@ module Fl::Core::Comment::ActiveRecord
     #  or a hash, to pass to the +includes+ method
     #  of the relation; see the guide on the ActiveRecord query interface about this method.
     #  The value is normalized via a call to {Fl::Core::Query::QueryHelper.normalize_includes}.
-    #  The defaiult value is `[ :commentable, :author ]`; if you know that the commentable and author contain
+    #  The default value is `[ :commentable, :author ]`; if you know that the commentable and author contain
     #  an attachment attribute like `avatar`, a good value for this option is
     #  `[ { commentable: [ :avatar] }, { author: [ :avatar ] } ]`.
     # @option opts [String,Symbol,Array<String,Symbol>] :attachments The names of properties in **:includes**
@@ -393,7 +393,7 @@ module Fl::Core::Comment::ActiveRecord
       q = Fl::Core::Query::QueryHelper.add_offset_clause(q, opts)
       q = Fl::Core::Query::QueryHelper.add_limit_clause(q, opts)
 
-      q
+      return q
     end
 
     private
