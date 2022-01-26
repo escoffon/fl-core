@@ -19,8 +19,8 @@ module Fl::Core::Attachment::ActiveStorage
       # @param name [Symbol,String] The name of the attachment attribute.
       # @param opts [Hash] Options for the validator.
       #
-      # @option [Array<String,RegExp>] :content_types An array of content types to match. Each element is
-      #  a string containing the content type (for example, `image/jpeg'), or a "glob" pattern like
+      # @option opts [Array<String,RegExp>] :content_types An array of content types to match. Each element is
+      #  a string containing the content type (for example, `image/jpeg`), or a "glob" pattern like
       #  `image/*`.
       #  Defaults to `[ 'image/*' ]`.
     
@@ -39,7 +39,7 @@ module Fl::Core::Attachment::ActiveStorage
               lo_content_types.each do |ct|
                 return if (ct == ctype) || File.fnmatch(ct, ctype)
               end
-              record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbiddent_content_type',
+              record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbidden_content_type',
                                                      ctype: ctype, filename: attachment.filename.to_s))
             elsif attachment.is_a?(ActiveStorage::Attached::Many)
               attachment.each do |a|
@@ -47,7 +47,7 @@ module Fl::Core::Attachment::ActiveStorage
                 lo_content_types.each do |ct|
                   break if (ct == ctype) || File.fnmatch(ct, ctype)
 
-                  record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbiddent_content_type',
+                  record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbidden_content_type',
                                                          ctype: ctype, filename: a.filename.to_s))
                 end
               end
