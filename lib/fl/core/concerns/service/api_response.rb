@@ -100,18 +100,18 @@ module Fl::Core::Concerns::Service::ApiResponse
   #
   # The contents of the **details** key depend on the type of *details*:
   #
-  #     - If *details* is an instance of ActiveModel::Errors, the generated **details** key is a hash containing
-  #       the two keys **:messages** and **:full_messages**, as generated from the equivalent methods in
-  #       ActiveModel::Errors.
-  #     - If *details* is an instance of ActiveRecord::Base, the generated **details** key is created as above,
-  #       using the value returned by *details.errors*.
-  #     - If *details* is an exception, **details** is a hash containing **:messages** and **:full_messages**.
-  #       In this case, the **:messages** key is a hash containing one key (**:exception**) whose value is
-  #       *details.message*, and **:full_messages** is an array containing a single message (also from
-  #       *details.message*).
-  #       Additionally, in a Rails development or test environment an additional key **:backtrace** is generated
-  #       that contains the exception trace.
-  #     - Finally, if *details* responds to `each`, the contents of *details* are duplicated in the **:details** key.
+  # - If *details* is an instance of ActiveModel::Errors, the generated **details** key is a hash containing
+  #   the two keys **:messages** and **:full_messages**, as generated from the equivalent methods in
+  #   ActiveModel::Errors.
+  # - If *details* is an instance of ActiveRecord::Base, the generated **details** key is created as above,
+  #   using the value returned by *details.errors*.
+  # - If *details* is an exception, **details** is a hash containing **:messages** and **:full_messages**.
+  #   In this case, the **:messages** key is a hash containing one key (**:exception**) whose value is
+  #   *details.message*, and **:full_messages** is an array containing a single message (also from
+  #   *details.message*).
+  #   Additionally, in a Rails development or test environment an additional key **:backtrace** is generated
+  #   that contains the exception trace.
+  # - Finally, if *details* responds to `each`, the contents of *details* are duplicated in the **:details** key.
   #
   # @param type [String,Symbol] A string or symbol that tags the type of error; for example: `'not_found'` or
   #  `:authentication_failure`.

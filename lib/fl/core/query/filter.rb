@@ -106,7 +106,7 @@ module Fl::Core::Query
   # It also processes the special key **:not** to invert the value of a clause.
   # The value for **:all** is a hash containing a list of filters (including **:all** and **:any**); it
   # generates a WHERE clause that joins the filters with the `AND` operator.
-  # The value for **:any* is a hash containing a list of filters (including **:all** and **:any**); it
+  # The value for **:any** is a hash containing a list of filters (including **:all** and **:any**); it
   # generates a WHERE clause that joins the filters with the `OR` operator.
   # The value for **:not** is a filter expression that generates the clause to invert.
   # Note that, since **:all** and **:any** accept **:all** and **:any** keys, you can build a nested structure
