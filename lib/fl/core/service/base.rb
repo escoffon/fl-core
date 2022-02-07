@@ -729,7 +729,7 @@ module Fl::Core::Service
         begin
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
-            return [ true, obj ] if obj.destroy
+            return [ true, obj ] if obj.destroy && obj.destroyed?
 
             self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                             error_response_data('destroy_failure',

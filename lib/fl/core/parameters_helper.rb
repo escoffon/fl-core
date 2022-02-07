@@ -15,8 +15,8 @@ module Fl::Core
     # - A {https://github.com/rails/globalid GlobalID}, which is used to look up the object.
     # - A string containing a {https://github.com/rails/globalid GlobalID}, which is used to look up
     #   the object.
-    # - A string in the format _classname_/_id_, where _classname_ is the name of the class for the object,
-    #   and _id_ is its object identifier. The method uses the class' +find+ method to look up the object.
+    # - A string in the format *classname*/*id*, where *classname* is the name of the class for the object,
+    #   and *id* is its object identifier. The method uses the class's `find` method to look up the object.
     # - A Hash containing the key _key_. In this case, the method fetches the value from that key, and tries
     #   again.
     # - If the hash does not contain _key_, then the method checks for **:global_id**, which it tries to resolve
