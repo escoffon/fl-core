@@ -434,7 +434,9 @@ module Fl::Core::Comment::ActiveRecord
             end
           end
         else
-          self.commentable.updated_at = Time.new
+          if self.is_visible && self.commentable.respond_to?('updated_at=')
+            self.commentable.updated_at = Time.new
+          end
         end
         self.commentable.save
       end

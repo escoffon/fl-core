@@ -17,10 +17,14 @@ module Fl::Core::Comment
   #
   # #### Validation
   #
-  # - If {#contents_html} or {#contents_json} are present in the save attributes, then both must be present: the
-  #   object will not let you save just the HTML or just the JSON representation. But, or course, it won't check
-  #   that the two are consistent with each other.
-
+  # - {#commentable}, {#author}, {#contents_html}, and {#contents_json} must be nonempty.
+  # - {#contents_html} must not be an empty string.
+  # - {#title} must not be longer than 100 characters.
+  # - {#contents_json} must be a hash; however, we don't check the hash contents.
+  #
+  # Note that the validation code does **not** check that {#contents_html} and {#contents_json} are consistent
+  # with each other.
+  
   module Common
     extend ActiveSupport::Concern
 
@@ -55,17 +59,6 @@ module Fl::Core::Comment
       end
     end
 
-    # Validate that both HTML and JSON representations are present if one is in the save set.
-
-    def _check_contents_present
-      cs = changes_to_save
-      if cs.has_key?(:contents_html) || cs.has_key?(:contents_json)
-        if !cs.has_key?(:contents_html) || !cs.has_key?(:contents_json)
-          self.errors.add(:base, I18n.tx('fl.core.comment.comment.validate.missing_content'))
-        end
-      end
-    end
-    
     # @!visibility private
     DEFAULT_HASH_KEYS = [ :commentable, :author, :is_visible, :title, :contents_html, :contents_json ]
 
@@ -204,7 +197,6 @@ module Fl::Core::Comment
       validates_length_of :contents_html, :minimum => 1
       validates_length_of :title, :maximum => 100
       validate :_check_contents_json
-      validate :_check_contents_present
 
       # Hooks
     
