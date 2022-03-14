@@ -67,7 +67,28 @@ en:
         comment:
           validate:
             invalid_json: "invalid JSON contents"
-            missing_content: "missing HTML or JSON representation of the contents"
+      list:
+        model:
+          normalization_failure: "Some objects could not be loaded into list items"
+          validate:
+            inconsistent_list: "List item '%{list_item}' is not associated with list '%{list}'"
+        controller:
+          destroy:
+            deleted: "deleted list %{fingerprint} (%{title})"
+
+      list_item:
+        model:
+          not_listable: "The object '%{listed_object}' is not a listable"
+          bad_listed_object: "Cannot convert '%{listed_object}' to an object"
+          different_list: "List item %{item} cannot be reassigned to list '%{list}'"
+          already_in_list: "The object '%{listed_object}' is already in list '%{list}'"
+          validate:
+            invalid_state: "Invalid list item state: %{value}"
+            invalid_name: "Invalid list item name: '%{name}' (make sure the name does not contain / or \\)"
+            duplicate_name: "Duplicate list item name: '%{name}'"
+        controller:
+          destroy:
+            deleted: "deleted list item %{fingerprint} (%{name})"
 
     framework:
       access:
@@ -120,29 +141,6 @@ en:
           group_member:
             not_found: "no group member with identifier %{id}"
             creation_failure: 'failed to create a group member'
-
-      list:
-        model:
-          normalization_failure: "Some objects could not be loaded into list items"
-          validate:
-            inconsistent_list: "List item '%{list_item}' is not associated with list '%{list}'"
-        controller:
-          destroy:
-            deleted: "deleted list %{fingerprint} (%{title})"
-
-      list_item:
-        model:
-          not_listable: "The object '%{listed_object}' is not a listable"
-          bad_listed_object: "Cannot convert '%{listed_object}' to an object"
-          different_list: "List item %{item} cannot be reassigned to list '%{list}'"
-          already_in_list: "The object '%{listed_object}' is already in list '%{list}'"
-          validate:
-            invalid_state: "Invalid list item state: %{value}"
-            invalid_name: "Invalid list item name: '%{name}' (make sure the name does not contain / or \\)"
-            duplicate_name: "Duplicate list item name: '%{name}'"
-        controller:
-          destroy:
-            deleted: "deleted list item %{fingerprint} (%{name})"
 
       asset:
         checker:
