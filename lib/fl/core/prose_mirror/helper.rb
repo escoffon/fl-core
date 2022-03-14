@@ -44,10 +44,10 @@ module Fl::Core::ProseMirror
     #  a hash.
     # @param context [any] A context object to pass to the block; this is often a Hash.
     #
-    # @yieldparam [Hash] node The node element; this is a Hash representation of the JSON node.
-    # @yieldparam [Integer] level The traversal depth of the node; starts at 0 and increases by 1 with each call
+    # @yieldparam node [Hash] The node element; this is a Hash representation of the JSON node.
+    # @yieldparam level [Integer] The traversal depth of the node; starts at 0 and increases by 1 with each call
     #  into child elements.
-    # @context [any] The value of *context*.
+    # @yieldparam context [any] The value of *context*.
     #
     # @yieldreturn [Boolean,any] The block returns `false` to terminate the traversal early. With any other return
     #  value, traversal continues.
