@@ -64,7 +64,7 @@ module Fl::Core::List
     # Wraps the {Fl::Core::List::Helper.list_from_parameter} method, using the parameter key **:list**.
     # Does not change the value of {#list} if the object is persisted.
     #
-    # @param o [ActiveRecord::Base,String,GlobalID] The list; see {Fl::Core::List::Helper.list_from_parameter}
+    # @param l [ActiveRecord::Base,String,GlobalID] The list; see {Fl::Core::List::Helper.list_from_parameter}
     #  for details.
 
     def list=(l)
@@ -185,7 +185,7 @@ module Fl::Core::List
     # Bulk updates.
     # Ignores the **:list**, **:listed_object**, and **:owner** attributes if persisted.
     #
-    # @params attrs [Hash] The attributes.
+    # @param attrs [Hash] The attributes.
 
     def update(attrs)
       a = attrs.reduce({ }) do |acc, kvp|
