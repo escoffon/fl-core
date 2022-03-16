@@ -171,9 +171,16 @@ module Fl::Core::List
       rv = super(attrs)
 
       self.owner = self.list.owner if !self.owner && self.list
+
       self.state = Fl::Core::List::BaseItem::STATE_SELECTED unless self.state?
       self.state_updated_by = self.owner if self.state_updated_by.nil?
       self.state_locked = self.list.default_item_state_locked if self.list && !((self.state_locked == true) || (self.state_locked == false))
+
+      if self.listed_object
+        self.item_summary = self.listed_object.list_item_summary
+        self.listed_object_created_at = self.listed_object.created_at
+        self.listed_object_updated_at = self.listed_object.updated_at
+      end
       
       # A newly created list object will cause the list update time to be bumped
 
@@ -284,6 +291,18 @@ module Fl::Core::List
           type: :timestamp,
           field: 'updated_at',
           convert: :timestamp
+        },
+
+        listable_created: {
+          type: :timestamp,
+          field: 'listed_object_created_at',
+          convert: :timestamp
+        },
+
+        listable_updated: {
+          type: :timestamp,
+          field: 'listed_object_updated_at',
+          convert: :timestamp
         }
       }
     }
@@ -305,6 +324,10 @@ module Fl::Core::List
     # - **:listables** is a **:polymorphic_references** filter that limits the returned values to those list itemss
     #   whose {#listable_object} appears in the **:only** list, or does not appear in the **:except** list.
     #   The elements in the arrays are: instances of {ActiveRecord::Base}; object fingerprints; or GlobalIDs.
+    # - **:listable_created** is a **:timestamp** filter type that selects based on the **:listed_object_created_at**
+    #   column. Therefore, it is used to select based on the listable's creation time.
+    # - **:listable_updated** is a **:timestamp** filter type that selects based on the **:listed_object_updated_at**
+    #   column. Therefore, it is used to select based on the listable's modification time.
     # - **:created** is a **:timestamp** filter type that selects based on the **:created_at** column.
     # - **:updated** is a **:timestamp** filter type that selects based on the **:updated_at** column.
     #
@@ -459,7 +482,11 @@ module Fl::Core::List
       # There *is* a way to use bind variable, but I'm not smart enough to figure it out...
       
       sql = "UPDATE #{table_name} SET "
-      sql += sanitize_sql_for_assignment({ :item_summary => listable.list_item_summary })
+      sql += sanitize_sql_for_assignment({
+                                           item_summary: listable.list_item_summary,
+                                           listed_object_created_at: listable.created_at,
+                                           listed_object_updated_at: listable.updated_at
+                                         })
       sql += ' WHERE ('
       sql += sanitize_sql_for_conditions([ '(listed_object_fingerprint = :fp)', fp: listable.fingerprint ])
       sql += ')'
@@ -716,7 +743,8 @@ module Fl::Core::List
     end
     
     # @!visibility private
-    MINIMAL_HASH_KEYS = [ :owner, :list, :listed_object, :state_locked, :state, :sort_order, :item_summary, :name ]
+    MINIMAL_HASH_KEYS = [ :owner, :list, :listed_object, :state_locked, :state, :sort_order,
+                          :item_summary, :listed_object_created_at, :listed_object_updated_at, :name ]
     # @!visibility private
     STANDARD_HASH_KEYS = [ :state_updated_at, :state_updated_by, :state_note ]
     # @!visibility private
@@ -805,6 +833,8 @@ module Fl::Core::List
           else
             rv[:state_updated_by] = nil
           end
+        when :state_updated_at, :listed_object_created_at, :listed_object_updated_at
+          rv[k] = to_hash_date(self.send(k))
         else
           rv[k] = self.send(k) if self.respond_to?(k)
         end

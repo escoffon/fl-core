@@ -101,6 +101,28 @@ RSpec.describe Fl::Core::List::Item, type: :model do
       expect(li2.valid?).to eq(true)
       expect(li2.state_locked).to eql(true)
     end
+
+    it 'should initialize the listed object denormalizations' do
+      l = create(:list)
+
+      c_t = Time.parse('20220310T10:20:00Z')
+      u_t = Time.parse('20220310T10:20:30Z')
+      
+      d11.created_at = c_t
+      d11.updated_at = u_t
+      expect(d11.save).to eql(true)
+      d11.reload
+      expect(d11.created_at.to_i).to eql(c_t.to_i)
+      expect(d11.updated_at.to_i).to eql(u_t.to_i)
+      
+      li1 = Fl::Core::List::Item.new(list: l, listed_object: d11)
+      expect(li1.valid?).to eq(true)
+      expect(li1.item_summary).to eql(d11.list_item_summary)
+      expect(li1.listed_object_created_at).not_to be_nil
+      expect(li1.listed_object_created_at.to_i).to eql(c_t.to_i)
+      expect(li1.listed_object_updated_at).not_to be_nil
+      expect(li1.listed_object_updated_at.to_i).to eql(u_t.to_i)
+    end
   end
 
   describe 'creation' do
@@ -309,7 +331,8 @@ RSpec.describe Fl::Core::List::Item, type: :model do
 
   describe 'model hash support' do
     let(:id_keys) { [ :type, :api_root, :fingerprint, :id, :global_id ] }
-    let(:min_keys) { [ :owner, :list, :listed_object, :state_locked, :state, :sort_order, :item_summary, :name ] }
+    let(:min_keys) { [ :owner, :list, :listed_object, :state_locked, :state, :sort_order,
+                       :item_summary, :listed_object_created_at, :listed_object_updated_at, :name ] }
     let(:std_keys) { [ :state_updated_at, :state_updated_by, :state_note ] }
 
     context '#to_hash' do
@@ -478,6 +501,144 @@ RSpec.describe Fl::Core::List::Item, type: :model do
       expect(obj_fingerprints(ql)).to match_array(obj_fingerprints([ ]))
     end
 
+    it 'should process the :listable_created filter', skip: 'currently disabled since it does not appear to work on SQLite' do
+      c_t_10 = Time.parse('20180210T10:20:00Z')
+      u_t_10 = Time.parse('20180610T10:20:30Z')
+      d10.created_at = c_t_10
+      d10.updated_at = u_t_10
+      expect(d10.save).to eql(true)
+      d10.reload
+      expect(d10.created_at.to_i).to eql(c_t_10.to_i)
+      expect(d10.updated_at.to_i).to eql(u_t_10.to_i)
+
+      c_t_11 = Time.parse('20180220T10:20:00Z')
+      u_t_11 = Time.parse('20180410T10:20:30Z')
+      d11.created_at = c_t_11
+      d11.updated_at = u_t_11
+      expect(d11.save).to eql(true)
+      d11.reload
+      expect(d11.created_at.to_i).to eql(c_t_11.to_i)
+      expect(d11.updated_at.to_i).to eql(u_t_11.to_i)
+
+      c_t_12 = Time.parse('20180316T10:20:00Z')
+      u_t_12 = Time.parse('20180520T10:20:30Z')
+      d12.created_at = c_t_12
+      d12.updated_at = u_t_12
+      expect(d12.save).to eql(true)
+      d12.reload
+      expect(d12.created_at.to_i).to eql(c_t_12.to_i)
+      expect(d12.updated_at.to_i).to eql(u_t_12.to_i)
+
+      c_t_20 = Time.parse('20180810T10:20:00Z')
+      u_t_20 = Time.parse('20181010T10:20:30Z')
+      d20.created_at = c_t_20
+      d20.updated_at = u_t_20
+      expect(d20.save).to eql(true)
+      d20.reload
+      expect(d20.created_at.to_i).to eql(c_t_20.to_i)
+      expect(d20.updated_at.to_i).to eql(u_t_20.to_i)
+
+      c_t_21 = Time.parse('20180222T10:20:00Z')
+      u_t_21 = Time.parse('20180228T10:20:30Z')
+      d21.created_at = c_t_21
+      d21.updated_at = u_t_21
+      expect(d21.save).to eql(true)
+      d21.reload
+      expect(d21.created_at.to_i).to eql(c_t_21.to_i)
+      expect(d21.updated_at.to_i).to eql(u_t_21.to_i)
+
+      c_t_22 = Time.parse('20180416T10:20:00Z')
+      u_t_22 = Time.parse('20180420T10:20:30Z')
+      d22.created_at = c_t_22
+      d22.updated_at = u_t_22
+      expect(d22.save).to eql(true)
+      d22.reload
+      expect(d22.created_at.to_i).to eql(c_t_22.to_i)
+      expect(d22.updated_at.to_i).to eql(u_t_22.to_i)
+
+      l10 = create(:list, objects: [ [ d10, a1 ], [ d20, a1 ], [ d21, a2 ], [ d11, a1 ] ])
+      l11 = create(:list, objects: [ [ d10, a2 ], [ d22, a1 ], [ d20, a1 ], [ d12, a1 ] ])
+
+      x = l10.list_items.map { |li| [ li.listed_object.fingerprint, li.listed_object.created_at, li.listed_object_created_at ] }
+      print("++++++++++ #{x}\n")
+      q = Fl::Core::List::Item.build_query(filters: {
+                                             lists: { only: l10.fingerprint },
+                                             listable_created: { after: '20180120T00:00:00Z' }
+                                           })
+      print("  ++++++++ #{q.to_sql}\n")
+      ql = q.map { |li| li.listed_object }
+      expect(obj_fingerprints(ql)).to match_array(obj_fingerprints([ d10, d21, d11 ]))
+    end
+
+    it 'should process the :listable_updated filter', skip: 'currently disabled since it does not appear to work on SQLite' do
+      c_t_10 = Time.parse('20180210T10:20:00Z')
+      u_t_10 = Time.parse('20180610T10:20:30Z')
+      d10.created_at = c_t_10
+      d10.updated_at = u_t_10
+      expect(d10.save).to eql(true)
+      d10.reload
+      expect(d10.created_at.to_i).to eql(c_t_10.to_i)
+      expect(d10.updated_at.to_i).to eql(u_t_10.to_i)
+
+      c_t_11 = Time.parse('20180220T10:20:00Z')
+      u_t_11 = Time.parse('20180410T10:20:30Z')
+      d11.created_at = c_t_11
+      d11.updated_at = u_t_11
+      expect(d11.save).to eql(true)
+      d11.reload
+      expect(d11.created_at.to_i).to eql(c_t_11.to_i)
+      expect(d11.updated_at.to_i).to eql(u_t_11.to_i)
+
+      c_t_12 = Time.parse('20180316T10:20:00Z')
+      u_t_12 = Time.parse('20180520T10:20:30Z')
+      d12.created_at = c_t_12
+      d12.updated_at = u_t_12
+      expect(d12.save).to eql(true)
+      d12.reload
+      expect(d12.created_at.to_i).to eql(c_t_12.to_i)
+      expect(d12.updated_at.to_i).to eql(u_t_12.to_i)
+
+      c_t_20 = Time.parse('20180810T10:20:00Z')
+      u_t_20 = Time.parse('20181010T10:20:30Z')
+      d20.created_at = c_t_20
+      d20.updated_at = u_t_20
+      expect(d20.save).to eql(true)
+      d20.reload
+      expect(d20.created_at.to_i).to eql(c_t_20.to_i)
+      expect(d20.updated_at.to_i).to eql(u_t_20.to_i)
+
+      c_t_21 = Time.parse('20180222T10:20:00Z')
+      u_t_21 = Time.parse('20180228T10:20:30Z')
+      d21.created_at = c_t_21
+      d21.updated_at = u_t_21
+      expect(d21.save).to eql(true)
+      d21.reload
+      expect(d21.created_at.to_i).to eql(c_t_21.to_i)
+      expect(d21.updated_at.to_i).to eql(u_t_21.to_i)
+
+      c_t_22 = Time.parse('20180416T10:20:00Z')
+      u_t_22 = Time.parse('20180420T10:20:30Z')
+      d22.created_at = c_t_22
+      d22.updated_at = u_t_22
+      expect(d22.save).to eql(true)
+      d22.reload
+      expect(d22.created_at.to_i).to eql(c_t_22.to_i)
+      expect(d22.updated_at.to_i).to eql(u_t_22.to_i)
+
+      l10 = create(:list, objects: [ [ d10, a1 ], [ d20, a1 ], [ d21, a2 ], [ d11, a1 ] ])
+      l11 = create(:list, objects: [ [ d10, a2 ], [ d22, a1 ], [ d20, a1 ], [ d12, a1 ] ])
+
+      x = l10.list_items.map { |li| [ li.listed_object.fingerprint, li.listed_object.updated_at, li.listed_object_updated_at ] }
+      print("++++++++++ #{x}\n")
+      q = Fl::Core::List::Item.build_query(filters: {
+                                             lists: { only: l10.fingerprint },
+                                             listable_updated: { after: '20180120T00:00:00Z' }
+                                           })
+      print("  ++++++++ #{q.to_sql}\n")
+      ql = q.map { |li| li.listed_object }
+      expect(obj_fingerprints(ql)).to match_array(obj_fingerprints([ d10, d21, d11 ]))
+    end
+
     it 'should filter by combination of list, owner, and listable' do
       l10 = create(:list, objects: [ [ d10, a1 ], [ d20, a1 ], [ d21, a2 ], [ d11, a1 ] ])
       l11 = create(:list, objects: [ [ d10, a2 ], [ d22, a1 ], [ d20, a1 ], [ d12, a1 ] ])
@@ -571,6 +732,153 @@ RSpec.describe Fl::Core::List::Item, type: :model do
                                            order: 'list_id ASC, sort_order DESC')
       ql = q.map { |li| li.listed_object }
       expect(obj_fingerprints(ql)).to eql(obj_fingerprints([ d20, d12, d20 ]))
+    end
+
+    it 'should support sorting with :listed_object_created_at' do
+      c_t_10 = Time.parse('20180210T10:20:00Z')
+      u_t_10 = Time.parse('20180610T10:20:30Z')
+      d10.created_at = c_t_10
+      d10.updated_at = u_t_10
+      expect(d10.save).to eql(true)
+      d10.reload
+      expect(d10.created_at.to_i).to eql(c_t_10.to_i)
+      expect(d10.updated_at.to_i).to eql(u_t_10.to_i)
+
+      c_t_11 = Time.parse('20180220T10:20:00Z')
+      u_t_11 = Time.parse('20180410T10:20:30Z')
+      d11.created_at = c_t_11
+      d11.updated_at = u_t_11
+      expect(d11.save).to eql(true)
+      d11.reload
+      expect(d11.created_at.to_i).to eql(c_t_11.to_i)
+      expect(d11.updated_at.to_i).to eql(u_t_11.to_i)
+
+      c_t_12 = Time.parse('20180316T10:20:00Z')
+      u_t_12 = Time.parse('20180520T10:20:30Z')
+      d12.created_at = c_t_12
+      d12.updated_at = u_t_12
+      expect(d12.save).to eql(true)
+      d12.reload
+      expect(d12.created_at.to_i).to eql(c_t_12.to_i)
+      expect(d12.updated_at.to_i).to eql(u_t_12.to_i)
+
+      c_t_20 = Time.parse('20180810T10:20:00Z')
+      u_t_20 = Time.parse('20181010T10:20:30Z')
+      d20.created_at = c_t_20
+      d20.updated_at = u_t_20
+      expect(d20.save).to eql(true)
+      d20.reload
+      expect(d20.created_at.to_i).to eql(c_t_20.to_i)
+      expect(d20.updated_at.to_i).to eql(u_t_20.to_i)
+
+      c_t_21 = Time.parse('20180222T10:20:00Z')
+      u_t_21 = Time.parse('20180228T10:20:30Z')
+      d21.created_at = c_t_21
+      d21.updated_at = u_t_21
+      expect(d21.save).to eql(true)
+      d21.reload
+      expect(d21.created_at.to_i).to eql(c_t_21.to_i)
+      expect(d21.updated_at.to_i).to eql(u_t_21.to_i)
+
+      c_t_22 = Time.parse('20180416T10:20:00Z')
+      u_t_22 = Time.parse('20180420T10:20:30Z')
+      d22.created_at = c_t_22
+      d22.updated_at = u_t_22
+      expect(d22.save).to eql(true)
+      d22.reload
+      expect(d22.created_at.to_i).to eql(c_t_22.to_i)
+      expect(d22.updated_at.to_i).to eql(u_t_22.to_i)
+
+      l10 = create(:list, objects: [ [ d10, a1 ], [ d20, a1 ], [ d21, a2 ], [ d11, a1 ] ])
+      l11 = create(:list, objects: [ [ d10, a2 ], [ d22, a1 ], [ d20, a1 ], [ d12, a1 ] ])
+
+      q = Fl::Core::List::Item.build_query(filters: {
+                                             lists: { only: l10.fingerprint }
+                                           },
+                                           order: 'listed_object_created_at DESC')
+      xl = [ d20, d21, d11, d10 ]
+      ql = q.map { |li| li.listed_object }
+      expect(obj_fingerprints(ql)).to match_array(obj_fingerprints(xl))
+
+      q = Fl::Core::List::Item.build_query(filters: {
+                                             lists: { only: l10.fingerprint }
+                                           },
+                                           order: 'listed_object_created_at ASC')
+      ql = q.map { |li| li.listed_object }
+      expect(obj_fingerprints(ql)).to match_array(obj_fingerprints(xl.reverse))
+    end
+
+    it 'should support sorting with :listed_object_updated_at' do
+      c_t_10 = Time.parse('20180210T10:20:00Z')
+      u_t_10 = Time.parse('20180610T10:20:30Z')
+      d10.created_at = c_t_10
+      d10.updated_at = u_t_10
+      expect(d10.save).to eql(true)
+      d10.reload
+      expect(d10.created_at.to_i).to eql(c_t_10.to_i)
+      expect(d10.updated_at.to_i).to eql(u_t_10.to_i)
+
+      c_t_11 = Time.parse('20180220T10:20:00Z')
+      u_t_11 = Time.parse('20180410T10:20:30Z')
+      d11.created_at = c_t_11
+      d11.updated_at = u_t_11
+      expect(d11.save).to eql(true)
+      d11.reload
+      expect(d11.created_at.to_i).to eql(c_t_11.to_i)
+      expect(d11.updated_at.to_i).to eql(u_t_11.to_i)
+
+      c_t_12 = Time.parse('20180316T10:20:00Z')
+      u_t_12 = Time.parse('20180520T10:20:30Z')
+      d12.created_at = c_t_12
+      d12.updated_at = u_t_12
+      expect(d12.save).to eql(true)
+      d12.reload
+      expect(d12.created_at.to_i).to eql(c_t_12.to_i)
+      expect(d12.updated_at.to_i).to eql(u_t_12.to_i)
+
+      c_t_20 = Time.parse('20180810T10:20:00Z')
+      u_t_20 = Time.parse('20181010T10:20:30Z')
+      d20.created_at = c_t_20
+      d20.updated_at = u_t_20
+      expect(d20.save).to eql(true)
+      d20.reload
+      expect(d20.created_at.to_i).to eql(c_t_20.to_i)
+      expect(d20.updated_at.to_i).to eql(u_t_20.to_i)
+
+      c_t_21 = Time.parse('20180222T10:20:00Z')
+      u_t_21 = Time.parse('20180228T10:20:30Z')
+      d21.created_at = c_t_21
+      d21.updated_at = u_t_21
+      expect(d21.save).to eql(true)
+      d21.reload
+      expect(d21.created_at.to_i).to eql(c_t_21.to_i)
+      expect(d21.updated_at.to_i).to eql(u_t_21.to_i)
+
+      c_t_22 = Time.parse('20180416T10:20:00Z')
+      u_t_22 = Time.parse('20180420T10:20:30Z')
+      d22.created_at = c_t_22
+      d22.updated_at = u_t_22
+      expect(d22.save).to eql(true)
+      d22.reload
+      expect(d22.created_at.to_i).to eql(c_t_22.to_i)
+      expect(d22.updated_at.to_i).to eql(u_t_22.to_i)
+
+      l10 = create(:list, objects: [ [ d10, a1 ], [ d20, a1 ], [ d21, a2 ], [ d11, a1 ] ])
+      l11 = create(:list, objects: [ [ d10, a2 ], [ d22, a1 ], [ d20, a1 ], [ d12, a1 ] ])
+
+      q = Fl::Core::List::Item.build_query(filters: {
+                                             lists: { only: l11.fingerprint }
+                                           },
+                                           order: 'listed_object_updated_at DESC')
+      xl = [ d20, d10, d12, d22 ]
+      ql = q.map { |li| li.listed_object }
+      expect(obj_fingerprints(ql)).to match_array(obj_fingerprints(xl))
+      q = Fl::Core::List::Item.build_query(filters: {
+                                             lists: { only: l11.fingerprint }
+                                           },
+                                           order: 'listed_object_updated_at ASC')
+      ql = q.map { |li| li.listed_object }
+      expect(obj_fingerprints(ql)).to match_array(obj_fingerprints(xl.reverse))
     end
   end
 
@@ -720,18 +1028,36 @@ RSpec.describe Fl::Core::List::Item, type: :model do
   end
 
   describe '.refresh_item_summaries' do
-    it 'should update all summaries' do
+    it 'should update all summaries and timestamps' do
       l10 = create(:list, objects: [ [ d10, a1 ], [ d20, a1 ], [ d21, a2 ], [ d11, a1 ] ])
       l11 = create(:list, objects: [ [ d10, a2 ], [ d22, a1 ], [ d20, a1 ], [ d12, a1 ] ])
+
+      c_t = Time.parse('20220310T10:20:00Z')
+      u_t = Time.parse('20220310T10:20:30Z')
+      
+      d20.created_at = c_t
+      d20.updated_at = u_t
+      expect(d20.save).to eql(true)
+      d20.reload
+      expect(d20.created_at.to_i).to eql(c_t.to_i)
+      expect(d20.updated_at.to_i).to eql(u_t.to_i)
 
       nt = 'new title for summary'
       d20.title = nt
       expect(d20.save).to eql(true)
       d20.reload
       expect(d20.title).to eql(nt)
+      expect(d20.created_at.to_i).to eql(c_t.to_i)
+      expect(d20.updated_at.to_i).to be > u_t.to_i
+      
       q = Fl::Core::List::Item.query_for_listable(d20)
       ql = q.map { |li| li.item_summary }
       expect(ql).to eql([ d20.title, nt ])
+
+      q.each do |li|
+        expect(li.listed_object_created_at.to_i).to eql(c_t.to_i)
+        expect(li.listed_object_updated_at.to_i).to eql(d20.updated_at.to_i)
+      end
     end
   end
 

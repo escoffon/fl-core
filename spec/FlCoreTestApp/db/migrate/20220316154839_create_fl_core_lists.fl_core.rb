@@ -91,10 +91,16 @@ class CreateFlCoreLists < ActiveRecord::Migration[6.0]
       # Sort order; used to create ordered lists
       t.integer		:sort_order
 
-      # This is a denormalization done so that queries can sort by the list item's summary without
+      # A number of denormalizations done so that queries can sort by listed object properties without
       # creating a join
+
+      # the list item's summary (from the listed object)
       t.string		:item_summary, index: { name: :fl_core_l_i_summary_idx }
 
+      # the creation and modification times fro the listed object
+      t.datetime	:listed_object_created_at, precision: 6, index: { name: :fl_core_l_i_lo_c_at_idx }
+      t.datetime	:listed_object_updated_at, precision: 6, index: { name: :fl_core_l_i_lo_u_at_idx }
+      
       t.timestamps
     end
 

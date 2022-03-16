@@ -218,6 +218,24 @@ RSpec.describe Fl::Core::List::Listable, type: :model do
 
   describe 'item summary management' do
     it "should refresh item summaries after a save" do
+      c_t_10 = Time.parse('20220310T10:20:00Z')
+      u_t_10 = Time.parse('20220310T10:20:30Z')
+      d10.created_at = c_t_10
+      d10.updated_at = u_t_10
+      expect(d10.save).to eql(true)
+      d10.reload
+      expect(d10.created_at.to_i).to eql(c_t_10.to_i)
+      expect(d10.updated_at.to_i).to eql(u_t_10.to_i)
+
+      c_t_20 = Time.parse('20220310T20:20:00Z')
+      u_t_20 = Time.parse('20220310T20:20:30Z')
+      d20.created_at = c_t_20
+      d20.updated_at = u_t_20
+      expect(d20.save).to eql(true)
+      d20.reload
+      expect(d20.created_at.to_i).to eql(c_t_20.to_i)
+      expect(d20.updated_at.to_i).to eql(u_t_20.to_i)
+
       l1 = create(:list, owner: a1, objects: [ [ d10, a1 ], [ d20, a2 ] ])
       l2 = create(:list, owner: a2, objects: [ [ d20, a1 ] ])
 
@@ -233,9 +251,18 @@ RSpec.describe Fl::Core::List::Listable, type: :model do
       l1.list_items.reload
       l1_s = l1.list_items.map { |li| li.item_summary }
       expect(l1_s).to match_array([ d10.title, d20.title ])
+      l1_c = l1.list_items.map { |li| li.listed_object_created_at.to_i }
+      expect(l1_c).to match_array([ d10.created_at.to_i, d20.created_at.to_i ])
+      l1_u = l1.list_items.map { |li| li.listed_object_updated_at.to_i }
+      expect(l1_u).to match_array([ d10.updated_at.to_i, d20.updated_at.to_i ])
+
       l2.list_items.reload
       l2_s = l2.list_items.map { |li| li.item_summary }
       expect(l2_s).to match_array([ d20_new_title ])
+      l2_c = l2.list_items.map { |li| li.listed_object_created_at.to_i }
+      expect(l2_c).to match_array([ d20.created_at.to_i ])
+      l2_u = l2.list_items.map { |li| li.listed_object_updated_at.to_i }
+      expect(l2_u).to match_array([ d20.updated_at.to_i ])
     end
   end
 end

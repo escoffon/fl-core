@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2022_03_14_042606) do
+ActiveRecord::Schema.define(version: 2022_03_16_154839) do
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.string "name", null: false
@@ -106,13 +106,17 @@ ActiveRecord::Schema.define(version: 2022_03_14_042606) do
     t.boolean "state_locked"
     t.integer "sort_order"
     t.string "item_summary"
+    t.datetime "listed_object_created_at", precision: 6
+    t.datetime "listed_object_updated_at", precision: 6
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["item_summary"], name: "fl_core_l_i_summary_idx"
     t.index ["list_id"], name: "fl_core_l_i_list_idx"
     t.index ["listed_object_class_name"], name: "fl_core_l_i_lo_cn_idx"
+    t.index ["listed_object_created_at"], name: "fl_core_l_i_lo_c_at_idx"
     t.index ["listed_object_fingerprint"], name: "fl_core_l_i_lo_fp_idx"
     t.index ["listed_object_type", "listed_object_id"], name: "fl_core_l_i_lo_idx"
+    t.index ["listed_object_updated_at"], name: "fl_core_l_i_lo_u_at_idx"
     t.index ["owner_fingerprint"], name: "fl_core_l_i_own_fp_idx"
     t.index ["owner_type", "owner_id"], name: "fl_core_l_i_own_idx"
     t.index ["state_updated_by_type", "state_updated_by_id"], name: "fl_core_l_i_state_uby_idx"
