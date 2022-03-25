@@ -40,9 +40,17 @@ module Fl::Core::Test
       ol.map do |o|
         case o
         when Hash
-          type = (o[:type]) ? o[:type] : o['type']
-          id = (o[:id]) ? o[:id] : o['id']
-          "#{type}/#{id}"
+          fp = (o[:fingerprint]) ? o[:fingerprint] : o['fingerprint']
+          if fp.is_a?(String)
+            fp
+          else
+            type = (o[:type]) ? o[:type] : o['type']
+            id = (o[:id]) ? o[:id] : o['id']
+            (type.nil? || id.nil?) ? nil : "#{type}/#{id}"
+          end
+        when String
+          type, id = ActiveRecord::Base.split_fingerprint(o)
+          (type.nil? || id.nil?) ? nil : o
         else
           (o.respond_to?(:fingerprint)) ? o.fingerprint : nil
         end
