@@ -228,7 +228,7 @@ module Fl::Core::Comment::ActiveRecord
           objs, ids = kl.partition { |o| o.is_a?(ActiveRecord::Base) }
           acc.concat(objs)
           acc.concat(klass.constantize.where('(id IN (?))', ids)) if ids.count > 0
-        rescue => x
+        rescue Exception => x
         end
 
         acc

@@ -35,7 +35,7 @@ class Fl::Test::CommentsController < ApplicationController
     unless request.headers[:HTTP_CURRENTUSER].nil?
       begin
         cu = ActiveRecord::Base.find_by_fingerprint(request.headers[:HTTP_CURRENTUSER])
-      rescue => x
+      rescue Exception => x
       end
     end
     cu

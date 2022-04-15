@@ -595,7 +595,7 @@ module Fl::Core::Query
     def adjust(body, &b)
       hbody = begin
                 hash_body(body)
-              rescue => x
+              rescue Exception => x
                 body
               end
       

@@ -133,7 +133,7 @@ module Fl::Core::Actor
             @_public_group = Fl::Core::Actor::Group.create(name: Fl::Core::Actor::Group::PUBLIC_GROUP_NAME,
                                                            note: 'Public group')
           end
-        rescue => x
+        rescue Exception => x
           Rails.logger.warn("error getting the public group: #{x.message}")
           @_public_group = nil
         end

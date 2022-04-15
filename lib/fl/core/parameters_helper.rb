@@ -169,13 +169,13 @@ module Fl::Core
           
           begin
             klass = h[:type].constantize
-          rescue => exc
+          rescue Exception => exc
             raise ConversionError, I18n.tx('fl.core.conversion.missing_class', :class => h[:type])
           end
 
           begin
             obj = klass.find(h[:id])
-          rescue => exc
+          rescue Exception => exc
             raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{h[:type]}/#{h[:id]}")
           end
         else
@@ -190,7 +190,7 @@ module Fl::Core
       when String
         begin
           klass = expect.constantize
-        rescue => exc
+        rescue Exception => exc
           raise ConversionError, I18n.tx('fl.core.conversion.missing_class', :class => expect)
         end
         
@@ -208,7 +208,7 @@ module Fl::Core
             begin
               klass = x.constantize
               obj.send(check_method, klass)
-            rescue => exc
+            rescue Exception => exc
             end
           when Class
             obj.send(check_method, x)

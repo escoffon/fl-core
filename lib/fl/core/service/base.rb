@@ -606,7 +606,7 @@ module Fl::Core::Service
         end
 
         return obj
-      rescue => exc
+      rescue Exception => exc
         self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                         exception_response_data('creation_failure',
                                                 localized_message('creation_failure', class: self.model_class.name),
@@ -672,7 +672,7 @@ module Fl::Core::Service
               end
             end
           end
-        rescue => exc
+        rescue Exception => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                           exception_response_data('update_failure',
                                                   localized_message('update_failure', fingerprint: obj.fingerprint),
@@ -736,7 +736,7 @@ module Fl::Core::Service
                                                 localized_message('destroy_failure', fingerprint: obj.fingerprint),
                                                 obj.errors))
           end
-        rescue => exc
+        rescue Exception => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                           exception_response_data('update_failure',
                                                   localized_message('update_failure', fingerprint: obj.fingerprint),
@@ -955,7 +955,7 @@ module Fl::Core::Service
             _pg: pagination_controls(r, qo, self.params)
           })
         end
-      rescue => exc
+      rescue Exception => exc
         self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                         exception_response_data('query_error',
                                                 localized_message('query_error', class: self.model_class.name),

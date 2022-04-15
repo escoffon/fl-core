@@ -238,7 +238,7 @@ module Fl::Core::Comment::ActiveRecord
       begin
         super(Fl::Core::Comment::Helper.commentable_from_parameter(c)) unless self.persisted?
         self.errors.delete(:commentable)
-      rescue => exc
+      rescue Exception => exc
         if Rails.version >= "6.1"
           self.errors.add(:commentable, exc.message)
         else
@@ -259,7 +259,7 @@ module Fl::Core::Comment::ActiveRecord
       begin
         super(Fl::Core::Comment::Helper.author_from_parameter(a)) unless self.persisted?
         self.errors.delete(:author)
-      rescue => exc
+      rescue Exception => exc
         if Rails.version >= "6.1"
           self.errors.add(:author, exc.message)
         else
@@ -282,7 +282,7 @@ module Fl::Core::Comment::ActiveRecord
           super(cd)
         end
         self.errors.delete(:contents_json)
-      rescue => exc
+      rescue Exception => exc
         if Rails.version >= "6.1"
           self.errors.add(:contents_json, exc.message)
         else

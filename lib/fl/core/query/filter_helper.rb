@@ -68,7 +68,7 @@ module Fl::Core::Query
         kc = (klass.is_a?(String)) ? Object.const_get(klass) : klass
         c = (cname.is_a?(String)) ? Object.const_get(cname) : cname
         return (c <= kc) ? id.to_i : nil
-      rescue => x
+      rescue Exception => x
         return nil
       end
     end
@@ -419,7 +419,7 @@ module Fl::Core::Query
     def self.parse_timestamp(value)
       begin
         return Fl::Core::Icalendar::Datetime.new(value)
-      rescue => exc
+      rescue Exception => exc
         return exc.message
       end
     end

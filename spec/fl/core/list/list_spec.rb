@@ -208,7 +208,7 @@ RSpec.describe Fl::Core::List::List, type: :model do
       expect do
         begin
           l1 = Fl::Core::List::List.new(objects: [ d10, d30 ])
-        rescue => x
+        rescue Exception => x
           exc = x
           raise x
         end
@@ -295,7 +295,7 @@ RSpec.describe Fl::Core::List::List, type: :model do
       expect do
         begin
           l1.update({ objects: [ d30, d20 ] }.merge(c))
-        rescue => x
+        rescue Exception => x
           exc = x
           raise x
         end

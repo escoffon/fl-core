@@ -232,7 +232,7 @@ module Fl::Core::Service
               end
             end
           end
-        rescue => exc
+        rescue Exception => exc
           self.set_status(Fl::Core::Service::UNPROCESSABLE_ENTITY,
                           exception_response_data('creation_failure',
                                                   localized_message('creation_failure', class: self.model_class.name),

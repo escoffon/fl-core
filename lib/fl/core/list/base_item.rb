@@ -590,7 +590,7 @@ module Fl::Core::List
       begin
         nl = Fl::Core::ParametersHelper.object_from_parameter(list, nil, Fl::Core::List::Base, false)
         return "internal error: failed to convert #{list} to a list object" if nl.nil?
-      rescue => exc
+      rescue Exception => exc
         return "internal error: #{exc.message}"
       end
       

@@ -137,7 +137,7 @@ RSpec.describe Fl::Core::Actor::Group, type: :model do
         expect do
           begin
             g1 = Fl::Core::Actor::Group.new(name: 'g1', actors: [ a11, a20 ])
-          rescue => x
+          rescue Exception => x
             exc = x
             raise x
           end
@@ -195,7 +195,7 @@ RSpec.describe Fl::Core::Actor::Group, type: :model do
       expect do
         begin
           g1.update(note: new_note, actors: [ a11, a20 ])
-        rescue => x
+        rescue Exception => x
           exc = x
           raise x
         end

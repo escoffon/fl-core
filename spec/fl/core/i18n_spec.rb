@@ -244,7 +244,7 @@ RSpec.describe I18n do
         exc = nil
         begin
           I18n.tx(key, raise: true)
-        rescue => x
+        rescue Exception => x
           exc = x
         end
         expect(exc).to be_a(I18n::MissingTranslationData)
@@ -258,7 +258,7 @@ RSpec.describe I18n do
         exc = nil
         begin
           I18n.tx(key, raise: true)
-        rescue => x
+        rescue Exception => x
           exc = x
         end
         expect(exc).to be_a(I18n::MissingTranslationData)
@@ -372,7 +372,7 @@ RSpec.describe I18n do
       x = nil
       begin
         I18n.localize_x(dt1, format: :unknown)
-      rescue => xx
+      rescue Exception => xx
         x = xx
       end
       expect(x.message).to start_with('translation missing: [en].time.formats.unknown')
@@ -385,7 +385,7 @@ RSpec.describe I18n do
       x = nil
       begin
         I18n.localize_x(dt1, format: :unknown, locale: [ 'it', 'en' ])
-      rescue => xx
+      rescue Exception => xx
         x = xx
       end
       expect(x.message).to start_with('translation missing: [it,en].time.formats.unknown')
@@ -418,7 +418,7 @@ RSpec.describe I18n do
       x = nil
       begin
         I18n.localize(dt1, format: :unknown)
-      rescue => xx
+      rescue Exception => xx
         x = xx
       end
       expect(x.message).to start_with('translation missing: [en].time.formats.unknown')
@@ -431,7 +431,7 @@ RSpec.describe I18n do
       x = nil
       begin
         I18n.localize(dt1, format: :unknown, locale: [ 'it', 'en' ])
-      rescue => xx
+      rescue Exception => xx
         x = xx
       end
       expect(x.message).to start_with('translation missing: [it,en].time.formats.unknown')

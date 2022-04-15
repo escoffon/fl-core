@@ -445,7 +445,7 @@ module Fl::Core::Access
         end
         
         raise
-      rescue => x
+      rescue Exception => x
         Rails.logger.info("++++++++++ EXCEPTION: #{x.class} (#{x.message})")
         raise
       end

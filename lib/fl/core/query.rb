@@ -68,7 +68,7 @@ module Fl::Core
         kc = (klass.is_a?(String)) ? Object.const_get(klass) : klass
         c = (cname.is_a?(String)) ? Object.const_get(cname) : cname
         return (c <= kc) ? id.to_i : nil
-      rescue => x
+      rescue Exception => x
         return nil
       end
     end
@@ -600,7 +600,7 @@ module Fl::Core
     def _parse_timestamp(value)
       begin
         return Fl::Core::Icalendar::Datetime.new(value)
-      rescue => exc
+      rescue Exception => exc
         return exc.message
       end
     end
@@ -638,7 +638,7 @@ module Fl::Core
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}created_after".to_sym])
           rv[:c_after_ts] = dt.to_time if dt.valid?
-        rescue => exc
+        rescue Exception => exc
         end
       end
 
@@ -646,7 +646,7 @@ module Fl::Core
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}updated_after".to_sym])
           rv[:u_after_ts] = dt.to_time if dt.valid?
-        rescue => exc
+        rescue Exception => exc
         end
       end
 
@@ -654,7 +654,7 @@ module Fl::Core
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}created_before".to_sym])
           rv[:c_before_ts] = dt.to_time if dt.valid?
-        rescue => exc
+        rescue Exception => exc
         end
       end
 
@@ -662,7 +662,7 @@ module Fl::Core
         begin
           dt = Fl::Core::Icalendar::Datetime.new(opts["#{prefix}updated_before".to_sym])
           rv[:u_before_ts] = dt.to_time if dt.valid?
-        rescue => exc
+        rescue Exception => exc
         end
       end
 

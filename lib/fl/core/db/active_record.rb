@@ -23,7 +23,7 @@ class ActiveRecord::Base
     if cn == true
       begin
         c = Object.const_get(c)
-      rescue => exc
+      rescue Exception => exc
         c = nil
         id = nil
       end
@@ -130,7 +130,7 @@ class ActiveRecord::Base
           begin
             obj = Object.const_get(cname)
             return value
-          rescue => exc
+          rescue Exception => exc
           end
 
           # if we made it here, we check if this is a string representation of a SignedGlobalID
@@ -142,7 +142,7 @@ class ActiveRecord::Base
           uri = begin
                   h = SignedGlobalID.pick_verifier({ }).verify(value)
                   URI.parse(h['gid'])
-                rescue => x
+                rescue Exception => x
                   nil
                 end
           
@@ -195,14 +195,14 @@ class ActiveRecord::Base
 
           begin
             obj = Object.const_get(cname).find(id)
-          rescue => exc
+          rescue Exception => exc
           end
         else
           # If the class lookup returns a class, that's the hit. Otherwise, try the global id lookup
         
           begin
             obj = Object.const_get(cname)
-          rescue => exc
+          rescue Exception => exc
             obj = GlobalID::Locator.locate_signed(fingerprint_or_global_id)
           end
         end

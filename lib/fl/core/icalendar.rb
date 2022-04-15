@@ -1284,7 +1284,7 @@ module Fl::Core
             end
           rescue ParseError => exc
             return nil
-          rescue => exc
+          rescue Exception => exc
             raise exc
           end
         end
