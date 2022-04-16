@@ -203,7 +203,7 @@ module Fl::Core::Concerns::Service::ApiResponse
   #
   # @return [Hash] Returns a hash representation of _obj_.
 
-  def hash_one_object(obj, hash_opts)
+  def hash_one_object(obj, hash_opts = { })
     obj.to_hash(current_user, hash_opts)
   end
 
@@ -215,7 +215,7 @@ module Fl::Core::Concerns::Service::ApiResponse
   #
   # @return [Array<Hash>] Returns an array of hash representations of _ary_.
 
-  def hash_objects(ary, hash_opts)
+  def hash_objects(ary, hash_opts = { })
     ary.map { |r| r.to_hash(current_user, hash_opts) }
   end
 
