@@ -29,6 +29,7 @@ module Fl::Core
   end
 end
 
+require 'fl/core/service/helper'
 require 'fl/core/service/base'
 require 'fl/core/service/nested'
 
