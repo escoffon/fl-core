@@ -197,6 +197,52 @@ let ActiveStorageAttachedOne = FlClassManager.make_class({
 	    }
 
 	    return true;
+	},
+
+	/**
+	 * @ngdoc method
+	 * @name ActiveStorageAttachedOne#variant
+	 * @description
+	 *  Returns the variant descriptor for a given style for the single attachment.
+	 *  This is a convenience method that checks if the attachment is non-null, and if so calls
+	 *  `variant` against it.
+	 * 
+	 * @param {String} style The name of the style to look up.
+	 *
+	 * @return {Object} Returns an object containing the description of the variant:
+	 *
+	 *  - **style** is the style name (should be equal to *style*).
+	 *  - **params** is an object of processing parameters that were used to generate the
+	 *    variant. A useful parameter is **resize**, the target size for the variant.
+	 *  - **url** The path component of the URL to the variant file.
+	 *
+	 *  Returns `undefined` if *style* is not in the attachments.
+	 */
+
+	variant: function(style) {
+	    if (_.isNil(this.attachment)) return undefined;
+
+	    return this.attachment.variant(style);
+	},
+
+	/**
+	 * @ngdoc method
+	 * @name ActiveStorageAttachedOne#variant_url
+	 * @description
+	 *  Returns the variant URL for a given style for the single attachment.
+	 *  This is a convenience method that checks if the attachment is non-null, and if so calls
+	 *  `variant_url` against it.
+	 * 
+	 * @param {String} style The name of the style to look up.
+	 *
+	 * @return {String} Returns a string containing the path component of the variant URL,
+	 *  `null` if *style* is not in the list of variants.
+	 */
+
+	variant_url: function(style) {
+	    if (_.isNil(this.attachment)) return undefined;
+
+	    return this.attachment.variant_url(style);
 	}
     },
     class_methods: {
