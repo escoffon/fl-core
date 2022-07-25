@@ -156,7 +156,10 @@ module Fl::Core::Comment::ActiveRecord
 
     before_create :populate_fingerprints
 
-    # @!visibility private
+    protected
+
+    # The default query filters
+    
     QUERY_FILTERS_CONFIG = {
       filters: {
         commentables: {
@@ -208,6 +211,8 @@ module Fl::Core::Comment::ActiveRecord
         }
       }
     }
+
+    public
     
     # Initializer.
     #
@@ -290,7 +295,7 @@ module Fl::Core::Comment::ActiveRecord
         end
       end
     end
-    
+
     # Build a query to fetch comments.
     #
     # The **:filters** option contains a description of clauses to restrict the result set based on one or more
