@@ -481,200 +481,113 @@ RSpec.describe Fl::Core::Query::QueryHelper do
     end
   end
 
-  describe '.normalize_includes' do
-    it 'should return false with a nil argument' do
-      expect(qh.normalize_includes(nil)).to eql(false)
-    end
+  describe '.adjust_includes' do
+    context 'with a scalar argument' do
+      it 'should return an empty array with a nil argument' do
+        expect(qh.adjust_includes(nil)).to eql([ ])
+      end
     
-    it 'should return false with a false argument' do
-      expect(qh.normalize_includes(false)).to eql(false)
-    end
+      it 'should return an empty array with a false argument' do
+        expect(qh.adjust_includes(false)).to eql([ ])
+      end
     
-    it 'should convert a symbol to a one-element array' do
-      expect(qh.normalize_includes(:one)).to eql([ :one ])
-      expect(qh.normalize_includes(:one, [ :one, :two ])).to eql([ { one_attachment: [ :blob ] } ])
-    end
+      it 'should convert a symbol to a one-element array' do
+        expect(qh.adjust_includes(:one)).to eql([ :one ])
+      end
     
-    it 'should convert a string to a one-element array' do
-      expect(qh.normalize_includes('one')).to eql([ :one ])
-      expect(qh.normalize_includes('one', [ :one, :two ])).to eql([ { one_attachment: [ :blob ] } ])
-    end
+      it 'should convert a string to a one-element array' do
+        expect(qh.adjust_includes('one')).to eql([ 'one' ])
+      end
     
+      it 'should convert a hash to a one-element array' do
+        expect(qh.adjust_includes({ one: [ :two ] })).to eql([ { one: [ :two ] } ])
+      end
+    
+      it 'should convert ActionController::Parameters to a one-element array' do
+        expect(qh.adjust_includes(ActionController::Parameters.new({ one: [ :two ] }))).to eql([ { 'one' => [ :two ] } ])
+      end
+    end
+
     context 'with an array argument' do
+      it 'should return symbols or strings as-is' do
+        expect(qh.adjust_includes([ :one, 'two' ])).to eql([ :one, 'two' ])
+      end
+
       it 'should return a list as-is if no attachments are detected' do
-        expect(qh.normalize_includes([ :one, :two ])).to eql([ :one, :two ])
-        expect(qh.normalize_includes([
-                                       :one,
-                                       { two: :three },
-                                       { four: [ :five, :six ] }
-                                     ])).to eql([
-                                                  :one,
-                                                  { two: [ :three ] },
-                                                  { four: [ :five, :six ] }
-                                                ])
+        expect(qh.adjust_includes([ :one, :two ])).to eql([ :one, :two ])
+
+        i = [ :one,
+              { two: :three },
+              { four: [ :five, :six ] } ]
+        x = [ :one,
+              { two: [ :three ] },
+              { four: [ :five, :six ] } ]
+        expect(qh.adjust_includes(i)).to eql(x)
       end
 
-      it 'should adjust attachments at the top level' do
-        expect(qh.normalize_includes([
-                                       :one,
-                                       :two
-                                     ], [ :one, :four ])).to eql([
-                                                                   { one_attachment: [ :blob ] },
-                                                                   :two
-                                                                 ])
+      it 'should adjust a symbol attachment element' do
+        i = [ :att, 'two' ]
+        x = [ { att_attachment: [ :blob ] }, 'two' ]
+        expect(qh.adjust_includes(i, [ :att ])).to eql(x)
       end
 
-      it 'should adjust nested attachments' do
-        expect(qh.normalize_includes([
-                                       :one,
-                                       :two,
-                                       { three: :four }
-                                     ],
-                                     [ :one, :four ])).to eql([
-                                                                { one_attachment: [ :blob ] },
-                                                                :two,
-                                                                {
-                                                                  three: [
-                                                                    { four_attachment: [ :blob ] }
-                                                                  ]
-                                                                }
-                                                              ])
+      it 'should accept string for attachment names' do
+        i = [ :att, 'two' ]
+        x = [ { att_attachment: [ :blob ] }, 'two' ]
+        expect(qh.adjust_includes(i, [ 'att' ])).to eql(x)
+      end
 
-        expect(qh.normalize_includes([
-                                       :one,
-                                       :two,
-                                       { three: [ :four ] }
-                                     ],
-                                     [ :one, :four ])).to eql([
-                                                                { one_attachment: [ :blob ] },
-                                                                :two,
-                                                                {
-                                                                  three: [
-                                                                    { four_attachment: [ :blob ] }
-                                                                  ]
-                                                                }
-                                                              ])
+      it 'should adjust a string attachment element' do
+        i = [ 'att', 'two' ]
+        x = [ { att_attachment: [ :blob ] }, 'two' ]
+        expect(qh.adjust_includes(i, [ :att ])).to eql(x)
+      end
 
-        expect(qh.normalize_includes([
-                                       :one,
-                                       :two,
-                                       {
-                                         three: [
-                                           { three: :four },
-                                           :two
-                                         ]
-                                       }
-                                     ],
-                                     [ :one, :four ])).to eql([
-                                                                { one_attachment: [ :blob ] },
-                                                                :two,
-                                                                {
-                                                                  three: [
-                                                                    {
-                                                                      three: [
-                                                                        { four_attachment: [ :blob ] }
-                                                                      ]
-                                                                    },
-                                                                    :two
-                                                                  ]
-                                                                }
-                                                              ])
+      it 'should recurse into hash elements' do
+        i = [ :avatar,
+              { sub1: [ :one, :two ] },
+              { sub2: [ 'att', 'three', :four ] } ]
+        x = [ { avatar_attachment: [ :blob ] },
+              { sub1: [ :one, :two ] },
+              { sub2: [ { att_attachment: [ :blob ] }, 'three', :four ] } ]
+        expect(qh.adjust_includes(i, [ :avatar, :att ])).to eql(x)
 
-        expect(qh.normalize_includes([
-                                       :one,
-                                       :two,
-                                       {
-                                         three: [
-                                           {
-                                             three: {
-                                               five: :four,
-                                               six: [ :two ]
-                                             }
-                                           },
-                                           :two
-                                         ]
-                                       }
-                                     ],
-                                     [ :one, :four ])).to eql([
-                                                                { one_attachment: [ :blob ] },
-                                                                :two,
-                                                                {
-                                                                  three: [
-                                                                    {
-                                                                      three: {
-                                                                        five: [
-                                                                          { four_attachment: [ :blob ] }
-                                                                        ],
-                                                                        six: [ :two ]
-                                                                      }
-                                                                    },
-                                                                    :two
-                                                                  ]
-                                                                }
-                                                              ])
+        i = [ :avatar,
+              { sub1: [ :one, :two, { six: [ :att, 'ten' ] } ] },
+              { sub2: [ 'also_att', 'three', :four ] } ]
+        x = [ { avatar_attachment: [ :blob ] },
+              { sub1: [ :one, :two, { six: [ { att_attachment: [ :blob ] }, 'ten' ] } ] },
+              { sub2: [ { also_att_attachment: [ :blob ] }, 'three', :four ] } ]
+        expect(qh.adjust_includes(i, [ :avatar, 'att', :also_att ])).to eql(x)
+      end
+
+      it 'should accept ActionController::Parameters elements' do
+        # The ActionController::Parameters are turned into hashes with indifferent access
+      
+        i = [ :avatar,
+              ActionController::Parameters.new(sub1: [ :one, :two ]),
+              ActionController::Parameters.new(sub2: [ :att, 'three', :four ]) ]
+        x = [ { avatar_attachment: [ :blob ] },
+              { 'sub1' => [ :one, :two ] },
+              { 'sub2' => [ { att_attachment: [ :blob ] }, 'three', :four ] } ]
+        expect(qh.adjust_includes(i, [ :avatar, :att ])).to eql(x)
+
+        i = [ :avatar,
+              ActionController::Parameters.new(sub1: [ :one, :two,
+                                                       ActionController::Parameters.new(six: [ :att, 'ten' ]) ]),
+              ActionController::Parameters.new(sub2: [ :also_att, 'three', :four ]) ]
+        x = [ { avatar_attachment: [ :blob ] },
+              { 'sub1' => [ :one, :two,
+                            { 'six' => [ { att_attachment: [ :blob ] }, 'ten' ] } ] },
+              { 'sub2' => [ { also_att_attachment: [ :blob ] }, 'three', :four ] } ]
+        expect(qh.adjust_includes(i, [ :avatar, :att, :also_att ])).to eql(x)
       end
     end
 
-    context 'with a hash argument' do
-      it 'should return a hash as-is if no attachments are detected' do
-        expect(qh.normalize_includes({
-                                       one: [ :v_one, :v_two ],
-                                       two: { three: :v_three },
-                                       four: :v_four
-                                     })).to eql({
-                                                  one: [ :v_one, :v_two ],
-                                                  two: { three: [ :v_three ] },
-                                                  four: [ :v_four ]
-                                                })
-      end
-
-      it 'should adjust attachments at the top level' do
-        expect(qh.normalize_includes({
-                                       one: [ :foo ],
-                                       two: :bar
-                                     }, [ :one, :four ])).to eql({
-                                                                   one_attachment: [ :foo ],
-                                                                   two: [ :bar ]
-                                                                 })
-      end
-
-      it 'should adjust nested attachments' do
-        expect(qh.normalize_includes({
-                                       one: [ :foo ],
-                                       two: [ :five, :six ],
-                                       three: [ :four ]
-                                     },
-                                     [ :one, :four ])).to eql({
-                                                                one_attachment: [ :foo ],
-                                                                two: [ :five, :six ],
-                                                                three: [
-                                                                  { four_attachment: [ :blob ] }
-                                                                ]
-                                                              })
-
-        expect(qh.normalize_includes({
-                                       one: :foo,
-                                       two: [
-                                         { three: [ :four ] },
-                                         :six
-                                       ],
-                                       three: :four
-                                     },
-                                     [ :one, :four ])).to eql({
-                                                                one_attachment: [ :foo ],
-                                                                two: [
-                                                                  {
-                                                                    three: [
-                                                                      { four_attachment: [ :blob ] }
-                                                                    ]
-                                                                  },
-                                                                  :six
-                                                                ],
-                                                                three: [
-                                                                  { four_attachment: [ :blob ] }
-                                                                ]
-                                                              })
-      end
+    it 'should detect :avatar by default' do
+      i = [ :avatar, 'two' ]
+      x = [ { avatar_attachment: [ :blob ] }, 'two' ]
+      expect(qh.adjust_includes(i)).to eql(x)
     end
   end
 

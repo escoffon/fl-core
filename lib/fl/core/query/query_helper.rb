@@ -148,61 +148,13 @@ module Fl::Core::Query
       return (limit.is_a?(Integer) && (limit > 0)) ? q.limit(limit) : q
     end
 
-    # Normalize the **:includes** query parameter.
-    # The method traverses the *includes* list.
-    # If an element is a symbol in **attachments**, or a hash containing a symbol in **attachments**, it is
-    # converted to the appropriate name for the attachment association, with the **:blob** nested attachment.
-    # For example, the element **:avatar** is converted to `{ avatar_attachment: [ :blob ] }`.
-    #
-    # As another example, if you know that two associations `commentable` and `author` generate an avatar,
-    # a good value for *includes* is `[ { commentable: [ :avatar ] }, { author: [ :avatar ] } ]`.
-    #
-    # @param includes [Array<Symbol>, Hash, Symbol, false, nil] An array of symbols or a hash to pass
-    #  to the `includes` method of the relation, or the `false` value or `nil` to disable eager loading.
-    #  A single symbol is converted to a one-element array.
-    # @param attachments [String,Symbol,Array<String,Symbol>] The names of properties in *includes*
-    #  that contain ActiveStorage attachments; these properties are converted to a blob association by
-    #  {.normalize_includes}. A scalar value is converted to a one element array.
-    #  Defaults to `[ :avatar ]`.
-    #
-    # @return [Array,false] Returns an array of include descriptors, or if *includes* is `false`, the
-    #  `false` value.
-    #  A `false` return value indicates that `includes` should not be called.
-  
-    def self.normalize_includes(includes, attachments = nil)
-      inc = case includes
-            when Hash, Array
-              includes
-            when ActionController::Parameters
-              includes.to_h
-            when false, nil
-              false
-            when Symbol
-              [ includes ]
-            when String
-              [ includes.to_sym ]
-            else
-              false
-            end
-      return inc unless inc.is_a?(Array) || inc.is_a?(Hash)
-
-      if attachments.nil?
-        attachments = [ :avatar ]
-      elsif attachments.is_a?(Array)
-        attachments = attachments.map { |e| e.to_sym }
-      else
-        attachments = [ attachments.to_sym ]
-      end
-      
-      return convert_attachment_includes(inc, attachments)
-    end
-
     # Process the **:includes** option in a query statement.
     # This method wraps the standard procedure for adding an ActiveRecord `includes` call to the relation *q*.
     #
     # 1. If *includes* is `nil`, use the value in *defaults*.
-    # 2. Call {.normalize_includes}, passing the value from 1 and *attachments*.
-    # 3. If the call returns a hash or an array, call `includes` on *q*.
+    # 2. Call {.adjust_includes}, passing the value from 1 and *attachments*; this poterntially triggers eager
+    #    loading of an attachment's **:blob** association.
+    # 3. If the call returns a hash or a nonempty array, call `includes` on *q*.
     #
     # @param q [Relation] The target relation.
     # @param includes [Array<Symbol>, Hash, Symbol, Boolean, nil] An array of symbols or a hash to pass
@@ -213,15 +165,20 @@ module Fl::Core::Query
     #  You can pass `false` or `nil` to indicate that, if *includes* is `nil`, no eager loading is to be done.
     # @param attachments [String,Symbol,Array<String,Symbol>] The names of properties in *includes*
     #  that contain ActiveStorage attachments; these properties are converted to a blob association by
-    #  {.normalize_includes}. A scalar value is converted to a one element array.
+    #  {.adjust_includes}. A scalar value is converted to a one element array.
     #  Defaults to `[ :avatar ]`.
     #
     # @return [Relation] Returns the modified relation *q*.
 
     def self.add_includes(q, includes, defaults = false, attachments = nil)
       includes = defaults if includes.nil?
-      inc = Fl::Core::Query::QueryHelper.normalize_includes(includes, attachments)
-      return (inc == false) ? q : q.includes(inc)
+      inc = Fl::Core::Query::QueryHelper.adjust_includes(includes, attachments)
+      case inc
+      when Array, Hash
+        return (inc.count > 0) ? q.includes(inc) : q
+      else
+        return q
+      end
     end
 
     # Process a filter specification to generate a WHERE clause.
@@ -316,55 +273,67 @@ module Fl::Core::Query
       return q
     end
     
-    private
+    # Adjust the **:includes** query parameter.
+    # This method iterates over all elements in *includes* and converts any in the *attachments* list to an
+    # eager loading directive for the corresponding attachment attribute.
+    # If the element is a symbol or string that appears in *attachments*,
+    # it is converted to a hash with the appropriate name for the attachment association
+    # and the **:blob** nested attachment (in other words, it instructs the query builder to eager load the
+    # attachment's **:blob** association).
+    # If the element is a hash, each key/value pair is also adjusted recursively for attachment references.
+    # Otherwise, the element is left alone.
+    #
+    # The method also converts an unsupported value for *includes* to an empty array, to indicate that no
+    # eager loading should be performed.
+    #
+    # @param includes [Array<Symbol,String,Hash>,Symbol,String,Hash,false,nil] An array of strings, symbols
+    #  or hashes to pass to the `includes` method of the relation.
+    #  The method also supports ActionController::Parameters elements.
+    #  A single string, symbol or hash is converted to a one-element array.
+    #  Any other value, and especially `false` or `nil`, is returned as an empty array to indicate that no
+    #  eager loading should be performed.
+    # @param attachments [String,Symbol,Array<String,Symbol>] The names of properties in *includes*
+    #  that contain ActiveStorage attachments; these properties are converted to a blob association as described
+    #  above. A scalar value is converted to a one element array.
+    #  Defaults to `nil` (which converts to `[ :avatar ]`).
+    #
+    # @return [Array] Returns an array of adjusted include descriptors.
     
-    def self.convert_attachment_includes(inc, attachments)
-      case inc
-      when Array
-        return inc.map do |e|
-          e = e.to_sym if e.is_a?(String)
-
-          case e
-          when Symbol
-            if attachments.include?(e)
-              Hash[ "#{e}_attachment".to_sym, [ :blob ] ]
+    def self.adjust_includes(includes, attachments = nil)
+      inc = case includes
+            when String, Symbol, Hash, ActionController::Parameters
+              [ includes ]
+            when Array
+              includes
             else
-              e
+              [ ]
             end
-          when Hash, Array
-            convert_attachment_includes(e, attachments)
+      a = (attachments.nil?) ? [ :avatar ] : ((attachments.is_a?(Array)) ? attachments : [ attachments ])
+      att = a.map { |e| e.to_sym }
+            
+      return inc.map do |e|
+        case e
+        when String, Symbol
+          if att.include?(e.to_sym)
+            Hash[ "#{e}_attachment".to_sym, [ :blob ] ]
           else
             e
           end
-        end
-      when Hash
-        return inc.reduce({ }) do |acc, kvp|
-          ek, ev = kvp
-          sek = ek.to_sym
-          sev = (ev.is_a?(String)) ? ev.to_sym : ev
-          value = if sev.is_a?(Hash) || sev.is_a?(Array)
-                    convert_attachment_includes(ev, attachments)
-                  elsif sev.is_a?(Symbol)
-                    if attachments.include?(sev)
-                      [ Hash[ "#{sev}_attachment".to_sym, [ :blob ] ] ]
-                    else
-                      [ sev ]
-                    end
-                  else
-                    sev
-                  end
-
-          if attachments.include?(sek)
-            acc["#{sek}_attachment".to_sym] = value
-          else
-            acc[sek] = value
+        when Hash
+          e.reduce({ }) do |acc, kvp|
+            k, v = kvp
+            acc[k] = adjust_includes(v, att)
+            acc
           end
-
-          acc
+        when ActionController::Parameters
+          e.permit!.to_h.reduce({ }) do |acc, kvp|
+            k, v = kvp
+            acc[k] = adjust_includes(v, att)
+            acc
+          end
+        else
+          e
         end
-      else
-        s = (inc.is_a?(String)) ? inc.to_sym : inc
-        return (attachments.include?(s)) ? Hash[ "#{s}_attachment".to_sym, [ :blob ] ] : inc
       end
     end
   end

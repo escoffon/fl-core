@@ -347,13 +347,13 @@ module Fl::Core::List
     # @option opts [Symbol, Array<Symbol>, Hash] :includes An array of symbols (or a single symbol),
     #  or a hash, to pass to the +includes+ method
     #  of the relation; see the guide on the ActiveRecord query interface about this method.
-    #  The value is normalized via a call to {Fl::Core::Query::QueryHelper.normalize_includes}.
+    #  The value is normalized via a call to {Fl::Core::Query::QueryHelper.adjust_includes}.
     #  The default value is `[ :owner, :list, :listed_object ]`; if you know that the owner contains
     #  an attachment attribute like `avatar`, a good value for this option is
     #  `[ { owner: [ :avatar ] }, :list, :listed_object ]`.
     # @option opts [String,Symbol,Array<String,Symbol>] :attachments The names of properties in **:includes**
     #  that contain ActiveStorage attachments; these properties are converted to a blob association by
-    #  {#normalize_includes}. A scalar value is converted to a one element array.
+    #  {Fl::Core::Query::QueryHelper.adjust_includes}. A scalar value is converted to a one element array.
     #  Defaults to `[ :avatar ]`.
     #
     # Note that *:limit*, *:offset*, *:order*, and *:includes* are convenience options, since they can be
