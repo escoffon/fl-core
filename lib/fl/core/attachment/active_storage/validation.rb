@@ -35,21 +35,36 @@ module Fl::Core::Attachment::ActiveStorage
             return unless attachment.attached?
             
             if attachment.is_a?(ActiveStorage::Attached::One)
+              # a single attachment is pretty straightforward: return as soon as we get a hit
+              
               ctype = attachment.content_type.downcase
               lo_content_types.each do |ct|
                 return if (ct == ctype) || File.fnmatch(ct, ctype)
               end
               record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbidden_content_type',
-                                                     ctype: ctype, filename: attachment.filename.to_s))
+                                                     failures: "#{[ ctype, attachment.filename.to_s ]}"))
             elsif attachment.is_a?(ActiveStorage::Attached::Many)
+              # a multiple attachment is more complicated, since we have to loop over all attachments
+              # and check for each.
+              
+              failures = [ ]
+              
               attachment.each do |a|
                 ctype = a.content_type.downcase
+                success = false
                 lo_content_types.each do |ct|
-                  break if (ct == ctype) || File.fnmatch(ct, ctype)
-
-                  record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbidden_content_type',
-                                                         ctype: ctype, filename: a.filename.to_s))
+                  if (ct == ctype) || File.fnmatch(ct, ctype)
+                    success = true
+                    break
+                  end
                 end
+
+                failures << [ ctype, a.filename.to_s ] if success == false
+              end
+
+              if failures.count > 0
+                record.errors.add(name.to_sym, I18n.tx('fl.core.attachment.active_storage.model.validate.forbidden_content_type',
+                                                       failures: "#{failures}"))
               end
             end
           end
