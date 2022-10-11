@@ -1,13 +1,20 @@
 # Locale detection in controllers.
-# Include it in controller code, like this:
+# This concern defines {#extract_locales} for sniffing the locale from the request context.
+# It also defines {#switch_locale_array} to install a temporary locale context and execute a controller action
+# in that context.
+#
+# Note that it does not register a `around_action` wrapper to set up the locale list for the action.
+# This is done to give applications the flexibility of implementing their own "around" functions.
+# To enable this functionality, make sure to make the `around_action` call in the controller (typically,
+# in the application's base controller):
 #
 # ```
 # class ApplicationController < ActionController::Base
 #   include Fl::Core::Concerns::Controller::LocaleDetection
+#
+#   around_action :switch_locale_array
 # end
 # ```
-#
-# This concern registers a `around_action` wrapper that sets up the locale list for the action.
 
 module Fl::Core::Concerns::Controller::LocaleDetection
   extend ActiveSupport::Concern
@@ -42,9 +49,7 @@ module Fl::Core::Concerns::Controller::LocaleDetection
   end
   
   # Include callback.
-  # This block registers the `around_action` for {#switch_locale_array}.
 
   included do
-    around_action :switch_locale_array
   end
 end
