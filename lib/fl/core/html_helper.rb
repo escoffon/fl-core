@@ -6,6 +6,12 @@ module Fl::Core
 
   module HtmlHelper
     # @!visibility private
+    HREF_NODES = [ 'a' ]
+
+    # @!visibility private
+    SRC_NODES = [ 'img', 'audio' ]
+    
+    # @!visibility private
     
     class AdjustURLs < Loofah::Scrubber
       # Clean up URLs in links and image elements.
@@ -15,9 +21,9 @@ module Fl::Core
       # @param node [Nokogiri::XML::Node] The node to process.
       
       def scrub(node)
-        if (node.type == Nokogiri::XML::Node::ELEMENT_NODE) && (node.name == 'a')
+        if (node.type == Nokogiri::XML::Node::ELEMENT_NODE) && HREF_NODES.include?(node.name)
           node['href'] = '#' unless (node['href'] =~ /^https?:/i) || (node['href'] =~ /^\//)
-        elsif (node.type == Nokogiri::XML::Node::ELEMENT_NODE) && (node.name == 'img')
+        elsif (node.type == Nokogiri::XML::Node::ELEMENT_NODE) && SRC_NODES.include?(node.name)
           node['src'] = '' unless (node['src'] =~ /^https?:/i) || (node['src'] =~ /^\//)
         end
       end

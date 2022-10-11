@@ -189,7 +189,8 @@ module Fl::Core::Comment
 
       filtered_attribute :title, [ const_get(:FILTER_HTML_STRIP_DANGEROUS_ELEMENTS),
                                    const_get(:FILTER_HTML_TEXT_ONLY) ]
-      filtered_attribute :contents_html, const_get(:FILTER_HTML_STRIP_DANGEROUS_ELEMENTS)
+      # temporarily disabled so that the 'controls' attribute is not stripped from audio elements 
+      # filtered_attribute :contents_html, const_get(:FILTER_HTML_STRIP_DANGEROUS_ELEMENTS)
 
       # Validation
 
