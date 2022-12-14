@@ -201,10 +201,26 @@ module Fl::Core::Concerns::Service::ApiResponse
   #  {Fl::Core::ModelHash}.
   # @param hash_opts [Hash] The hashing options for +to_hash+.
   #
-  # @return [Hash] Returns a hash representation of _obj_.
+  # @return [Hash] Returns a hash representation of _obj_; if *obj* does not respond to `to_hash`, returns an
+  #  empty hash.
 
   def hash_one_object(obj, hash_opts = { })
-    obj.to_hash(current_user, hash_opts)
+    # since obj could potentially be a hash, it defines its own to_hash method, which has different
+    # arguments than the model hash one.
+    # So, we need a bit of sleight of hand to decide which one to use, and we do it by the method's arity
+
+    return { } unless obj.respond_to?(:to_hash)
+
+    hma = obj.method(:to_hash).arity
+    return obj.to_hash if hma == 0
+
+    if (hma == -2) && (~hma == 1)
+      # This has the expected arity for the model hash method
+ 
+      return obj.to_hash(current_user, hash_opts)
+    else
+      return { }
+    end
   end
 
   # Hash support: returns an array of hash representations of objects, for the current user.
@@ -216,7 +232,7 @@ module Fl::Core::Concerns::Service::ApiResponse
   # @return [Array<Hash>] Returns an array of hash representations of _ary_.
 
   def hash_objects(ary, hash_opts = { })
-    ary.map { |r| r.to_hash(current_user, hash_opts) }
+    ary.map { |r| hash_one_object(r, hash_opts) }
   end
 
   # Get the response format.
