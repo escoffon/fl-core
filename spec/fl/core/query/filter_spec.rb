@@ -1706,52 +1706,62 @@ RSpec.describe Fl::Core::Query::Filter do
           end.to raise_exception(Fl::Core::Query::Filter::Exception)
         end
         
-        it 'should handle all supported comparisons' do
+        it 'should handle the :null option' do
           g1 = Fl::Core::Query::Filter.new(cfg_1)
 
           t_1 = "2021-04-07 13:44:59 -0700"
           t_2 = "2021-04-07 14:44:59 -0700"
 
-          clause = g1.generate({ ts1: { at: t_1 } })
-          expect(clause).to eql('(c_ts1 = :p1)')
+          clause = g1.generate({ ts1: { at: t_1, null: true } })
+          expect(clause).to eql('((c_ts1 = :p1) OR (c_ts1 IS NULL))')
           expect(g1.params).to include(p1: t_1)
 
           g1.reset
-          clause = g1.generate({ ts1: { not_at: t_1 } })
-          expect(clause).to eql('(c_ts1 != :p1)')
+          clause = g1.generate({ ts1: { not_at: t_1, null: false } })
+          expect(clause).to eql('((c_ts1 != :p1) OR (c_ts1 IS NOT NULL))')
           expect(g1.params).to include(p1: t_1)
 
           g1.reset
-          clause = g1.generate({ ts1: { after: t_1 } })
-          expect(clause).to eql('(c_ts1 > :p1)')
+          clause = g1.generate({ ts1: { after: t_1, null: true } })
+          expect(clause).to eql('((c_ts1 > :p1) OR (c_ts1 IS NULL))')
           expect(g1.params).to include(p1: t_1)
 
           g1.reset
-          clause = g1.generate({ ts1: { at_or_after: t_1 } })
-          expect(clause).to eql('(c_ts1 >= :p1)')
+          clause = g1.generate({ ts1: { at_or_after: t_1, null: true } })
+          expect(clause).to eql('((c_ts1 >= :p1) OR (c_ts1 IS NULL))')
           expect(g1.params).to include(p1: t_1)
 
           g1.reset
-          clause = g1.generate({ ts1: { before: t_1 } })
-          expect(clause).to eql('(c_ts1 < :p1)')
+          clause = g1.generate({ ts1: { before: t_1, null: false } })
+          expect(clause).to eql('((c_ts1 < :p1) OR (c_ts1 IS NOT NULL))')
           expect(g1.params).to include(p1: t_1)
 
           g1.reset
-          clause = g1.generate({ ts1: { at_or_before: t_1 } })
-          expect(clause).to eql('(c_ts1 <= :p1)')
+          clause = g1.generate({ ts1: { at_or_before: t_1, null: true } })
+          expect(clause).to eql('((c_ts1 <= :p1) OR (c_ts1 IS NULL))')
           expect(g1.params).to include(p1: t_1)
 
           g1.reset
-          clause = g1.generate({ ts1: { between: [ t_1, t_2 ] } })
-          expect(clause).to eql('(c_ts1 BETWEEN :p1 AND :p2)')
+          clause = g1.generate({ ts1: { between: [ t_1, t_2 ], null: true } })
+          expect(clause).to eql('((c_ts1 BETWEEN :p1 AND :p2) OR (c_ts1 IS NULL))')
           expect(g1.params).to include(p1: t_1)
           expect(g1.params).to include(p2: t_2)
 
           g1.reset
-          clause = g1.generate({ ts1: { not_between: [ t_1, t_2 ] } })
-          expect(clause).to eql('(c_ts1 NOT BETWEEN :p1 AND :p2)')
+          clause = g1.generate({ ts1: { not_between: [ t_1, t_2 ], null: false } })
+          expect(clause).to eql('((c_ts1 NOT BETWEEN :p1 AND :p2) OR (c_ts1 IS NOT NULL))')
           expect(g1.params).to include(p1: t_1)
           expect(g1.params).to include(p2: t_2)
+
+          g1.reset
+          clause = g1.generate({ ts1: { null: true } })
+          expect(clause).to eql('(c_ts1 IS NULL)')
+          expect(g1.params.count).to eql(0)
+
+          g1.reset
+          clause = g1.generate({ ts1: { null: false } })
+          expect(clause).to eql('(c_ts1 IS NOT NULL)')
+          expect(g1.params.count).to eql(0)
         end
 
         it 'should use the custom generator if provided' do

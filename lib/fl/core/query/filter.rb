@@ -761,7 +761,11 @@ module Fl::Core::Query
     # **:between** and **:not_between**, it *must* be a two-element array containing the start and end times for
     # the interval.
     #
-    # The method tries keys in the order listed in {TIMESTAMP_CONDITIONS}, and returns at the first hit.
+    # The method tries keys in the order listed in {TIMESTAMP_CONDITIONS}, and generates a clause at the first hit.
+    # Additionally, it looks up the **:null** key, and if present generates a clause that filters based on the
+    # NULL state of the field: if the value of **:null** is `true`, records whose field value is NULL are also
+    # returned; if `false`, NULL values are not returned.
+    # The **:null** clause is joined to the main clause (if any) with an OR operator.
     # If no hits, it returns `nil`.
     #
     # This is the default method called to generate the WHERE clause for the **:timestamp** filter; you
@@ -797,25 +801,46 @@ module Fl::Core::Query
         end
       end
 
-      return nil if op.nil?
+      # Now we check for the :null condition
 
-      if (cmp == :between) || (cmp == :not_between)
-        start_p = allocate_parameter
-        end_p = allocate_parameter
-        i0 = Fl::Core::Query::FilterHelper.parse_timestamp(t[0]).to_i
-        i1 = Fl::Core::Query::FilterHelper.parse_timestamp(t[1]).to_i
+      null_clause = if (value[:null] == true) || (value[:null] == 'true')
+                      "(#{desc[:field]} IS NULL)"
+                    elsif (value[:null] == false) || (value[:null] == 'false')
+                      "(#{desc[:field]} IS NOT NULL)"
+                    else
+                      nil
+                    end
+      
+      return nil if op.nil? && null_clause.nil?
 
-        if i0 < i1
-          @params[start_p] = t[0]
-          @params[end_p] = t[1]
+      main_clause = nil
+      unless cmp.nil?
+        if (cmp == :between) || (cmp == :not_between)
+          start_p = allocate_parameter
+          end_p = allocate_parameter
+          i0 = Fl::Core::Query::FilterHelper.parse_timestamp(t[0]).to_i
+          i1 = Fl::Core::Query::FilterHelper.parse_timestamp(t[1]).to_i
+
+          if i0 < i1
+            @params[start_p] = t[0]
+            @params[end_p] = t[1]
+          else
+            @params[start_p] = t[1]
+            @params[end_p] = t[0]
+          end
+          main_clause = "(#{desc[:field]} #{op} :#{start_p} AND :#{end_p})"
         else
-          @params[start_p] = t[1]
-          @params[end_p] = t[0]
+          param = allocate_parameter(t)
+          main_clause = "(#{desc[:field]} #{op} :#{param})"
         end
-        return "(#{desc[:field]} #{op} :#{start_p} AND :#{end_p})"
+      end
+      
+      return main_clause if null_clause.nil?
+
+      if main_clause.nil?
+        return null_clause
       else
-        param = allocate_parameter(t)
-        return "(#{desc[:field]} #{op} :#{param})"
+        return "(#{main_clause} OR #{null_clause})"
       end
     end
 

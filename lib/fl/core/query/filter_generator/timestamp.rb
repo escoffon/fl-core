@@ -13,9 +13,22 @@ module Fl::Core::Query::FilterGenerator
   # 6. **:at_or_before** matches if the column is before than, or the same as, the time value.
   # 7. **:between** matches if the column is between the two times in the value (which is an array).
   # 8. **:not_between** is the inverse of **:between**.
+  # 9. **:null** tells the filter whether to include NULL value or not. If the filter value is `true`, a clause is
+  #    generated to return records with NULL column values.
+  #    If the value is anything else, a clause is generated to return records with non-NULL column values.
+  #    The **:null** clause is combined with the main clause using the OR operator.
+  #    Defaults to `false`, so that records whose column is NULL are not returned.
+  #    The typical use for this this option is to set it to `true` and return records that either match the main
+  #    clause, or whose value is NULL. (NULL values would never match the main clause.)
   #
-  # If multiple keys are present, they are looked up in the order listed above. Note that the time value is
-  # a single timestamp for all, except for **:between** and **:not_between**, where it is an array of two timestamps.
+  # If multiple keys are present, they are looked up in the order listed above, and the first match wins.
+  # However, if **:null** is also present, it is joined to the original clause with an `OR` operator.
+  # Note that the time value is
+  # a single timestamp for all, except for **:between** and **:not_between**, where it is an array of two timestamps,
+  # and **:null**, where it is a boolean.
+  #
+  # It is acceptable to pass just a **:null** key, in which case the filter selects for NULL or non-NULL field
+  # values.
   
   class Timestamp < Base
     # Generate a WHERE clause.
