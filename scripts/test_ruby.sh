@@ -14,16 +14,24 @@ for A in "$@" ; do
     esac
 done
 
+echo "RARGS: ${RARGS}"
+
 if test ${USE_TESTAPP} = Y ; then
     APPARGS=""
+    FCOUNT=0
     APPDIR="spec/FlCoreTestApp"
 
     for A in $RARGS ; do
-	APPARGS="$APPARGS ../../${A}"
+	if test -f $A ; then 
+	    APPARGS="$APPARGS ../../${A}"
+	    ((FCOUNT++))
+	else
+	    APPARGS="$APPARGS ${A}"
+	fi
     done
 
-    if test "$APPARGS" = "" ; then
-	APPARGS="../../spec"
+    if test "$FCOUNT" -eq 0 ; then
+	APPARGS="$APPARGS ../../spec"
     fi
     
     echo "running in the test app directory ($APPDIR)"
@@ -35,7 +43,7 @@ if test ${USE_TESTAPP} = Y ; then
 	RAILS_ENV=$PREPARE rake db:migrate
     fi
 
-    echo "running test command: bash $0 $RARGS"
+    echo "running test command: bash $0 $APPARGS"
     bash $0 $APPARGS
 else
     RSPEC="rspec"
