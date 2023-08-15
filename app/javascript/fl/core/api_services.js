@@ -1741,7 +1741,8 @@ let FlAPIService = FlClassManager.make_class({
 		if (e.stack)
 		{
 		    err.details = {
-			stack: e.stack.split("\n")
+			stack: e.stack.split("\n"),
+			error: e
 		    };
 		}
 	    }
