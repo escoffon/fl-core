@@ -42,7 +42,7 @@ en:
         active_storage:
           model:
             validate:
-              forbiddent_content_type: "content type not allowed: #{failures}"
+              forbidden_content_type: "content type not allowed: %{failures}"
 
       access:
         permission:
