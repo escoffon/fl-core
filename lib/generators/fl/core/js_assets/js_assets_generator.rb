@@ -186,7 +186,7 @@ module Fl::Core
 
     def add_yarn_packages()
       gem_p = _list_packages(@gem_root)
-      if File.exists?(File.join(destination_root, PACKAGE_FILE))
+      if File.exist?(File.join(destination_root, PACKAGE_FILE))
         _update_package_file(gem_p)
       else
         @app_name = if Rails.application.config.session_options[:key] =~ /^_(.*)_session/

@@ -2,15 +2,15 @@
     "name": "fl-core",
     "private": true,
     "dependencies": {
-	"axios": ">=0.21.1",
+        "axios": "^1.6.5",
         "js-cache": "^1.0.3",
-        "lodash": "^4.17.15"
+        "lodash": "^4.17.21"
     },
     "scripts": {},
     "devDependencies": {
-        "axios-mock-adapter": "^1.18.1",
-        "chai": "^4.2.0",
+        "axios-mock-adapter": "^1.22.0",
+        "chai": "^5.0.0",
         "fl-dgeni": "git+https://github.com/escoffon/fl-dgeni.git",
-        "mocha": "^7.1.2"
+        "mocha": "^10.2.0"
     }
 }

@@ -8,7 +8,7 @@
  */
 
 const _ = require('lodash');
-const axios = require('axios');
+const axios = require('axios/dist/browser/axios.cjs');
 const { FlExtensions, FlClassManager } = require('./object_system');
 const {
     FlModelBase, FlModelCache, FlModelFactory, FlGlobalModelFactory
