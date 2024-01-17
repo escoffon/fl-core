@@ -66,15 +66,16 @@ module Fl::Core::Service
     def initialize(actor, params = nil, controller = nil, cfg = {})
       @actor = actor
       @controller = (controller.is_a?(ActionController::Base)) ? controller : nil
-      @params = if params.nil?
-                  (@controller.nil?) ? {} : @controller.params
-                elsif params.is_a?(Hash)
-                  ActionController::Parameters.new(params)
-                elsif params.is_a?(ActionController::Parameters)
-                  params
-                else
-                  ActionController::Parameters.new({ })
-                end
+      p = if params.nil?
+            (@controller.nil?) ? {} : @controller.params
+          elsif params.is_a?(Hash)
+            ActionController::Parameters.new(params)
+          elsif params.is_a?(ActionController::Parameters)
+            params
+          else
+            ActionController::Parameters.new({ })
+          end
+      @params = Fl::Core::Service::Base.adjust_params(p)
       
       raise "please define a target model class for #{self.class.name}" unless self.class.model_class
 
@@ -87,6 +88,58 @@ module Fl::Core::Service
       clear_status
     end
 
+    # Parameters support/hack: adjust params.
+    # This method traverses the hash stored in *p* and for each element it checks if the value is a hash
+    # whose keys are all strings containing integers. If so, it assumes that the original parameters in the client
+    # contained an array: it converts the hash back into an array of values and calls itself recursively on each.
+    #
+    # Otherwise, it calls itself recursively on the element's value.
+    #
+    # @param p [Hash, ActionController::Parameters] The parameters to adjust.
+    #
+    # @return [Hash, ActionController::Parameters] Returns an adjusted copy of *p*.
+
+    def self.adjust_params(p)
+      return p unless p.is_a?(ActionController::Parameters) || p.is_a?(Hash)
+
+      # OK, first let's see if it looks like a "array hash"
+
+      p_keys = p.keys
+      numeric_keys = p_keys.reduce(0) do |acc, k|
+        acc += 1 if k.to_s =~ /^[0-9]+$/
+        acc
+      end
+
+      if numeric_keys != p_keys.count
+        # looks like a normal hash: make sure that we adjust the values
+        # unfortunately, since ActionController::Parameters does not support `reduce`, we have to use .each
+
+        fv = if p.is_a?(ActionController::Parameters)
+               ActionController::Parameters.new
+             elsif p.is_a?(ActiveSupport::HashWithIndifferentAccess)
+               ActiveSupport::HashWithIndifferentAccess.new
+             elsif p.is_a?(Hash)
+               { }
+             end
+
+        p.each do |pk, pv|
+          fv[pk] = adjust_params(pv)
+        end
+
+        return fv
+      else
+        # This one gets converted
+        # unfortunately, since ActionController::Parameters does not support `reduce`, we have to use .each
+
+        rv = [ ]
+        p.each do |pk, pv|
+          rv[pk.to_i] = adjust_params(pv)
+        end
+
+        return rv
+      end
+    end
+    
     # Hash support: returns a hash representation of an object, for the current user.
     #
     # @param actor [ApplicationRecord] The actor for which to hash the objects.

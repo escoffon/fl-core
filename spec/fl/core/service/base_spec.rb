@@ -77,6 +77,369 @@ RSpec.describe Fl::Core::Service::Base do
     ]
   end
 
+  describe '.adjust_params' do
+    context 'with hash' do
+      it 'returns a hash copy' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            'a' => 'two:a string',
+            'b' => 'two:b string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = h_in
+        expect(Fl::Core::Service::Base.adjust_params(h_in)).to eql(h_out)
+      end
+
+      it 'converts to array if all keys are integer-like' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => 'two:1 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', 'two:1 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        expect(Fl::Core::Service::Base.adjust_params(h_in)).to eql(h_out)
+      end
+
+      it 'does not convert to array if not all keys are integer-like' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => 'two:1 string',
+            'three' => 'two:three string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = h_in
+        expect(Fl::Core::Service::Base.adjust_params(h_in)).to eql(h_out)
+      end
+
+      it 'generates a sparse array' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '2' => 'two:2 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', nil, 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        expect(Fl::Core::Service::Base.adjust_params(h_in)).to eql(h_out)
+      end
+
+      it 'converts recursively' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => {
+              '0' => 'two:1:0 string',
+              '1' => 'two:1:1 string'
+            },
+            '2' => 'two:2 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', [ 'two:1:0 string', 'two:1:1 string' ], 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        expect(Fl::Core::Service::Base.adjust_params(h_in)).to eql(h_out)
+      end
+    end
+
+    context 'with ActiveSupport::HashWithIndifferentAccess' do
+      it 'returns a hash copy' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            'a' => 'two:a string',
+            'b' => 'two:b string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = h_in
+        c = Fl::Core::Service::Base.adjust_params(ActiveSupport::HashWithIndifferentAccess.new(h_in))
+        expect(c).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(c.to_hash).to eql(h_out)
+      end
+
+      it 'converts to array if all keys are integer-like' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => 'two:1 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', 'two:1 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(ActiveSupport::HashWithIndifferentAccess.new(h_in))
+        expect(c).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(c.to_hash).to eql(h_out)
+      end
+
+      it 'does not convert to array if not all keys are integer-like' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => 'two:1 string',
+            'three' => 'two:three string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = h_in
+        c = Fl::Core::Service::Base.adjust_params(ActiveSupport::HashWithIndifferentAccess.new(h_in))
+        expect(c).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(c.to_hash).to eql(h_out)
+      end
+
+      it 'generates a sparse array' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '2' => 'two:2 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', nil, 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(ActiveSupport::HashWithIndifferentAccess.new(h_in))
+        expect(c).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(c.to_hash).to eql(h_out)
+      end
+
+      it 'converts recursively' do
+        h_in = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => {
+              '0' => 'two:1:0 string',
+              '1' => 'two:1:1 string'
+            },
+            '2' => 'two:2 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', [ 'two:1:0 string', 'two:1:1 string' ], 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(ActiveSupport::HashWithIndifferentAccess.new(h_in))
+        expect(c).to be_a(ActiveSupport::HashWithIndifferentAccess)
+        expect(c.to_hash).to eql(h_out)
+      end
+    end
+
+    context 'with ActionController::Parameters' do
+      let(:acp) { ActionController::Parameters }
+
+      it 'returns a hash copy' do
+        p_in = acp.new({
+                         'one' => 'one string',
+                         'two' => {
+                           'a' => 'two:a string',
+                           'b' => 'two:b string'
+                         },
+                         'three' => [ 'three:1', 'three:2' ]
+                       })
+        h_out = {
+          'one' => 'one string',
+          'two' => {
+            'a' => 'two:a string',
+            'b' => 'two:b string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+
+      it 'converts to array if all keys are integer-like' do
+        p_in = acp.new({
+                         'one' => 'one string',
+                         'two' => {
+                           '0' => 'two:0 string',
+                           '1' => 'two:1 string'
+                         },
+                         'three' => [ 'three:1', 'three:2' ]
+                       })
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', 'two:1 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+
+      it 'does not convert to array if not all keys are integer-like' do
+        p_in = acp.new({
+                         'one' => 'one string',
+                         'two' => {
+                           '0' => 'two:0 string',
+                           '1' => 'two:1 string',
+                           'three' => 'two:three string'
+                         },
+                         'three' => [ 'three:1', 'three:2' ]
+                       })
+        h_out = {
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => 'two:1 string',
+            'three' => 'two:three string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+
+      it 'generates a sparse array' do
+        p_in = acp.new({
+                         'one' => 'one string',
+                         'two' => {
+                           '0' => 'two:0 string',
+                           '2' => 'two:2 string'
+                         },
+                         'three' => [ 'three:1', 'three:2' ]
+                       })
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', nil, 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+
+      it 'converts recursively (1)' do
+        p_in = acp.new({
+                         'one' => 'one string',
+                         'two' => {
+                           '0' => 'two:0 string',
+                           '1' => {
+                             '0' => 'two:1:0 string',
+                             '1' => 'two:1:1 string'
+                           },
+                           '2' => 'two:2 string'
+                         },
+                         'three' => [ 'three:1', 'three:2' ]
+                       })
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', [ 'two:1:0 string', 'two:1:1 string' ], 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+
+      it 'converts recursively (2)' do
+        p_in = acp.new({
+          'one' => 'one string',
+          'two' => {
+            '0' => 'two:0 string',
+            '1' => acp.new({
+                             '0' => 'two:1:0 string',
+                             '1' => 'two:1:1 string'
+                           }),
+            '2' => 'two:2 string'
+          },
+          'three' => [ 'three:1', 'three:2' ]
+        })
+        h_out = {
+          'one' => 'one string',
+          'two' => [ 'two:0 string', [ 'two:1:0 string', 'two:1:1 string' ], 'two:2 string' ],
+          'three' => [ 'three:1', 'three:2' ]
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+
+      it 'converts recursively (3)' do
+        p_in = acp.new({
+                         "_q" => {
+                           "filters" => {
+                             "containers" => {
+                               "only" => {
+                                 "0" => "Nkp::Core::Pod/37"
+                               }
+                             },
+                             "types" => {
+                               "only" => {
+                                 "0" => "Nkp::Content::Post",
+                                 "1" => "Nkp::Content::Story"
+                               }
+                             }
+                           }
+                         },
+                         "_pg" => {
+                           "_p" => "1",
+                           "_s"=>"20"
+                         },
+                         "controller" => "nkp/core/resources",
+                         "action" => "index",
+                         "format" => "json"
+                       })
+        h_out = {
+          "_q" => {
+            "filters" => {
+              "containers" => {
+                "only" => [ "Nkp::Core::Pod/37" ]
+              },
+              "types" => {
+                "only" => [ "Nkp::Content::Post", "Nkp::Content::Story" ]
+              }
+            },
+          },
+          "_pg" => {
+            "_p" => "1",
+            "_s"=>"20"
+          },
+          "controller" => "nkp/core/resources",
+          "action" => "index",
+          "format" => "json"
+        }
+        c = Fl::Core::Service::Base.adjust_params(p_in)
+        expect(c).to be_a(ActionController::Parameters)
+        expect(c.permit!.to_h).to eql(h_out)
+      end
+    end
+  end
+  
   describe '#localization_key' do
     it 'should convert to underscored names' do
       s1 = TestDatumOneService.new(nil)
