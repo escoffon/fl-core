@@ -133,7 +133,7 @@ module Fl::Core::List
     # @return [Hash] The list display preferences; since this attribute is stored as JSON, the
     #  keys are strings and not symbols.
 
-    serialize :list_display_preferences, JSON
+    serialize :list_display_preferences, coder: JSON
 
     # The cutoff value for the title length when extracted from the caption.
     TITLE_LENGTH = 60
@@ -163,7 +163,7 @@ module Fl::Core::List
     # has to be kept in sync with it.
     # @return [String] the list caption.
 
-    serialize :caption_json, JSON
+    serialize :caption_json, coder: JSON
     
     # Constructor.
     #

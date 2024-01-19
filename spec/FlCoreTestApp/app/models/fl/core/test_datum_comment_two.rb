@@ -36,7 +36,7 @@ module Fl::Core
 
     filtered_attribute :content, [ FILTER_HTML_STRIP_DANGEROUS_ELEMENTS ]
 
-    serialize :grants, JSON
+    serialize :grants, coder: JSON
     
     def initialize(attrs)
       super(attrs)

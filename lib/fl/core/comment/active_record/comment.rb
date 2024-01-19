@@ -104,7 +104,7 @@ module Fl::Core::Comment::ActiveRecord
     # of {#contents_html}.
     # @return [Hash] the contents, as would be returned by a call to the `getContents` Quill API.
 
-    serialize :contents_json, JSON
+    serialize :contents_json, coder: JSON
 
     # @!attribute [rw] created_at
     # The time when the comment was created.
