@@ -22,7 +22,7 @@ if test ${USE_TESTAPP} = Y ; then
     APPDIR="spec/FlCoreTestApp"
 
     for A in $RARGS ; do
-	if test -f $A ; then 
+	if test -f $A -o -d $A ; then 
 	    APPARGS="$APPARGS ../../${A}"
 	    ((FCOUNT++))
 	else

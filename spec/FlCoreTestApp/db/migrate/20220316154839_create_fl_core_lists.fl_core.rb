@@ -106,7 +106,7 @@ class CreateFlCoreLists < ActiveRecord::Migration[6.0]
 
     reversible do |o|
       o.up do
-        db_cfg = ActiveRecord::Base.configurations[Rails.env]
+        db_cfg = ActiveRecord::Base.configurations.configs_for.find { |c| c.env_name == Rails.env }
 
         # The current known item states
         Fl::Core::List::Db.register_list_item_state(1, 'selected', 'Selected (Normal)')
@@ -114,7 +114,7 @@ class CreateFlCoreLists < ActiveRecord::Migration[6.0]
 
         # constraints of the list item association table
 
-        if db_cfg['adapter'] != 'sqlite3'
+        if db_cfg.adapter != 'sqlite3'
           execute <<-SQL
             ALTER TABLE fl_core_list_items
             ADD CONSTRAINT fl_core_list_items_list_fk FOREIGN KEY (list_id) REFERENCES fl_core_lists(id)

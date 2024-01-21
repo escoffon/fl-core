@@ -540,7 +540,11 @@ module ActionView
           raise_error = false
           i18n_raise = false
         else
-          raise_error = options[:raise] || ActionView::Base.raise_on_missing_translations
+          if Rails::VERSION::MAJOR >= 7
+            raise_error = options[:raise] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+          else
+            raise_error = options[:raise] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+          end
           i18n_raise = true
         end
 

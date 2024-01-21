@@ -28,19 +28,19 @@ Gem::Specification.new do |spec|
 
   spec.files = Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
 
-  spec.add_runtime_dependency "nokogiri", "~> 1.10"
-  spec.add_runtime_dependency "loofah", "~> 2.3"
+  spec.add_runtime_dependency "nokogiri", "~> 1.16"
+  spec.add_runtime_dependency "loofah", "~> 2.22"
   #- spec.add_runtime_dependency 'fl-google'
   spec.add_runtime_dependency "mimemagic", "~> 0.4"
   
-  spec.add_development_dependency "rails", "~> 6.0.2", ">= 6.0.2.1"
-  spec.add_development_dependency "bundler", "~> 2.0"
-  spec.add_development_dependency "rake", ">= 12.3.3"
-  spec.add_development_dependency "rspec", "~> 3.0"
+  spec.add_development_dependency "rails", "~> 7.1"
+  spec.add_development_dependency "bundler", "~> 2.4"
+  spec.add_development_dependency "rake", ">= 13.1"
+  spec.add_development_dependency "rspec", "~> 3"
 
   # The following are loaded in development mode so that we can run the test app
   # and use it to run generators
-  spec.add_development_dependency 'bootsnap', '>= 1.4.2'
-  spec.add_development_dependency 'sqlite3', '~> 1.4'
-  spec.add_development_dependency 'listen', '>= 3.0.5', '< 3.2'
+  spec.add_development_dependency 'bootsnap', '>= 1.17'
+#  spec.add_development_dependency 'sqlite3', '~> 1.4'
+#  spec.add_development_dependency 'listen', '>= 3.0.5', '< 3.2'
 end

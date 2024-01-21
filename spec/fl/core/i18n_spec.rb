@@ -229,10 +229,10 @@ RSpec.describe I18n do
     context 'on a missing translation' do
       it 'should return an error string by default' do
         key = 'not.a.key'
-        expect(I18n.tx(key)).to start_with("translation missing: [en].#{key}")
+        expect(I18n.tx(key)).to start_with("Translation missing: [en].#{key}")
 
         key = [ 'msg1', 'not.a.key', 'base.msg1' ]
-        expect(I18n.tx(key)).to eql([ 'EN message 1', "translation missing: [en].#{key[1]}", 'EN base.message 1' ])
+        expect(I18n.tx(key)).to eql([ 'EN message 1', "Translation missing: [en].#{key[1]}", 'EN base.message 1' ])
       end
 
       it 'should raise an exception if configured' do
@@ -248,7 +248,7 @@ RSpec.describe I18n do
           exc = x
         end
         expect(exc).to be_a(I18n::MissingTranslationData)
-        expect(exc.message).to start_with("translation missing: [en].#{key}")
+        expect(exc.message).to start_with("Translation missing: [en].#{key}")
 
         key = [ 'msg1', 'not.a.key', 'base.msg1' ]
         expect do
@@ -262,7 +262,7 @@ RSpec.describe I18n do
           exc = x
         end
         expect(exc).to be_a(I18n::MissingTranslationData)
-        expect(exc.message).to start_with("translation missing: [en].#{key[1]}")
+        expect(exc.message).to start_with("Translation missing: [en].#{key[1]}")
       end
 
       it 'should throw a symbol if configured' do
@@ -327,10 +327,10 @@ RSpec.describe I18n do
     context 'on a missing translation' do
       it 'should implement the translate_x functionality' do
         key = 'not.a.key'
-        expect(I18n.t(key)).to start_with("translation missing: [en].#{key}")
+        expect(I18n.t(key)).to start_with("Translation missing: [en].#{key}")
 
         key = [ 'msg1', 'not.a.key', 'base.msg1' ]
-        expect(I18n.t(key)).to eql([ 'EN message 1', "translation missing: [en].#{key[1]}", 'EN base.message 1' ])
+        expect(I18n.t(key)).to eql([ 'EN message 1', "Translation missing: [en].#{key[1]}", 'EN base.message 1' ])
 
         expect do
           I18n.t(key, raise: true)
@@ -375,7 +375,7 @@ RSpec.describe I18n do
       rescue Exception => xx
         x = xx
       end
-      expect(x.message).to start_with('translation missing: [en].time.formats.unknown')
+      expect(x.message).to start_with('Translation missing: [en].time.formats.unknown')
       expect(x.key).to eql('time.formats.unknown'.to_sym)
 
       expect do
@@ -388,7 +388,7 @@ RSpec.describe I18n do
       rescue Exception => xx
         x = xx
       end
-      expect(x.message).to start_with('translation missing: [it,en].time.formats.unknown')
+      expect(x.message).to start_with('Translation missing: [it,en].time.formats.unknown')
       expect(x.key).to eql('time.formats.unknown'.to_sym)
     end
   end
@@ -421,7 +421,7 @@ RSpec.describe I18n do
       rescue Exception => xx
         x = xx
       end
-      expect(x.message).to start_with('translation missing: [en].time.formats.unknown')
+      expect(x.message).to start_with('Translation missing: [en].time.formats.unknown')
       expect(x.key).to eql('time.formats.unknown'.to_sym)
 
       expect do
@@ -434,7 +434,7 @@ RSpec.describe I18n do
       rescue Exception => xx
         x = xx
       end
-      expect(x.message).to start_with('translation missing: [it,en].time.formats.unknown')
+      expect(x.message).to start_with('Translation missing: [it,en].time.formats.unknown')
       expect(x.key).to eql('time.formats.unknown'.to_sym)
     end
   end

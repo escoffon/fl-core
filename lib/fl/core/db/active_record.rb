@@ -140,8 +140,8 @@ class ActiveRecord::Base
           #   return (sgid.nil?) ? nil : sgid.uri.path.slice(1, sgid.uri.path.length)
 
           uri = begin
-                  h = SignedGlobalID.pick_verifier({ }).verify(value)
-                  URI.parse(h['gid'])
+                  h = SignedGlobalID.pick_verifier({ }).verify(value, purpose: 'default')
+                  URI.parse((h.is_a?(String)) ? h : h['gid'])
                 rescue Exception => x
                   nil
                 end

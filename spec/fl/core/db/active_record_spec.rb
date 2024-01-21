@@ -180,8 +180,9 @@ RSpec.describe ActiveRecord::Base, type: :model do
       o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id(expires_in: 2.hours).to_s)
       expect(o).to eql(d10.fingerprint)
 
+      # we now return nil if the signed global id has expired
       o = ActiveRecord::Base.extract_fingerprint(d10.to_signed_global_id(expires_in: -2.hours).to_s)
-      expect(o).to eql(d10.fingerprint)
+      expect(o).to be_nil
     end
   end
 

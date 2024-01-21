@@ -714,30 +714,29 @@ module Fl::Core::List
 
     def validate_state()
       if Fl::Core::List::BaseItem.state_to_db(read_attribute(:state)).nil?
-        self.errors[:state] << I18n.tx('fl.core.list_item.model.validate.invalid_state',
-                                       :value => read_attribute(:state))
+        self.errors.add(:state, I18n.tx('fl.core.list_item.model.validate.invalid_state',
+                                        :value => read_attribute(:state)))
       end
     end
-
-    # @!visibility private
-    INVALID_NAME_REGEXP = Regexp.new("[\/\\\\]")
 
     # @!visibility private
 
     def validate_name()
       unless self.name.blank?
         name = self.name
-        
-        if name =~ INVALID_NAME_REGEXP
-          self.errors[:name] << I18n.tx('fl.core.list_item.model.validate.invalid_name', :name => name)
-        end
 
-        q = Fl::Core::List::BaseItem.where('(name = :name)', name: name)
-        q = q.where('(list_id = :lid)', lid: self.list.id) if self.list
-        q = q.where('(id != :lid)', lid: self.id) if self.persisted?
-        qc = q.count
-        if qc > 0
-          self.errors[:name] << I18n.tx('fl.core.list_item.model.validate.duplicate_name', :name => name)
+        # we accept pretty much any name, except that it may not contain / or \
+        
+        if !name.index('/').nil? || !name.index('\\').nil?
+          self.errors.add(:name, I18n.tx('fl.core.list_item.model.validate.invalid_name', :name => name))
+        else
+          q = Fl::Core::List::BaseItem.where('(name = :name)', name: name)
+          q = q.where('(list_id = :lid)', lid: self.list.id) if self.list
+          q = q.where('(id != :lid)', lid: self.id) if self.persisted?
+          qc = q.count
+          if qc > 0
+            self.errors.add(:name, I18n.tx('fl.core.list_item.model.validate.duplicate_name', :name => name))
+          end
         end
       end
     end

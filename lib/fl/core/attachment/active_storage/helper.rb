@@ -210,8 +210,10 @@ module Fl::Core::Attachment::ActiveStorage
       record = attachment.record
       aname = attachment.name.to_sym
 
+      #print("++++++++++ styles: #{styles} attachment: #{attachment} (#{attachment.variable?})\n")
       variants = styles.reduce([ ]) do |acc, skv|
         s, p = skv
+        #print("  ++++++++ #{s} - #{p}\n")
         if s == :blob
           acc << {
             style: :blob,

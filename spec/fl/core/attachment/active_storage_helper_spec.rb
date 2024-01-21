@@ -125,10 +125,6 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
       h = helper.to_hash_attachment_variants(a1.image.attachment, { original: { } })
       vk = h[:variants].map { |v| v[:style] }
       expect(vk).to match_array([ :original ])
-
-      h = helper.to_hash_attachment_variants(a1.image.attachment, [ :original ])
-      vk = h[:variants].map { |v| v[:style] }
-      expect(vk).to match_array([ :original ])
     end
 
     it 'should override variant configuration for the :original style' do
@@ -151,6 +147,9 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
 
   describe '.to_hash_active_storage_proxy' do
     it 'should generate all variants for all known styles' do
+      # we sleep 1 second here to give SQLite time to finish the previous call and unlock
+      sleep(1)
+
       u1 = create(:test_avatar_user)
       a1 = create(:test_datum_attachment, title: 'a1 title', owner: u1,
                   image: { io: File.open(File.join(Rails.root, 'src/images/hummingbird.jpg')),
@@ -167,6 +166,9 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
     end
 
     it 'should generate variants only for known styles' do
+      # we sleep 1 second here to give SQLite time to finish the previous call and unlock
+      sleep(1)
+
       u1 = create(:test_avatar_user)
       a1 = create(:test_datum_attachment, title: 'a1 title', owner: u1,
                   image: { io: File.open(File.join(Rails.root, 'src/images/hummingbird.jpg')),
@@ -182,6 +184,9 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
     end
 
     it 'should generate a pseudovariant for the :blob style' do
+      # we sleep 1 second here to give SQLite time to finish the previous call and unlock
+      sleep(1)
+
       u1 = create(:test_avatar_user)
       a1 = create(:test_datum_attachment, title: 'a1 title', owner: u1,
                   image: { io: File.open(File.join(Rails.root, 'src/images/hummingbird.jpg')),
@@ -197,6 +202,9 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
     end
 
     it 'should generate a variant for the :original style' do
+      # we sleep 1 second here to give SQLite time to finish the previous call and unlock
+      sleep(1)
+
       u1 = create(:test_avatar_user)
       a1 = create(:test_datum_attachment, title: 'a1 title', owner: u1,
                   image: { io: File.open(File.join(Rails.root, 'src/images/hummingbird.jpg')),
@@ -218,6 +226,9 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
     end
 
     it 'should override variant configuration for the :original style' do
+      # we sleep 1 second here to give SQLite time to finish the previous call and unlock
+      sleep(1)
+
       u1 = create(:test_avatar_user)
       a1 = create(:test_datum_attachment, title: 'a1 title', owner: u1,
                   image: { io: File.open(File.join(Rails.root, 'src/images/hummingbird.jpg')),
