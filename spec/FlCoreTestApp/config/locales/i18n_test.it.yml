@@ -11,9 +11,14 @@ it:
         forbidden: "IT FORBIDDEN action :%{action}, object %{id}"
 
   msg1: "IT message 1"
+  msg2: "IT msg2 %{arg1}"
   base:
     msg1: "IT base.message 1"
+    msg2_html: "<b>IT base.message 2 HTML</b>"
+    msg2_unsafe: "<b>IT base.message 2 unsafe</b>"
     sub:
       msg2: "IT base.sub.message 2"
+      html: "<b>IT base.sub.html</b>"
+      unsafe: "<b>IT base.sub.unsafe</b>"
       subsub:
         msg4: "IT base.sub.subsub.message 4"

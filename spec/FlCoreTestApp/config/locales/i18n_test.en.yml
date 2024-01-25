@@ -13,12 +13,18 @@ en:
         forbidden: "EN FORBIDDEN action :%{action}, object %{id}"
 
   msg1: "EN message 1"
+  msg2: "EN msg2 %{arg1}"
   base:
     msg1: "EN base.message 1"
     msg2: "EN base.message 2"
+    msg2_html: "<b>EN base.message 2 HTML</b>"
+    msg2_unsafe: "<b>EN base.message 2 unsafe</b>"
     sub:
       msg2: "EN base.sub.message 2"
       msg3: "EN base.sub.message 3"
+      html: "<b>EN base.sub.html</b>"
+      unsafe: "<b>EN base.sub.unsafe</b>"
       subsub:
         msg3: "EN base.sub.subsub.message 3"
         msg4: "EN base.sub.subsub.message 4"
+        html: "<b>EN base.sub.subsub.html</b>"

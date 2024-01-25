@@ -7,6 +7,11 @@
 # * Adds the {.with_locale_array} to execute a block of code with custom locales.
 
 module I18n
+  module Base
+    alias :_original_translate :translate
+    alias :_original_localize :localize
+  end
+  
   # Fl extensions to I18n.
   # This module packages the extension methods; it is added to I18n via a call to `extend Fl`.
 
@@ -133,165 +138,132 @@ module I18n
     #
     # Aliased to `tx` for convenience.
     #
-    # @overload translate_x(key, options)
-    #  @param key [String] The lookup key.
+    # @overload translate_x(key, **options)
+    #  @param key [String,Symbol,Array<String,Symbol>] The lookup key. Pass an array to look up multiple keys.
     #  @param options [Hash] Options; these parameters take the same form as those for `translate`, with
     #   the following modifications:
     #
     #   - A scalar value for **:locale** in *options*, if present, is converted to a one-element array.
+    #     If **:locale** is not present, use the value in {.locale_array}.
     #   - If **:default** is a string or a symbol, it is used for all keys in *key*.
-    #     If it is an array of arrays, each element is used as the defaults for the corresponding *key* element.
-    #     If it is an array of strings and symbols, it is used as the default for all elements of *key*.
-    #     String defaults are applied after all locales have tried, so that symbol lookups have the precedence
-    #     over string defaults: we need to do this to give all locales a chance to run the translation.
+    #     If it is an array, and its length is not the same as the length of *key*, then it is used as a list
+    #     of alternatives to try for *all* keys.
+    #     If it is an array, and its length is the same as the length of *key*, and each element is an array,
+    #     then the element lists the alternatives to try for the corresponding entry in *key*.
+    #     Otherwise, it is used as the list of alternatives to try for *all* keys.
     #
-    #  Note that *key* and the **default** option must be consistent with each other:
+    #  Note that *key* and the **:default** option must be consistent with each other:
     #
-    #  - If *key* is a scalar, **:default* can be a scalar of an array, but if the latter it may not contain
+    #  - If *key* is a scalar, **:default* can be a scalar or an array, but if the latter it may not contain
     #    arrays.
-    #  - If *key* is an array, :default can be a scalar or an array, but if **:default** contains at least one
-    #    array, then it must contain only arrays; it also must have the same number of elements as *key*.
+    #  - If *key* is an array, :default can be a scalar or an array, but if **:default** is an array, it is
+    #    interpreted as outlined above.
     #
-    #  So for a scalar *key*, the value of **:default** has the same semantics as for `translate`.
-    #  For an array *key*, the value of **:default** has two interpretations: if it is an array of arrays, it
-    #  lists the defaults for each key, individually; if it is a scalar or a mixed array, it lists a common set
-    #  of defaults for all keys.
+    #  So for a scalar *key*, the value of **:default** has the same semantics as for the original `translate`.
+    #  For an array *key*, the value of **:default** has two interpretations: it is either a common set of
+    #  defaults for the keys, or it lists separate defaults for each keys.
+    #
+    #  There is an ambiguity in situations where *key* is an array, you want to provide separate defaults,
+    #  and one or more keys have a single default; in this case, make sure to specify the single default as
+    #  a one element array.
+    #  For example, if *key* is <code>[ 'k1', :k2 ]</code> and you want different backstop values for the two
+    #  keys, set **:default** to <code>[ [ 'default for k1' ], [ 'default for k2' ] ]</code>.
+    #  A value of <code>[ 'default for k1', 'default for k2' ]</code> is interpreted as a common set of
+    #  defaults, and if both `:k1` and `:k2` cannot be resolved, the return value is
+    #  <code>[ 'default for k1', 'default for k1' ]</code> instead of
+    #  <code>[ 'default for k1', 'default for k2' ]</code>.
     #
     # @return Returns the same type and value as `translate`.
 
-    def translate_x(key = nil, *, throw: false, raise: false, locale: nil, **options) # TODO deprecate :raise
-      locale ||= config.locale_array
-      raise Disabled.new('t') if locale == false
-      locale = [ locale ] unless locale.is_a?(Array)
+    def translate_x(key, **options)
+      default = options[:default] || nil
 
-      raise ArgumentError.new('nil key parameter') if key.nil?
-        
-      nopts = options.dup
-      default = nopts.delete(:default)
+      # an empty array for default is equivalent to no defaults; we can't leave it at that, since then the
+      # outer loop won't iterate, so let's convert it to nil
 
-      # we separate string values from the others, because we want to give all locales a shot at the translation.
-      # This means that string defaults have the lowest priority, even though they may have been listed first;
-      # this should be OK, though, since it does not make a lot of sense to have a string value listed first
-      # (because all other values will then be ignored)
+      default = nil if default.is_a?(Array) && (default.count < 1)
       
       if key.is_a?(Array)
-        if default.is_a?(Array)
-          if default.any? { |e| e.is_a?(Array) }
-            unless default.all? { |e| e.is_a?(Array) }
-              raise ArgumentError.new(":default must contain only arrays if it contains at least one")
-            end
-
-            raise ArgumentError.new(":default must have as many elements as *key*") if key.count != default.count
-
-            batch = [ ]
-            key.each_with_index do |k, ik|
-              case default[ik]
-              when Array
-                d2, d1 = default[ik].partition { |e| (e.is_a?(String) || e.is_a?(Hash)) }
-              when String, Hash
-                d1 = nil
-                d2 = default[ik]
-              when Symbol
-                d1 = default[ik]
-                d2 = nil
-              end
-              
-              batch.push([ k, d1, d2 ])
-            end
-          else
-            # an array value for default with no arrays means a constant default for all keys
-
-            d2, d1 = default.partition { |e| (e.is_a?(String) || e.is_a?(Hash)) }
-            batch = key.map { |k| [ k, d1, d2 ] }
-          end
-        else
-          # a scalar value for default means a constant default for all keys
-
-          case default
-          when String, Hash
-            d1 = nil
-            d2 = [ default ]
-          when Symbol
-            d1 = [ default ]
-            d2 = nil
-          end
+        use_default = _convert_defaults_for_key_array(key, default)
+        idx = -1
+        return key.map do |k|
+          idx += 1
+          o = { }.merge(options)
+          o[:default] = use_default[idx] unless default.nil?
           
-          batch = key.map { |k| [ k, d1, d2 ] }
+          translate_x(k, **o)
         end
+      end
+      
+      locale = options[:locale] || I18n.locale_array
+      locale = [ locale ] unless locale.is_a?(Array)
+
+      # The implementation calls the original translate for each locale, returning the first hit.
+      # In order to detect a successful translation, we force the :throw option to true and catch exceptions
+      #
+      # Additionally, if default is an array, we have to iterate over the array before we iterate over locales,
+      # so that each default symbol has a shot at a lookup with all locales. So, we have the outer default loop,
+      # and the inner locale loop. For example, if default is [ :key, 'backstop' ], and locale is [ :it, :en ],
+      # then we have to try the :key for both :it and :en before moving on to 'backstop'.
+      # if we were to loop over locales using [ :key, 'backstop' ], the original translate would return 'backstop'
+      # at :it, without even trying for :en
+      #
+      # Note that a default value of [ :key1, 'backstop', :key2 ] would never try :key2, since 'backstop'
+      # causes a successful return value ('backstop'). Similarly, with two string backstops, only the first one
+      # is ever tried
+      
+      defaults = (default.is_a?(Array)) ? default : [ default ]
+      locale_exceptions = [ ]
+      translation = nil
+      defaults.each_with_index do |df, df_idx|
+        locale.each_with_index do |loc, loc_idx|
+          begin
+            o = { }.merge(options).merge(raise: true, throw: false).merge(locale: loc)
+            o[:default] = df unless df.nil?
+            t = _original_translate(key, **o)
+          rescue StandardError => exc
+            t = exc
+          end
+
+          if t.nil?
+            # No translation
+            
+            locale_exceptions << t
+          else
+            case t
+            when I18n::MissingTranslationData, I18n::MissingTranslation, I18n::InvalidLocaleData, I18n::InvalidLocale
+              # we ignore these, but we push the exceptions on a stack for later use
+
+              locale_exceptions << t
+            when StandardError
+              # all other exceptions get triggered up
+          
+              _signal_exception_array(false, [ t ], key, locale, **options)
+            else
+              # Typically, the return value here should be Sa string or a hash if the translation was found.
+              # However, the ActionView::Helpers::TranslationHelper.translate method passes default: -(2**60)
+              # in the call to I18n.translate, to detect a missing translation.
+              # Therefore, this implementation must honor that return value, so that the ActionView helper
+              # detects the missing translation and attempts to use the defaults (if any).
+              # Therefore, any value of t that is not nil, an error, or one of the listed exceptions, is returned here
+
+              translation = t
+              break
+            end
+          end
+        end
+
+        break unless translation.nil?
+      end
+
+      if translation.nil?
+        # OK, if we have no translation we need to figure out what to do, based on the options.
+        # Note that _signal_exception_array may (likely will) throw or raise, and therefore not return
+      
+        return _signal_exception_array(false, locale_exceptions, key, locale, **options)
       else
-        if default.is_a?(Array)
-          if default.any? { |e| e.is_a?(Array) }
-            raise ArgumentError.new(":default may not contain array values if *key* is a scalar")
-          end
-        end
-
-        case default
-        when Array
-          d2, d1 = default.partition { |e| (e.is_a?(String) || e.is_a?(Hash)) }
-        when String, Hash
-          d1 = nil
-          d2 = [ default ]
-        when Symbol
-          d1 = [ default ]
-          d2 = nil
-        end
-
-        batch = [ [ key, d1, d2 ] ]
+        return translation
       end
-
-      # OK, now we can get the translations for each key in the batch.
-      # We iterate on keys first, so that the best individual translation per
-      # key element is returned. For example, if *key* has 4 elements, and one does not have an :it translation, then
-      # all elements are returned using the :en locale, whereas we want to return 3 in :it and just the one in :en
-
-      backend = config.backend
-
-      translations = batch.map do |k|
-        ro = locale.reduce(nil) do |res, loc|
-          if k[1]
-            nopts[:default] = k[1]
-          else
-            nopts.delete(:default)
-          end
-          res = catch(:exception) do
-            backend.translate(loc, k[0], nopts)
-          end
-
-          break res unless res.is_a?(MissingTranslation)
-          res
-        end
-
-        ro
-      end
-
-      # now we need to check that all keys were translated: convert any MissingTranslation to strings or raise
-      # exceptions.
-
-      it = -1
-      tl = translations.map do |t|
-        it += 1
-        
-        if t.is_a?(MissingTranslation)
-          # one last check: if there is a backstop value, replace it here.
-
-          d2 = batch[it][2]
-          if d2.is_a?(Array) && (d2.first.is_a?(String) || d2.first.is_a?(Hash))
-            d2.first
-          else
-            # We need to create a new exception, since the one in `t` contains the error message for the
-            # last backend.translate call, which contains just the last locale.
-
-            nx = MissingTranslation.new("[#{locale.join(',')}]", t.key, nopts)
-            handle_exception((throw && :throw || raise && :raise), nx, locale, key, nopts)
-          end
-        else
-          t
-        end
-      end
-
-      # one last thing: if *key* is a scalar, then we return the first element in the translations
-
-      return (key.is_a?(Array)) ? tl : tl.first
     end
     alias :tx :translate_x
     
@@ -387,12 +359,128 @@ module I18n
     end
   end
 
+  module FlHelpers
+    private def _signal_exception_array(for_view, exc, key, locale, **options)
+      if Rails::VERSION::MAJOR >= 7
+        raise_error = options[:raise] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+        throw_error = options[:throw] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+      else
+        raise_error = options[:raise] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+        throw_error = options[:throw] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+      end
+
+      # We can only trigger one exception, so we go and pick the one that is used most (most likely, there
+      # will be only one exception type
+
+      exceptions = exc.reduce({ }) do |acc, x|
+        k = x.class.name
+        if acc.has_key?(k)
+          acc[k] << x
+        else
+          acc[k] = [ x ]
+        end
+
+        acc
+      end
+
+      if exceptions.count == 1
+        use_exception = exc.first
+      else
+        longest = exceptions.reduce([ ]) do |acc, kvp|
+          n, x = kvp
+          acc = x if x.count > acc.count
+          acc
+        end
+
+        use_exception = longest.first
+      end
+
+      if use_exception.nil?
+        return nil
+      elsif raise_error
+        raise use_exception
+      elsif throw_error
+        throw :exception, use_exception
+      else
+        # if no raise or throw is triggered, then we have to send back an error/status message.
+        # If for_view is true, then this is a message to embed in a view; otherwise, it's a plain string
+
+        if for_view
+          return _missing_translation(key, options)
+        else
+          # The I18n.translate API uses the message generated by a I18n::MissingTranslation exception,
+          # so let's generate it here. The only catch is that we have to manufacture a locale name that
+          # includes the locales in the array
+
+          return I18n::MissingTranslation.new("[#{locale.join(',')}]", key, **options).message
+        end
+      end
+    end
+
+    private def _convert_defaults_for_key_array(key, default)1
+      # if :default is present, we have to determine what is actually passed down to each iteration.
+
+      use_default = nil
+      
+      if default.is_a?(Array)
+        if key.count != default.count
+          # since the nuimber of keys is not the same as the number of defaults, we assume that these
+          # are common defaults for all the keys
+
+          use_default = Array.new(key.count, default)
+        else
+          # Same array size: look at the default array: if all elements are arrays, then we assume that they
+          # are defaults for the corresponding key element.
+          # If not all are arrays, then we use the default array as common defaults.
+          # If you want to provide a single default per element, pass it as a one-element array
+
+          array_count = default.reduce(0) do |acc, df|
+            acc += 1 if df.is_a?(Array)
+            acc
+          end
+
+          if array_count == default.count
+            use_default = default
+          else
+            use_default = Array.new(key.count, default)
+          end
+        end
+      elsif !default.nil?
+        use_default = Array.new(key.count, default)
+      end
+
+      return use_default
+    end
+ 
+    private def _missing_translation(key, options)
+      # The body of this method is slightly modified from ActionView::Helpers::TRanslationHelper.missing_translation
+      # since we need to account for multiple locales
+
+      locale = options[:locale] || I18n.locale_array
+      locale = [ locale ] unless locale.is_a?(Array)
+      
+      keys = I18n.normalize_keys("[#{locale.join(',')}]", key, options[:scope])
+
+      title = +"translation missing: #{keys.join(".")}"
+
+      options.each do |name, value|
+        unless name == :scope
+          title << ", " << name.to_s << ": " << ERB::Util.html_escape(value)
+        end
+      end
+
+      if ActionView::Base.debug_missing_translation
+        content_tag("span", keys.last.to_s.titleize, class: "translation_missing", title: title)
+      else
+        title
+      end
+    end
+  end
+  
   extend Fl
-
+  extend FlHelpers
+  
   module Base
-    alias :_original_translate :translate
-    alias :_original_localize :localize
-
     # @!scope class
     # Override I18n's `translate` method to call {.translate_x}. With this override, all I18N calls now use
     # the extended functionality.
@@ -404,10 +492,8 @@ module I18n
     #
     # @return Returns the same type and value as the original implementation of `translate`.
 
-    def translate(key = nil, *, throw: false, raise: false, locale: nil, **options) # TODO deprecate :raise
-      locale ||= config.locale_array
-      opts = options.merge(throw: throw, raise: raise, locale: locale)
-      translate_x(key, **opts)
+    def translate(key, **options)
+      translate_x(key, **options)
     end
     alias :t :translate
 
@@ -517,6 +603,10 @@ module ActionView
     # The code template originated from actionview-6.0.3.4/lib/action_view/helpers/translation_helper.rb
 
     module TranslationHelper
+      include I18n::FlHelpers
+
+      alias :_original_translate :translate
+
       # Extended version of `translate` that uses the locale array instead of a single locale.
       # The arguments and return value are equivalent to those in `translate`.
       #
@@ -527,67 +617,87 @@ module ActionView
       #
       # @return Returns the same type and value as {I18n.translate_x}.
 
-      def translate_x(key, options = {})
-        if options.has_key?(:default)
-          remaining_defaults = Array.wrap(options.delete(:default)).compact
-          options[:default] = remaining_defaults unless remaining_defaults.first.kind_of?(Symbol)
-        end
+      def translate_x(key, **options)
+        default = options[:default] || nil
 
-        # If the user has explicitly decided to NOT raise errors, pass that option to I18n.
-        # Otherwise, tell I18n to raise an exception, which we rescue further in this method.
-        # Note: `raise_error` refers to us re-raising the error in this method. I18n is forced to raise by default.
-        if options[:raise] == false
-          raise_error = false
-          i18n_raise = false
-        else
-          if Rails::VERSION::MAJOR >= 7
-            raise_error = options[:raise] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
-          else
-            raise_error = options[:raise] || ActionView::Helpers::TranslationHelper.raise_on_missing_translations
+        # an empty array for default is equivalent to no defaults; we can't leave it at that, since then the
+        # outer loop won't iterate, so let's convert it to nil
+
+        default = nil if default.is_a?(Array) && (default.count < 1)
+      
+        if key.is_a?(Array)
+          use_default = _convert_defaults_for_key_array(key, default)
+          idx = -1
+          return key.map do |k|
+            idx += 1
+            o = { }.merge(options)
+            o[:default] = use_default[idx] unless default.nil?
+          
+            translate_x(k, **o)
           end
-          i18n_raise = true
         end
+      
+        locale = options[:locale] || I18n.locale_array
+        locale = [ locale ] unless locale.is_a?(Array)
 
-        if html_safe_translation_key?(key)
-          html_safe_options = options.dup
+        # The implementation calls the original translate for each locale, returning the first hit.
+        # In order to detect a successful translation, we force the :throw option to true and catch exceptions
+        #
+        # Additionally, if default is an array, we have to iterate over the array before we iterate over locales,
+        # so that each default symbol has a shot at a lookup with all locales. So, we have the outer default loop,
+        # and the inner locale loop. For example, if default is [ :key, 'backstop' ], and locale is [ :it, :en ],
+        # then we have to try the :key for both :it and :en before moving on to 'backstop'.
+        # if we were to loop over locales using [ :key, 'backstop' ], the original translate would return 'backstop'
+        # at :it, without even trying for :en
+        #
+        # Note that a default value of [ :key1, 'backstop', :key2 ] would never try :key2, since 'backstop'
+        # causes a successful return value ('backstop'). Similarly, with two string backstops, only the first one
+        # is ever tried
+      
+        defaults = (default.is_a?(Array)) ? default : [ default ]
+        locale_exceptions = [ ]
+        translation = nil
+        defaults.each_with_index do |df, df_idx|
+          locale.each_with_index do |loc, loc_idx|
+            begin
+              o = { }.merge(options).merge(raise: true, throw: false).merge(locale: loc)
+              o[:default] = df unless df.nil?
+              t = _original_translate(key, **o)
+            rescue StandardError => exc
+              t = exc
+            end
 
-          options.except(*I18n::RESERVED_KEYS).each do |name, value|
-            unless name == :count && value.is_a?(Numeric)
-              html_safe_options[name] = ERB::Util.html_escape(value.to_s)
+            if t.nil?
+              locale_exceptions << t
+            else
+              case t
+              when I18n::MissingTranslationData, I18n::MissingTranslation, I18n::InvalidLocaleData, I18n::InvalidLocale
+                # we ignore these, but we push the exceptions on a stack for later use
+
+                locale_exceptions << t
+              when StandardError
+                # all other exceptions get triggered up
+          
+                _signal_exception_array(true, [ t ], key, locale, **options)
+              when String, Hash
+                # This is the translation
+
+                translation = t
+                break
+              end
             end
           end
 
-          html_safe_options[:default] = MISSING_TRANSLATION unless html_safe_options[:default].blank?
-
-          translation = I18n.translate_x(scope_key_by_partial(key), **html_safe_options.merge(raise: i18n_raise))
-
-          if translation.equal?(MISSING_TRANSLATION)
-            options[:default].first
-          elsif translation.respond_to?(:map)
-            translation.map { |element| element.respond_to?(:html_safe) ? element.html_safe : element }
-          else
-            translation.respond_to?(:html_safe) ? translation.html_safe : translation
-          end
-        else
-          I18n.translate(scope_key_by_partial(key), **options.merge(raise: i18n_raise))
+          break unless translation.nil?
         end
-      rescue I18n::MissingTranslationData => e
-        if remaining_defaults.present?
-          translate remaining_defaults.shift, **options.merge(default: remaining_defaults)
+
+        if translation.nil?
+          # OK, if we have no translation we need to figure out what to do, based on the options.
+          # Note that _signal_exception_array may (likely will) throw or raise, and therefore not return
+      
+          return _signal_exception_array(true, locale_exceptions, key, locale, **options)
         else
-          raise e if raise_error
-
-          keys = I18n.normalize_keys(e.locale, e.key, e.options[:scope])
-          title = +"translation missing: #{keys.join('.')}"
-
-          interpolations = options.except(:default, :scope)
-          if interpolations.any?
-            title << ", " << interpolations.map { |k, v| "#{k}: #{ERB::Util.html_escape(v)}" }.join(", ")
-          end
-
-          return title unless ActionView::Base.debug_missing_translation
-
-          content_tag("span", keys.last.to_s.titleize, class: "translation_missing", title: title)
+          return translation
         end
       end
       alias :tx :translate_x
@@ -607,12 +717,11 @@ module ActionView
       end
       alias :lx :localize_x
 
-      alias :_original_translate :translate
       alias :t :translate_x
       alias :translate :translate_x
 
       alias :_original_localize :localize
-      alias :t :localize_x
+      alias :l :localize_x
       alias :localize :localize_x
     end
   end
@@ -669,7 +778,7 @@ module AbstractController
     alias :translate :translate_x
 
     alias :_original_localize :localize
-    alias :t :localize_x
+    alias :l :localize_x
     alias :localize :localize_x
   end
 end
