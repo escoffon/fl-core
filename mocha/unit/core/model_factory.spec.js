@@ -1,12 +1,9 @@
 const _ = require('lodash');
-const chai = require('chai');
 const { FlExtensions, FlClassManager } = require('fl/core/object_system');
 const {
     FlModelBase, FlModelCache, FlModelFactory, FlGlobalModelFactory
 } = require('fl/core/model_factory');
 const th = require('test_helpers');
-
-const expect = chai.expect;
 
 const MY_MODEL_DESC = {
     name: 'MyFactoryTestModel',

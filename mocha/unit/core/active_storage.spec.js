@@ -1,5 +1,4 @@
 const _ = require('lodash');
-const chai = require('chai');
 const { FlExtensions, FlClassManager } = require('fl/core/object_system');
 const {
     FlModelBase, FlModelCache, FlModelFactory, FlGlobalModelFactory
@@ -8,8 +7,6 @@ const {
     ActiveStorageAttachment, ActiveStorageAttachedOne, ActiveStorageAttachedMany
 } = require('fl/core/active_storage');
 const th = require('test_helpers');
-
-const expect = chai.expect;
 
 const MY_CONTAINER_DESC = {
     name: 'ContainerTestModel',

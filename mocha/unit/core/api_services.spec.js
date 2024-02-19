@@ -1,5 +1,4 @@
 const _ = require('lodash');
-const chai = require('chai');
 const { FlExtensions, FlClassManager } = require('fl/core/object_system');
 const {
     FlModelBase, FlModelCache, FlModelFactory, FlGlobalModelFactory
@@ -13,7 +12,6 @@ const AxiosMockAdapter = require('axios-mock-adapter');
 
 //const myaxios = axios.create();
 const myaxios = axios;
-const expect = chai.expect;
 
 const MY_MODEL_DESC = {
     name: 'MyAPITestModel',

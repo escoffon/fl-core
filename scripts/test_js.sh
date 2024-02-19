@@ -6,8 +6,8 @@ MOCHA="node_modules/.bin/mocha"
 #MOCHA="mocha"
 
 # We assume the test scripts are in the root of the gem distribution
-TEST_FILES_ROOT="./"
-FLAGS="--recursive --reporter spec --file ${TEST_FILES_ROOT}/mocha/utils/setup.js"
+TEST_FILES_ROOT="."
+FLAGS="--recursive --reporter spec --file ${TEST_FILES_ROOT}/mocha/utils/setup.js -r chai/register-expect.js"
 FILES=""
 
 GET_FILE=0
@@ -68,10 +68,13 @@ if test "x$FILES" = "x" ; then
     FILES="${TEST_FILES_ROOT}/mocha/unit"
 fi
 
-export NODE_PATH="${TEST_FILES_ROOT}/mocha/utils:../../app/javascript:vendor/javascript:app/javascript"
+export NODE_PATH="${TEST_FILES_ROOT}/mocha/utils:${TEST_FILES_ROOT}/app/javascript:${TEST_FILES_ROOT}/vendor/javascript:${TEST_FILES_ROOT}/node_modules"
 export NODE_ENV="$USE_ENV"
 export TEST_HTTP_URL="$USE_HTTP_URL"
 
+echo "using node environment ${NODE_ENV}"
+echo "using node path ${NODE_PATH}"
+echo "using Rails server at ${TEST_HTTP_URL}"
 echo "running test command: ${MOCHA} $FLAGS $FILES"
 ${MOCHA} $FLAGS $FILES
 

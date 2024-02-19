@@ -1,9 +1,6 @@
 const _ = require('lodash');
-const chai = require('chai');
 const { FlExtensions, FlClassManager } = require('fl/core/object_system');
 const th = require('test_helpers');
-
-const expect = chai.expect;
 
 const EXT1 = {
     name: 'Ext1',

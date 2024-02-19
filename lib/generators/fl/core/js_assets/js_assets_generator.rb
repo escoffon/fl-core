@@ -74,7 +74,7 @@ module Fl::Core
     def _list_packages(root)
       jp = File.open(File.join(root, PACKAGE_FILE)) { |f| JSON.parse(f.read) }
 
-      {
+      return {
         dependencies: {
           full: jp['dependencies'],
           names: jp['dependencies'].reduce([ ]) do |acc, (k, v)|
@@ -94,7 +94,7 @@ module Fl::Core
     end
 
     def _package_entry(name, version, offset)
-      "#{offset}    \"#{name}\": \"#{version}\""
+      "#{offset}  \"#{name}\": \"#{version}\""
     end
 
     def _format_package_list(pkg, offset)
@@ -105,14 +105,137 @@ module Fl::Core
       d.join(",\n")
     end
 
+    VERSION_REGEXP = /^([>=<^]*)([0-9\.]+)$/
+
+    ACTION_KEEP = :keep
+    ACTION_UPDATE = :update
+    ACTION_INCOMPATIBLE = :incompatible
+    
+    def _dependency_action(dep, target_v, gem_v)
+      return ACTION_KEEP if target_v == gem_v
+      
+      # we do a very basic check; many cases are missing. We also assume that ^ is equivalent to >=
+
+      if target_v =~ VERSION_REGEXP
+        tm = Regexp.last_match
+        if gem_v =~ VERSION_REGEXP
+          gm = Regexp.last_match
+          gem_version = Gem::Version.new(gm[2])
+          target_version = Gem::Version.new(tm[2])
+          
+          case gm[1]
+          when '>=', '^'
+            case tm[1]
+            when '>=', '^'
+              if target_version >= gem_version
+                # no need to upgrade: we use the target version
+                
+                return ACTION_KEEP
+              else
+                return ACTION_UPDATE
+              end
+            when '>'
+              if target_version > gem_version
+                # no need to upgrade: we use the target version
+                
+                return ACTION_KEEP
+              else
+                return ACTION_UPDATE
+              end
+            when '<=', '<'
+              if target_version <= gem_version
+                # Incompatible: gem requires a higher version than the target
+                
+                return ACTION_INCOMPATIBLE
+              else
+                # no need to upgrade: we use the target version
+                
+                return ACTION_KEEP
+              end
+            else
+              return ACTION_KEEP
+            end
+          when '>'
+            case tm[1]
+            when '>=', '^', '>'
+              if target_version > gem_version
+                # no need to upgrade: we use the target version
+                
+                return ACTION_KEEP
+              else
+                return ACTION_UPDATE
+              end
+            when '<=', '<'
+              if target_version <= gem_version
+                # Incompatible: gem requires a higher version than the target
+                
+                return ACTION_INCOMPATIBLE
+              else
+                # no need to upgrade: we use the target version
+                
+                return ACTION_KEEP
+              end
+            else
+              return ACTION_KEEP
+            end
+          when '<=', '<'
+            case tm[1]
+            when '>=', '^'
+              if target_version == gem_version
+                return ACTION_KEEP
+              else
+                # Incompatible: gem requires a lower version than the target
+                
+                return ACTION_INCOMPATIBLE
+              end
+            when '>'
+              if target_version >= gem_version
+                # Incompatible: gem requires a lower version than the target
+                
+                return ACTION_INCOMPATIBLE
+              else
+                return ACTION_KEEP
+              end
+            when '<=', '<'
+              if target_version > gem_version
+                # Incompatible: gem requires a lower version than the target
+                
+                return ACTION_INCOMPATIBLE
+              else
+                # no need to upgrade: we use the target version
+                
+                return ACTION_KEEP
+              end
+            else
+              return ACTION_KEEP
+            end
+          else
+            return ACTION_KEEP
+          end
+        else
+          return ACTION_KEEP
+        end
+      else
+        return ACTION_KEEP
+      end
+    end
+    
     def _update_dependencies(dependencies, gem_p)
       num_updates = 0
       gem_p[:names].each do |n|
         if dependencies.has_key?(n)
           if dependencies[n] != gem_p[:full][n]
-            say_status('update', "install new version #{gem_p[:full][n]} for package #{n}")
-            dependencies[n] = gem_p[:full][n]
-            num_updates += 1
+            action = _dependency_action(n, dependencies[n], gem_p[:full][n])
+            case action
+            when ACTION_KEEP
+              say_status('warning', "using version #{dependencies[n]} over #{gem_p[:full][n]} for package #{n}", :yellow)
+            when ACTION_UPDATE
+              say_status('update', "install new version #{gem_p[:full][n]} for package #{n}")
+              dependencies[n] = gem_p[:full][n]
+              num_updates += 1
+            when ACTION_INCOMPATIBLE
+              say_status('warning', "package #{n}: gem version #{gem_p[:full][n]} is not compatible with target version #{dependencies[n]}", :yellow)
+            end
           end
         else
           say_status('create', "add package #{n} with version #{gem_p[:full][n]}")
@@ -127,7 +250,7 @@ module Fl::Core
         acc
       end
 
-      { updated: num_updates, output: d }
+      return { updated: num_updates, output: d }
     end
 
     def _emit_dependencies_section(plines, m, dependencies)
@@ -152,6 +275,15 @@ module Fl::Core
       end
 
       output
+    end
+    
+    def _check_package_file(gem_p)
+      pkg_file = File.join(destination_root, PACKAGE_FILE)
+      pkg = File.open(File.join(destination_root, PACKAGE_FILE)) { |f| JSON.parse(f.read()) }
+      pkg['dependencies'] = {} unless pkg['dependencies'].is_a?(Hash)
+      pkg['devDependencies'] = {} unless pkg['devDependencies'].is_a?(Hash)
+      deps = _update_dependencies(pkg['dependencies'], gem_p[:dependencies])
+      devDeps = _update_dependencies(pkg['devDependencies'], gem_p[:devDependencies])
     end
     
     def _update_package_file(gem_p)
@@ -182,6 +314,13 @@ module Fl::Core
       File.open(pkg_file, 'w') { |f| f.write(output) }
 
       say_status('warning', "please run yarn to refresh the package distribution", :yellow)
+    end
+
+    def check_yarn_packages()
+      gem_p = _list_packages(@gem_root)
+      if File.exist?(File.join(destination_root, PACKAGE_FILE))
+        _check_package_file(gem_p)
+      end
     end
 
     def add_yarn_packages()
