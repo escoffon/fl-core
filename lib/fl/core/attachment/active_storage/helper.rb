@@ -32,6 +32,8 @@ module Fl::Core::Attachment::ActiveStorage
 
     # Get the URL path component for a given variant.
     #
+    # @deprecated Use {.representation_path} instead.
+    #
     # @param v [ActiveStorage::Variant] The variant for which to generate the URL path.
     #
     # @return [String,nil] Returns a string containing the path component of the variant *v*.
@@ -43,6 +45,8 @@ module Fl::Core::Attachment::ActiveStorage
     end
 
     # Get the URL to a given variant.
+    #
+    # @deprecated Use {.representation_url} instead.
     #
     # @param v [ActiveStorage::Variant] The variant for which to generate the URL path.
     # @param rest [Array] An array containing additional arguments to the method.
@@ -57,6 +61,38 @@ module Fl::Core::Attachment::ActiveStorage
       Rails.application.routes.url_helpers.rails_blob_representation_url(v.blob.signed_id,
                                                                          v.variation.key,
                                                                          v.blob.filename,
+                                                                         *opts)
+    end
+
+    # Get the URL path component for a given representation.
+    #
+    # @param rep [ActiveStorage::Variant,ActiveStorage::Preview] The representation (variant or preview)
+    #  for which to generate the URL path.
+    #
+    # @return [String,nil] Returns a string containing the path component of the representation *rep*.
+
+    def self.representation_path(rep)
+      Rails.application.routes.url_helpers.rails_blob_representation_path(rep.blob.signed_id,
+                                                                          rep.variation.key,
+                                                                          rep.blob.filename)
+    end
+
+    # Get the URL to a given representation.
+    #
+    # @param rep [ActiveStorage::Variant,ActiveStorage::Preview] The representation (variant or preview)
+    #  for which to generate the URL path.
+    # @param rest [Array] An array containing additional arguments to the method.
+    #  Currently the array is expected to contain up to one element,  an optional parmeter containing
+    #  options for the URL method.
+    #  A common option is **:host**, to specify the host
+    #  name (which may include the scheme component `http` or `https`).
+    #
+    # @return [String,nil] Returns a string containing the URL of the representation *rep*.
+          
+    def self.representation_url(rep, *rest)
+      Rails.application.routes.url_helpers.rails_blob_representation_url(rep.blob.signed_id,
+                                                                         rep.variation.key,
+                                                                         rep.blob.filename,
                                                                          *opts)
     end
 
@@ -204,16 +240,16 @@ module Fl::Core::Attachment::ActiveStorage
     #  - **:metadata** is a hash containing metadata about the attachment.
     #  - **:variants** is an array of hashes, where each hash contains three keys: **:style** is the style
     #    name or hash, **:params** is the hash of the style parameters, **:url** the corresponding URL.
+    #    This property is mislabeled for historical reasons; if the attachment supports previews, the elements
+    #    in the array correspond to previews instead of variants.
 
     def self.to_hash_attachment_variants(attachment, styles = :all)
       styles = to_hash_attachment_styles(attachment) if styles == :all
       record = attachment.record
       aname = attachment.name.to_sym
 
-      #print("++++++++++ styles: #{styles} attachment: #{attachment} (#{attachment.variable?})\n")
       variants = styles.reduce([ ]) do |acc, skv|
         s, p = skv
-        #print("  ++++++++ #{s} - #{p}\n")
         if s == :blob
           acc << {
             style: :blob,
@@ -231,6 +267,12 @@ module Fl::Core::Attachment::ActiveStorage
             style: s,
             params: p,
             url: variant_path(attachment.variant(p))
+          }
+        elsif attachment.previewable?
+          acc << {
+            style: s,
+            params: p,
+            url: variant_path(attachment.preview(p))
           }
         end
         
