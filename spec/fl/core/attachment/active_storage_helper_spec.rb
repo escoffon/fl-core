@@ -82,7 +82,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
                                       :blob_id, :fingerprint, :id, :record ])
       vk = h[:variants].map { |v| v[:style] }
       styles = Fl::Core::Attachment.config.defaults(:fl_image)[:styles]
-      expect(vk).to match_array(styles.keys)
+      expect(vk).to match_array([ :blob ] | styles.keys)
     end
 
     it 'should generate variants only for known styles' do
@@ -98,7 +98,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
                                                                               [ :small, 'medium', :unknwon,
                                                                                 ':no_style' ]))
       vk = h[:variants].map { |v| v[:style] }
-      expect(vk).to match_array([ :small, :medium ])
+      expect(vk).to match_array([ :blob, :small, :medium ])
     end
 
     it 'should generate a pseudovariant for the :blob style' do
@@ -124,7 +124,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
 
       h = helper.to_hash_attachment_variants(a1.image.attachment, { original: { } })
       vk = h[:variants].map { |v| v[:style] }
-      expect(vk).to match_array([ :original ])
+      expect(vk).to match_array([ :blob, :original ])
     end
 
     it 'should override variant configuration for the :original style' do
@@ -138,7 +138,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
       original = { resize: '100x100>' }
       h = helper.to_hash_attachment_variants(a1.image.attachment, { original: original })
       vk = h[:variants].map { |v| v[:style] }
-      expect(vk).to match_array([ :original ])
+      expect(vk).to match_array([ :blob, :original ])
       v0 = h[:variants][0]
       expect(v0[:style]).to eql(:original)
       expect(v0[:params]).to include(original)
@@ -162,7 +162,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
       expect(h.keys).to match_array([ :type, :name, :attachments ])
       vk0 = h[:attachments][0][:variants].map { |v| v[:style] }
       styles = Fl::Core::Attachment.config.defaults(:fl_image)[:styles]
-      expect(vk0).to match_array(styles.keys)
+      expect(vk0).to match_array([ :blob ] | styles.keys)
     end
 
     it 'should generate variants only for known styles' do
@@ -180,7 +180,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
       expect(h).to be_a(Hash)
       expect(h.keys).to match_array([ :type, :name, :attachments ])
       vk0 = h[:attachments][0][:variants].map { |v| v[:style] }
-      expect(vk0).to match_array([ :small, :medium ])
+      expect(vk0).to match_array([ :blob, :small, :medium ])
     end
 
     it 'should generate a pseudovariant for the :blob style' do
@@ -216,13 +216,13 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
       expect(h).to be_a(Hash)
       expect(h.keys).to match_array([ :type, :name, :attachments ])
       vk0 = h[:attachments][0][:variants].map { |v| v[:style] }
-      expect(vk0).to match_array([ :original ])
+      expect(vk0).to match_array([ :blob, :original ])
 
       h = helper.to_hash_active_storage_proxy(a1.image, [ :original ])
       expect(h).to be_a(Hash)
       expect(h.keys).to match_array([ :type, :name, :attachments ])
       vk0 = h[:attachments][0][:variants].map { |v| v[:style] }
-      expect(vk0).to match_array([ :original ])
+      expect(vk0).to match_array([ :blob, :original ])
     end
 
     it 'should override variant configuration for the :original style' do
@@ -241,7 +241,7 @@ RSpec.describe Fl::Core::Attachment::ActiveStorage::Helper, type: :model do
       expect(h).to be_a(Hash)
       expect(h.keys).to match_array([ :type, :name, :attachments ])
       vk0 = h[:attachments][0][:variants].map { |v| v[:style] }
-      expect(vk0).to match_array([ :original ])
+      expect(vk0).to match_array([ :blob, :original ])
       a0 = h[:attachments][0][:variants][0]
       expect(a0[:style]).to eql(:original)
       expect(a0[:params]).to include(original)

@@ -216,15 +216,15 @@ module Fl::Core::Attachment::ActiveStorage
     #  containing the style names, and values are hashes containing the configuration for the variant
     #  corresponding to the style.
     #  See {.to_hash_attachment_styles} for a description of how this argument is generated.
-    #  The `:original` style contains the URL to the original file, but processed according to the
-    #  variant parameters specified by the `:original` style.
-    #  The `:blob` style contains the URL to the original file, as obtained from the blob; no style
+    #  The `:blob` special style contains the URL to the original file, as obtained from the blob; no style
     #  is applied.
-    #  Note that all styles except for `:original` and `:blob` are ignored if the attachment's record
-    #  is not variable (*i.e.* if `attachment.variable?` returns `false`). Also in that case, `:original` and
-    #  `:blob` both return the blob URL.
+    #  You can define an `:original` style to contain the URL to the original file, but processed according to the
+    #  variant parameters specified by the style; for example, `:original` does not resize the image, but it might
+    #  autorotate it.
+    #  Note that all styles except for `:blob` are ignored if the attachment's record
+    #  is not representable (*i.e.* if `attachment.representable?` returns `false`).
     #  If *styles* is the symbol `:all`, it is converted to a hash containing all the available styles
-    #  via a call to {.to_hash_attachment_styles}.
+    #  via a call to {.to_hash_attachment_styles}. The `:blob` style is always returned.
     #
     # @return [Hash] Returns a hash containing the following keys:
     #
@@ -247,37 +247,33 @@ module Fl::Core::Attachment::ActiveStorage
       styles = to_hash_attachment_styles(attachment) if styles == :all
       record = attachment.record
       aname = attachment.name.to_sym
-
+      has_blob = false
+      
       variants = styles.reduce([ ]) do |acc, skv|
         s, p = skv
         if s == :blob
+          has_blob = true
           acc << {
             style: :blob,
-            params: { },
+            params: p,
             url: blob_path(attachment.blob)
           }
-        elsif (s == :original) && !attachment.variable?
-          acc << {
-            style: :original,
-            params: { },
-            url: blob_path(attachment.blob)
-          }
-        elsif attachment.variable?
+        elsif attachment.representable?
           acc << {
             style: s,
             params: p,
-            url: variant_path(attachment.variant(p))
-          }
-        elsif attachment.previewable?
-          acc << {
-            style: s,
-            params: p,
-            url: variant_path(attachment.preview(p))
+            url: representation_path(attachment.variant(p))
           }
         end
         
         acc
       end
+
+      variants << {
+        style: :blob,
+        params: p,
+        url: blob_path(attachment.blob)
+      } unless has_blob
 
       h = {
         type: attachment.class.name,
