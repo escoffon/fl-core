@@ -262,7 +262,7 @@ module Fl::Core::Attachment::ActiveStorage
           acc << {
             style: s,
             params: p,
-            url: representation_path(attachment.variant(p))
+            url: representation_path(attachment.representation(p))
           }
         end
         
