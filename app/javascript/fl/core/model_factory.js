@@ -315,7 +315,7 @@ let FlModelCache = (function() {
     function _id(h) {
 	if (h.hasOwnProperty('fingerprint'))
 	{
-	    return h.fingerprint;
+	    return _.split(h.fingerprint, '/')[1];
 	}
 	else if (h.hasOwnProperty('id'))
 	{
