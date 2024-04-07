@@ -85,6 +85,8 @@ module Fl::Core::Service
       @_disable_access_checks = (cfg[:disable_access_checks]) ? true : false
       @_disable_captcha = (cfg[:disable_captcha]) ? true : false
 
+      @_to_hash_params = nil
+      
       clear_status
     end
 
@@ -974,7 +976,11 @@ module Fl::Core::Service
     # @return [ActionController::Parameters] Returns the standard permitted `to_hash` parameters.
 
     def to_hash_params(p = nil)
-      self.class.to_hash_params((p.nil?) ? self.params : p)
+      if @_to_hash_params.nil?
+        @_to_hash_params = self.class.to_hash_params((p.nil?) ? self.params : p)
+      end
+
+      return @_to_hash_params
     end
 
     protected
