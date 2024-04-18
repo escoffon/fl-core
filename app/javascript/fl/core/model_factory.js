@@ -163,11 +163,13 @@ let FlModelBase = FlClassManager.make_class({
 
 	    let self = this;
 	    let updated_at = null;
-	    if (!_.isNil(data.updated_at) && !_.isNil(self.updated_at)) {
-		let self_updated_at = (_.isDate(self.updated_at)) ? self.updated_at : new Date(self.updated_at);
+	    if (!_.isNil(data.updated_at)) {
 		updated_at = new Date(data.updated_at);
-		if (updated_at.getTime() < self_updated_at.getTime()) {
-		    return false;
+		if (!_.isNil(self.updated_at)) {
+		    let self_updated_at = (_.isDate(self.updated_at)) ? self.updated_at : new Date(self.updated_at);
+		    if (updated_at.getTime() < self_updated_at.getTime()) {
+			return false;
+		    }
 		}
 	    }
 	    

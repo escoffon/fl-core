@@ -51,6 +51,24 @@ const MODEL_1 = {
     hash: { one: 1, two: 'two' }
 };
 
+const MODEL_2 = {
+    type: "My::Factory::Test::Model",
+    api_root: "/my/model",
+    url_path: "my_model_path/2",
+    fingerprint: "My::Factory::Test::Model/2",
+    id: 2,
+    created_at: '2018-09-13T21:57:27Z',
+    username: "user102",
+    first_name: "@user102",
+    last_name: null,
+    email: "user102@opoline.com",
+    full_name: "@user102",
+    intro: null,
+    roles: [ "customer" ],
+    accessed_at: 'Thu, 13 Sep 2018 22:10:20 UTC +00:00',
+    hash: { one: 1, two: 'two' }
+};
+
 const OTHER_1 = {
     type: "My::Other",
     api_root: "/my/other",
@@ -205,6 +223,27 @@ describe('fl.model_factory module', function() {
 		mm.refresh({ last_name: 'User' });
 		expect(mm.first_name).to.equal("@user102");
 		expect(mm.last_name).to.equal('User');
+	    });
+
+	    it('should convert timestamps to Date', function() {
+		let mm = FlClassManager.modelize(MY_MODEL_DESC.name, MODEL_2);
+
+		expect(mm.created_at).to.be.an.instanceof(Date);
+		expect(mm.updated_at).to.be.an('undefined');
+
+		mm.refresh({ updated_at: '2018-10-01T10:20:30Z' });
+		expect(mm.updated_at).to.be.an.instanceof(Date);
+	    });
+
+	    it('should fail if the updated_at is earlier than created_at', function() {
+		let mm = FlClassManager.modelize(MY_MODEL_DESC.name, MODEL_2);
+
+		expect(mm.created_at).to.be.an.instanceof(Date);
+		expect(mm.updated_at).to.be.an('undefined');
+
+		let rv = mm.refresh({ updated_at: '2018-09-01T10:20:30Z' });
+		expect(rv).to.be(false);
+		expect(mm.updated_at).to.be.an('undefined');
 	    });
 	});
     });
