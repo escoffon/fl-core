@@ -322,7 +322,7 @@ module Fl::Core::List
     #   whose {#owner} appears in the **:only** list, or does not appear in the **:except** list.
     #   The elements in the arrays are: instances of {ActiveRecord::Base}; object fingerprints; or GlobalIDs.
     # - **:listables** is a **:polymorphic_references** filter that limits the returned values to those list itemss
-    #   whose {#listable_object} appears in the **:only** list, or does not appear in the **:except** list.
+    #   whose {#listed_object} appears in the **:only** list, or does not appear in the **:except** list.
     #   The elements in the arrays are: instances of {ActiveRecord::Base}; object fingerprints; or GlobalIDs.
     # - **:listable_created** is a **:timestamp** filter type that selects based on the **:listed_object_created_at**
     #   column. Therefore, it is used to select based on the listable's creation time.

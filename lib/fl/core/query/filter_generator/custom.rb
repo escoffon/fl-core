@@ -5,7 +5,8 @@ module Fl::Core::Query::FilterGenerator
   # This class lets you define your own clause generator. It executes the block stored in the **:generator**
   # configuration option, and uses the value returned by the block. This block is called with the following arguments:
   #
-  # 1. *g* is the filter generator (the instance of {Fl::Core::Query::Filter} running the {#generate} method).
+  # 1. *g* is the filter generator (the instance of {Fl::Core::Query::Filter} running the
+  #    {Fl::Core::Query::Filter#generate} method).
   # 2. *n* is the filter name.
   # 3. *d* is the filter descriptor.
   # 4. *v* is the filter value.

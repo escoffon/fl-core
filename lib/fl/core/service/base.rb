@@ -247,7 +247,7 @@ module Fl::Core::Service
     # @param key [String,Symbol] This is the class-independent component of the translation key; the method
     #  tries `localization_key(key)` and <code>fl.core.service.<i>key</i></code>.
     # @param options [Hash] The rest of the call parameters contain a hash of key substitutions to pass to the
-    #  {I18n.translate_x} method.
+    #  {I18n::Fl.translate_x} method.
     #
     # @return [String] Returns the localized message.
 

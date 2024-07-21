@@ -13,10 +13,10 @@ module Fl::Core::List
   # end
   # ```
   #
-  # We do this because {Listable.is_listable) is configurable.
+  # We do this because {.is_listable) is configurable.
   #
   # The concern registers a number of instance methods that assume that the **listable_containers** association
-  # is defined (which it is, by {Listable.is_listable}).
+  # is defined (which it is, by {.is_listable}).
   
   module Listable
     extend ActiveSupport::Concern
@@ -98,7 +98,7 @@ module Fl::Core::List
     
     # Get the object's summary.
     # This method calls the value of the configuration option **:summary** to
-    # {Fl::Core::Listable.is_listable} to get the object summary.
+    # {Fl::Core::List::Listable.is_listable} to get the object summary.
     #
     # @return [String] Returns the object summary.
 
@@ -204,7 +204,7 @@ class ActiveRecord::Base
   # This is the default implementation, which returns `false`, for those models that have not
   # registered as listables.
   #
-  # @return [Boolean] Returns `false`; {Fl::Core::List::Listable::ClassMacros#is_listable} overrides
+  # @return [Boolean] Returns `false`; {Fl::Core::List::Listable.is_listable} overrides
   #  the implementation to return `true`.
   
   def self.listable?
@@ -224,7 +224,7 @@ class ActiveRecord::Base
   # This is the default implementation, which returns an empty string, for those models that have not
   # registered as listables.
   #
-  # @return [String] Returns an empty string; {Fl::Core::List::Listable::ClassMacros#is_listable}
+  # @return [String] Returns an empty string; {Fl::Core::List::Listable.is_listable}
   #  overrides the implementation to return an appropriate value for the item summary.
 
   def list_item_summary

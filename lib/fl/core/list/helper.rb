@@ -12,12 +12,12 @@ module Fl::Core::List
     #
     # Fl::Core::List::Helper.make_listable(TheClass, summary: :my_summary_method)
     # ```
-    # See the documentation for {Listable::ClassMethods#is_listable}.
+    # See the documentation for {Listable.is_listable}.
     # If the class is already marked as listable, the operation is skipped.
     #
     # @param klass [Class] The class object where listable behavior is enabled.
     # @param cfg [Hash] A hash containing configuration parameters. See the documentation for
-    #  {Listable::ClassMethods#is_listable}.
+    #  {Listable.is_listable}.
 
     def self.make_listable(klass, *cfg)
       unless klass.listable?

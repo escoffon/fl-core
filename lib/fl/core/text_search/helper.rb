@@ -171,7 +171,7 @@ module Fl::Core::TextSearch::Helper
   #   @param tsv [String] The name of the column that contains the tsvector to use.
   #    This value is placed in the WHERE clause.
   #    If there is no tsvector column, you can pass `nil` and the method will use the
-  #    output of "to_tsvector(#{doc_name})" (in other words, it will convert the contents to a tsvector
+  #    output of "to_tsvector(doc_name)" (in other words, it will convert the contents to a tsvector
   #    on the fly).
   #   @param qs [String] The query string to use. If *qs* starts with 'pg:', the method assumes that
   #    the rest of the value has already been converted to Postgres form; otherwise, the method calls
@@ -200,7 +200,7 @@ module Fl::Core::TextSearch::Helper
   #   @param tsv [String] The name of the column that contains the tsvector to use.
   #    This value is placed in the WHERE clause.
   #    If there is no tsvector column, you can pass `nil` and the method will use the
-  #    output of "to_tsvector(#{doc_name})" (in other words, it will convert the contents to a tsvector
+  #    output of "to_tsvector(doc_name)" (in other words, it will convert the contents to a tsvector
   #    on the fly).
   #   @param qs [String] The query string to use. If *qs* starts with 'pg:', the method assumes that
   #    the rest of the value has already been converted to Postgres form; otherwise, the method calls

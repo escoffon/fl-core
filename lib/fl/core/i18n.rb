@@ -1,6 +1,6 @@
 # Extend the functionality of Rails' I18n module to add support for the following functionality:
 #
-# * Look up from a list of locales, rather than from a single one. The application can set an array
+# * Look up from a list of locales, rather than from a single  The application can set an array
 #   of locales, and the extension methods look up locales in the array order and return the first
 #   translation hit. For example, if the locale array is <code>[ 'en-us', 'en', 'it', 'es' ]</code>, the
 #   extension methods look up translations for `en-us`, `en`, `it`, and `es` until a match is found.
@@ -268,12 +268,12 @@ module I18n
     alias :tx :translate_x
     
     # @!scope class
-    # This version of {.translate_x} sets the `:raise` option.
+    # This version of {I18n::Fl.translate_x} sets the `:raise` option.
     #
     # Aliased to `tx!` for convenience.
     #
     # @param key [String] The lookup key.
-    # @param options [Hash] Options; see {.translate_x}.
+    # @param options [Hash] Options; see {I18n::Fl.translate_x}.
     #
     # @return Returns the same type and value as `translate`.
     #
@@ -482,12 +482,12 @@ module I18n
   
   module Base
     # @!scope class
-    # Override I18n's `translate` method to call {.translate_x}. With this override, all I18N calls now use
+    # Override I18n's `translate` method to call {I18n::Fl.translate_x}. With this override, all I18N calls now use
     # the extended functionality.
     #
     # @overload translate(key, options)
     #  @param key [String] The lookup key.
-    #  @param options [Hash] Options; see {.translate_x}. If the **:locale** option is not present, it defaults
+    #  @param options [Hash] Options; see {I18n::Fl.translate_x}. If the **:locale** option is not present, it defaults
     #   to the value of {.locale_array}.
     #
     # @return Returns the same type and value as the original implementation of `translate`.
@@ -498,12 +498,12 @@ module I18n
     alias :t :translate
 
     # @!scope class
-    # Override I18n's `localize` method to call {.localize_x}. With this override, all I18N calls now use
+    # Override I18n's `localize` method to call {I18n::Fl.localize_x}. With this override, all I18N calls now use
     # the extended functionality.
     #
     # @overload localize(object, options)
     #  @param object The object to localize.
-    #  @param options [Hash] Options; see {.localize_x}. If the **:locale** option is not present, it defaults
+    #  @param options [Hash] Options; see {I18n::Fl.localize_x}. If the **:locale** option is not present, it defaults
     #   to the value of {.locale_array}.
     #
     # @return Returns the same type and value as the original implementation of `localize`.
@@ -613,9 +613,9 @@ module ActionView
       # Aliased to `tx` for convenience.
       #
       # @param key [String] The lookup key.
-      # @param options [Hash] Options; see {I18n.translate_x}.
+      # @param options [Hash] Options; see {I18n::Fl.translate_x}.
       #
-      # @return Returns the same type and value as {I18n.translate_x}.
+      # @return Returns the same type and value as {I18n::Fl.translate_x}.
 
       def translate_x(key, **options)
         default = options[:default] || nil
@@ -708,9 +708,9 @@ module ActionView
       # Aliased to `lx` for convenience.
       #
       # @param object [Object] The object to localize.
-      # @param options [Hash] Options; see {I18n.localize}.
+      # @param options [Hash] Options; see {I18n::Base.localize}.
       #
-      # @return Returns the same type and value as {I18n.localize_x}.
+      # @return Returns the same type and value as {I18n::Fl.localize_x}.
 
       def localize_x(object, **options)
         I18n.localize_x(object, **options)
@@ -741,9 +741,9 @@ module AbstractController
     #
     # @overload translate_x(key, options)
     #  @param key [String] The lookup key.
-    #  @param options [Hash] Options; see {I18n.translate_x}.
+    #  @param options [Hash] Options; see {I18n::Fl.translate_x}.
     #
-    # @return Returns the same type and value as {I18n.translate_x}.
+    # @return Returns the same type and value as {I18n::Fl.translate_x}.
 
     def translate_x(key, **options)
       if key.to_s.first == "."
@@ -764,9 +764,9 @@ module AbstractController
     #
     # @overload localize_x(object, options)
     #  @param object [Object] The object to localize.
-    #  @param options [Hash] Options; see {I18n.localize}.
+    #  @param options [Hash] Options; see {I18n::Base.localize}.
     #
-    # @return Returns the same type and value as {I18n.localize}.
+    # @return Returns the same type and value as {I18n::Base.localize}.
 
     def localize_x(object, **options)
       I18n.localize_x(object, **options)

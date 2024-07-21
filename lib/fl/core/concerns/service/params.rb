@@ -84,7 +84,7 @@ module Fl::Core::Concerns::Service::Params
   #  `params`.
   #
   # @return [ActionController::Parameters] Returns the query parameters. Controller implementations
-  #  of {#query_params} are responsible for allowing only permitted ones.
+  #  of {Fl::Core::Service::Base#query_params} are responsible for allowing only permitted ones.
 
   def normalize_query_params(p = nil)
     p = params.fetch(:_q, {}) if p.nil?
@@ -124,7 +124,6 @@ module Fl::Core::Concerns::Service::Params
   #
   #   @param sp [Hash,ActionController::Parameters,String] The parameters to convert.
   #    If a string value, it is assumed to contain a JSON representation.
-  #    If `nil`, use {#params}.
   #
   #   @return [ActionController::Parameters] Returns the converted parameters.
 

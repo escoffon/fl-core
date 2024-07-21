@@ -17,13 +17,15 @@ module Fl::Core::Comment
   #
   # #### Validation
   #
-  # - {#commentable}, {#author}, {#contents_html}, and {#contents_json} must be nonempty.
-  # - {#contents_html} must not be an empty string.
-  # - {#title} must not be longer than 100 characters.
-  # - {#contents_json} must be a hash; however, we don't check the hash contents.
+  # - The attributes `commentable`, `author`, `contents_html`, and `contents_json` must be nonempty.
+  # - `contents_html` must not be an empty string.
+  # - `title` must not be longer than 100 characters.
+  # - `contents_json` must be a hash; however, we don't check the hash contents.
   #
-  # Note that the validation code does **not** check that {#contents_html} and {#contents_json} are consistent
+  # Note that the validation code does **not** check that `contents_html` and `contents_json` are consistent
   # with each other.
+  #
+  # See {Fl::Core::Comment::ActiveRecord::Comment} for documentation about the attributes listed above.
   
   module Common
     extend ActiveSupport::Concern
