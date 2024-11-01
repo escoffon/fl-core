@@ -688,9 +688,14 @@ module Fl::Core::Service
           rs = verify_captcha(opts[:captcha], p)
           if rs['success']
             self.clear_status
+
+            # Some implementations of :new_object may return an already persisted (saved) object; in that case,
+            # we don't want to call :save again, because it would clear the :last_saved_changes property, and
+            # that would cause any Nkp::Activity::Action registrations to have an incomplete context
+            # So, we only save if the object has not yet been persisted
             
             obj = new_object(p)
-            if !obj.nil? && obj.save
+            if !obj.nil? && ((obj.persisted?) ? obj.valid? : obj.save)
               if !after_create(obj, p)
                 obj.destroy
                 obj = nil
