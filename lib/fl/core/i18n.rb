@@ -351,16 +351,25 @@ module I18n
 
     def parse_accept_language(request)
       if request.env.has_key?('HTTP_ACCEPT_LANGUAGE')
+        # note: some clients may generate the accept-language header with a starting locale with no q value,
+        # then a bunch with q values, and then another bunch with no q values; I assume that the idea is that
+        # that last bunch is the lowest priority, all at the same level. The AlamoFire request does, for example,
+        # from the (very long) list of languages on the phone properties.
+        # If we are not careful, those last locales end up looking like they are at q=1.0, and therefore sort
+        # up instead of sorting down, so we track when q values have been seen
+        
+        did_see_q = false
         raw_locales = request.env['HTTP_ACCEPT_LANGUAGE'].split(',').map do |l|
           a = l.split(';')
           if a.length == 1
-            [ a[0].strip, 1.0 ]
+            [ a[0].strip, (did_see_q) ? 0.0 : 1.0 ]
           else
             if a[1] =~ /^\s*q=([01](\.[0-9])?)/i
+              did_see_q = true
               d = Regexp.last_match
               [ a[0].strip, d[1].to_f ]
             else
-              [ a[0].strip, 1.0 ]
+              [ a[0].strip, (did_see_q) ? 0.0 : 1.0 ]
             end
           end
         end
