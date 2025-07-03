@@ -2,8 +2,8 @@
 #
 # * Look up from a list of locales, rather than from a single  The application can set an array
 #   of locales, and the extension methods look up locales in the array order and return the first
-#   translation hit. For example, if the locale array is <code>[ 'en-us', 'en', 'it', 'es' ]</code>, the
-#   extension methods look up translations for `en-us`, `en`, `it`, and `es` until a match is found.
+#   translation hit. For example, if the locale array is <code>[ 'en_US', 'en', 'it', 'es' ]</code>, the
+#   extension methods look up translations for `en_US`, `en`, `it`, and `es` until a match is found.
 # * Adds the {.with_locale_array} to execute a block of code with custom locales.
 
 module I18n
@@ -42,8 +42,8 @@ module I18n
 
     # @!scope class
     # Normalize a locale name.
-    # Replaces underscores (`_`) with dashes (`-`), converts the language part to lowercase, and the region/variant
-    # part to uppercase. For example, `en_US` is converted to `en-US`, and `en-us` to `en-US`; the normalized
+    # Replaces dashes (`-`) with underscores (`_`), converts the language part to lowercase, and the region/variant
+    # part to uppercase. For example, `en-US` is converted to `en_US`, and `en-us` to `en_US`; the normalized
     # format is consistent with common locale use, and specifically with how locales are defined in translation
     # files.
     #
@@ -53,10 +53,24 @@ module I18n
 
     def normalize_locale(locale)
       idx = -1
-      locale.to_s.gsub('_', '-').split('-').map do |l|
+      locale.to_s.gsub('-', '_').split('_').map do |l|
         idx += 1
         (idx == 0) ? l.downcase : l.upcase
-      end.join('-')
+      end.join('_')
+    end
+
+    # @!scope class
+    # Normalize a list of locale names.
+    # Calls {.normalize_locale} for each element of *locales* and returns the normalized values.
+    #
+    # @param locales [Array<String,Symbol>] The list of locale names.
+    #
+    # @return [Array<String>] Returns the list of normalized names.
+
+    def normalize_locale_list(locales)
+      locales = [ locales ] unless locales.is_a?(Array)
+
+      return locales.map { |l| normalize_locale(l) }
     end
 
     # @!scope class
@@ -64,12 +78,12 @@ module I18n
     # This method scans *locales* for locale names that contain both language and region; if no corresponding
     # language-only locales are present, it inserts them in the list at appropriate location.
     # For example, if *locales* is `[ 'en-US', 'it-CH', 'es' ]`, the method returns
-    # `[ 'en-US', 'en', 'it-CH', 'it', 'es' ]`.
-    # However, with `[ 'en', 'en-US', 'it-CH` ]`, the return value is `[ 'en', 'en-US', 'it-CH', 'it' ]`, since
+    # `[ 'en_US', 'en', 'it_CH', 'it', 'es' ]`.
+    # However, with `[ 'en', 'en_US', 'it-CH` ]`, the return value is `[ 'en', 'en_US', 'it_CH', 'it' ]`, since
     # `'en'` is already in *locales*.
     #
     # This method is especially useful to handle requests from Safari on iOS, where the locale header typically
-    # contains a single locale with both language and region (*e.g* `'it-it'` or `en-us`).
+    # contains a single locale with both language and region (*e.g* `'it_IT'` or `en-US`).
     #
     # @param locales [Array<String,Symbol>] The locales array to process.
     #
@@ -80,7 +94,7 @@ module I18n
       explicit = { }
       locales.each_with_index do |loc, idx|
         dloc = loc.to_s.downcase
-        lang = loc.to_s.split('-').first
+        lang = loc.to_s.split(/-_/).first
         pos[lang] = idx
         explicit[dloc] = idx
       end
@@ -89,7 +103,7 @@ module I18n
       locales.reduce([ ]) do |acc, loc|
         dloc = loc.to_s.downcase
         acc.push(loc)
-        lang = dloc.to_s.split('-').first
+        lang = dloc.to_s.split(/-_/).first
         acc.push(lang) if (lang != dloc) && (pos[lang] == idx) && !acc.include?(lang) && !explicit.has_key?(lang)
         idx += 1
         acc
@@ -352,9 +366,9 @@ module I18n
         end
 
         raw_locales.sort! { |e1, e2| e2[1] <=> e1[1] }
-        raw_locales.map { |e| e[0].gsub('_', '-').downcase }
+        return normalize_locale_list(raw_locales.map { |e| e[0].gsub('-', '_').downcase })
       else
-        [ config.locale ]
+        return [ config.locale ]
       end
     end
   end
