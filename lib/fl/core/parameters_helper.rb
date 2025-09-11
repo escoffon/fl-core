@@ -25,6 +25,9 @@ module Fl::Core
     #   Finally, it tries the two keys **:id** and **:type**, which
     #   will be used to look up the object via the +find+ method (**:type** is the class name).
     # - An object instance, which will be used as-is.
+    # - As a special case (hack) to support some API clients, the string value `"null"` is converted to a
+    #   `nil` value: some Javascript clients represent null value as the JSON token `null`, and we have to be
+    #   able to handle that case.
     #
     # @param p The parameter value. See above for a description of its format.
     # @param key [Symbol] The key to look up, if _p_ is a Hash.
@@ -107,6 +110,8 @@ module Fl::Core
           raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{p.to_s}")
         end
       when String
+        return nil if p == 'null'
+        
         gid = GlobalID.parse(p)
         if gid.is_a?(GlobalID)
           begin
@@ -132,6 +137,8 @@ module Fl::Core
               raise ConversionError, I18n.tx('fl.core.conversion.no_object', id: "#{p[key.to_sym].to_s}")
             end
           when String
+            return nil if p[key.to_sym] == 'null'
+            
             gid = GlobalID.parse(p[key.to_sym])
             if gid.is_a?(GlobalID)
               begin
