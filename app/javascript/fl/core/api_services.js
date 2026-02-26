@@ -1733,16 +1733,26 @@ let FlAPIService = FlClassManager.make_class({
 		}
 
 		err.response = response;
+
+		return err;
 	    }
-	    else if (_.isError(e))
-	    {
-		err.message = e.message;
-		err.type = e.name;
-		if (e.stack)
-		{
+
+	    // let's extract an Error object if we can find one
+	    
+	    let errorObject = undefined;
+	    if (_.isError(e)) {
+		errorObject = e;
+	    } else if ((e.type == 'AxiosError') && _.isObject(e.details)) {
+		errorObject = e.details.error;
+	    }
+
+	    if (!_.isNil(errorObject)) {
+		err.message = errorObject.message;
+		err.type = errorObject.name;
+		if (errorObject.stack) {
 		    err.details = {
-			stack: e.stack.split("\n"),
-			error: e
+			stack: errorObject.stack.split("\n"),
+			error: errorObject
 		    };
 		}
 	    }
